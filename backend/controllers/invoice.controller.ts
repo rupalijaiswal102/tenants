@@ -42,30 +42,6 @@ export const getInvoices = async (req: Request, res: Response) => {
 };
 
 
-// ── Generate Invoice Number: {currentYear}{nextYear2d}{count3d} ──────────────
-// Example: 202627001, 202627002...
-const generateInvoiceNo = async (): Promise<string> => {
-  const now       = new Date();
-  const curYear   = now.getFullYear();                          // 2026
-  const nextYear  = String(curYear + 1).slice(-2);             // "27"
-  const prefix    = `${curYear}${nextYear}`;                   // "202627"
-
-  // Count invoices with this year prefix
-  const count     = await Invoice.countDocuments({
-    invoiceNo: { $regex: `^${prefix}` }
-  });
-  let   num       = count + 1;
-  let   invoiceNo = `${prefix}${String(num).padStart(3, '0')}`; // "202627001"
-
-  // Ensure uniqueness
-  let exists = await Invoice.findOne({ invoiceNo });
-  while (exists) {
-    num++;
-    invoiceNo = `${prefix}${String(num).padStart(3, '0')}`;
-    exists    = await Invoice.findOne({ invoiceNo });
-  }
-  return invoiceNo;
-};
 
 export const getInvoicesByTenant = async (req: Request, res: Response) => {
   try {
