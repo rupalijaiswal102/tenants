@@ -64,7 +64,7 @@ export default function TenantFormPage() {
 
   const { register, handleSubmit, control, setValue, watch, reset, formState: { errors } } = useForm({
     defaultValues: {
-      code: `TN${Math.floor(1000 + Math.random() * 9000)}`,
+      code: 'Loading...',
       name: '', company: '', property: '', contactPerson: '', designation: '',
       mobile: '', email: '', alternateContactPerson: '', rentalPurpose: '',
       leaseStart: '', leaseEnd: '', tenure: 12, lockIn: 6, noticePeriod: 60,
@@ -77,11 +77,30 @@ export default function TenantFormPage() {
     }
   });
 
-  useEffect(() => { fetchCompanies(); if (id) fetchTenant(); }, [id]);
+  useEffect(() => { fetchCompanies(); if (id) fetchTenant(); else fetchNextCode(); }, [id]);
 
   const fetchCompanies = async () => {
     try { const r = await axios.get('/api/companies'); setCompanies(r.data); } catch {}
   };
+
+  const fetchNextCode = async () => {
+  try {
+    const r = await axios.get('/api/tenants/next-code');
+    if (r.data?.code) {
+      setValue('code', r.data.code);
+    }
+  } catch (err) {
+    console.error('fetchNextCode failed:', err);
+    // Fallback — count se generate karo
+    try {
+      const t = await axios.get('/api/tenants');
+      const count = Array.isArray(t.data) ? t.data.length : 0;
+      setValue('code', `TN${String(count + 1).padStart(3, '0')}`);
+    } catch {
+      setValue('code', 'TN001');
+    }
+  }
+};
 
   const fetchTenant = async () => {
     try { const r = await axios.get(`/api/tenants/${id}`); reset(r.data); }
@@ -101,49 +120,17 @@ export default function TenantFormPage() {
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
-
-  // ── File size check ──
- const maxSize = 20 * 1024 * 1024; // 10MB limit
-  if (file.size > maxSize) {
-    toast.error('File too large! Please upload under 10MB.');
-    return;
-  }
-
-  let finalFile = file;
-
-  if (file.type.includes('image')) {
-    setCompressing(true);
-    try {
-      finalFile = await imageCompression(file, {
-        maxSizeMB: 1,           // ← 1MB tak compress
-        maxWidthOrHeight: 1200,
-        useWebWorker: true,
-        onProgress: p => setUploadProgress(p)
-      });
-      toast.success(`Compressed: ${(finalFile.size/1024).toFixed(0)} KB`);
-    } catch { 
-      toast.error('Compression failed');
-    } finally { setCompressing(false); }
-  }
-
-  // PDF bhi check karo
-if (file.type === 'application/pdf' && file.size > 20 * 1024 * 1024) {
-  toast.error('PDF too large! Max 20MB allowed.');
-}
-
-  setAgreementFile(finalFile);
-  setUploadProgress(0);
-
-  if (finalFile.type.includes('image')) {
-    const reader = new FileReader();
-    reader.onloadend = () => setFilePreview(reader.result as string);
-    reader.readAsDataURL(finalFile);
-  } else {
-    setFilePreview(null);
-  }
-};
+    const file = e.target.files?.[0]; if (!file) return;
+    let finalFile = file;
+    if (file.type.includes('image')) {
+      setCompressing(true);
+      try { finalFile = await imageCompression(file, { maxSizeMB: 1, maxWidthOrHeight: 1920, useWebWorker: true, onProgress: p => setUploadProgress(p) }); }
+      catch {} finally { setCompressing(false); }
+    }
+    setAgreementFile(finalFile);
+    if (finalFile.type.includes('image')) { const r = new FileReader(); r.onloadend = () => setFilePreview(r.result as string); r.readAsDataURL(finalFile); }
+    else setFilePreview(null);
+  };
 
   const onFormSubmit = async (data: any) => {
     setLoading(true);
@@ -260,9 +247,9 @@ if (file.type === 'application/pdf' && file.size > 20 * 1024 * 1024) {
                           )}/>
                         </Field>
                       </div>
-                      <Field label="Contact Person Name" required error={errors.contactPerson && 'Required'}>
+                      <Field label="Contact Person" required error={errors.contactPerson && 'Required'}>
                         <input {...register('contactPerson', { required:true })} className={inp} placeholder="Full Name"/>
-                </Field>
+                      </Field>
                       <Field label="Designation">
                         <input {...register('designation')} className={inp} placeholder="Position / Role"/>
                       </Field>

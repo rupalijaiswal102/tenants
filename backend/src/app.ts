@@ -4,6 +4,7 @@ import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import companyRoutes from '../routes/company.routes';
 import tenantRoutes from '../routes/tenant.routes';
+import authRoutes from '../routes/auth.routes';
 import invoiceRoutes from '../routes/invoice.routes';
 import statsRoutes from '../routes/stats.routes';
 import gstRoutes from '../routes/gst.routes';
@@ -33,6 +34,7 @@ export async function createApp() {
 
   // API Routes
   app.use('/api/companies', companyRoutes);
+  app.use('/api/auth', authRoutes);
   app.use('/api/tenants', tenantRoutes);
   app.use('/api/invoices', invoiceRoutes);
   app.use('/api/stats', statsRoutes);

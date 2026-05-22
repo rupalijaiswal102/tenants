@@ -1,27 +1,86 @@
 import { Request, Response } from 'express';
-import { Tenant } from '../models/Tenant';
-import { Invoice } from '../models/Invoice';
-import { Ledger } from '../models/Ledger';
+import { Tenant }   from '../models/Tenant';
+import { Invoice }  from '../models/Invoice';
+import { Ledger }   from '../models/Ledger';
 import { mockStorage, isUsingMockData } from '../src/mockData';
+import { uploadToGridFS } from '../src/gridfs';
 import fs from 'fs';
-import { v2 as cloudinary } from 'cloudinary';
 
-const isCloudinaryConfigured = () => !!(
-  process.env.CLOUDINARY_CLOUD_NAME && 
-  process.env.CLOUDINARY_API_KEY && 
-  process.env.CLOUDINARY_API_SECRET
-);
+// ── Helpers ───────────────────────────────────────────────────────────────────
 const parseNum = (val: any) => {
   if (val === undefined || val === null || val === '') return undefined;
   const parsed = parseFloat(val);
   return isNaN(parsed) ? undefined : parsed;
 };
 
+const parseNumericFields = (data: any) => {
+  ['currentRent','securityDeposit','escalationPercent','tenure',
+   'lockIn','noticePeriod','rentFreePeriodDays','openingBalanceAmount']
+    .forEach(f => { if (data[f] !== undefined) data[f] = parseNum(data[f]); });
+};
+
+// ── GridFS file upload helper ─────────────────────────────────────────────────
+const handleFileUpload = async (file: any, data: any, res: Response): Promise<boolean> => {
+  try {
+    const stats = fs.statSync(file.path);
+
+    if (stats.size > 20 * 1024 * 1024) {
+      if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+      res.status(400).json({
+        error: `File too large! Max 20MB. Got: ${(stats.size / 1024 / 1024).toFixed(1)}MB`
+      });
+      return false; // ← upload failed
+    }
+
+    const fileUrl          = await uploadToGridFS(file);
+    data.agreementFileUrl  = fileUrl;
+    data.agreementFileType = file.mimetype.includes('pdf') ? 'PDF' : 'IMAGE';
+    return true; // ← upload success
+
+  } catch (err: any) {
+    if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+    res.status(500).json({ error: 'File upload failed: ' + err.message });
+    return false;
+  }
+};
+
+// ── Opening Balance ledger entry (mock) ───────────────────────────────────────
+const addOpeningBalanceMock = (tenant: any) => {
+  if (tenant.openingBalanceAmount > 0) {
+    mockStorage.ledgers.push({
+      _id: `l${Date.now()}`, id: `l${Date.now()}`,
+      tenantId:   tenant.id,
+      date:       tenant.openingBalanceDate || new Date(),
+      type:       'OPENING_BALANCE',
+      particular: 'Opening Balance',
+      debit:      tenant.openingBalanceType === 'Debit'  ? tenant.openingBalanceAmount : 0,
+      credit:     tenant.openingBalanceType === 'Credit' ? tenant.openingBalanceAmount : 0,
+      notes:      tenant.openingBalanceNotes,
+    });
+  }
+};
+
+// ── Opening Balance ledger entry (real DB) ────────────────────────────────────
+const addOpeningBalanceDB = async (tenant: any) => {
+  if (tenant.openingBalanceAmount > 0) {
+    await new Ledger({
+      tenantId:   tenant._id,
+      date:       tenant.openingBalanceDate || new Date(),
+      type:       'OPENING_BALANCE',
+      particular: 'Opening Balance',
+      debit:      tenant.openingBalanceType === 'Debit'  ? tenant.openingBalanceAmount : 0,
+      credit:     tenant.openingBalanceType === 'Credit' ? tenant.openingBalanceAmount : 0,
+      notes:      tenant.openingBalanceNotes,
+    }).save();
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET ALL TENANTS
+// ─────────────────────────────────────────────────────────────────────────────
 export const getTenants = async (req: Request, res: Response) => {
   try {
-    if (isUsingMockData.value) {
-      return res.json(mockStorage.tenants);
-    }
+    if (isUsingMockData.value) return res.json(mockStorage.tenants);
     const tenants = await Tenant.find().sort({ createdAt: -1 });
     res.json(tenants.map(t => ({ ...t.toObject(), id: t._id })));
   } catch (err: any) {
@@ -29,11 +88,13 @@ export const getTenants = async (req: Request, res: Response) => {
   }
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// GET TENANT DETAILS
+// ─────────────────────────────────────────────────────────────────────────────
 export const getTenantDetails = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    let tenant;
-    let invoices;
+    let tenant: any, invoices: any[];
 
     if (isUsingMockData.value) {
       tenant = mockStorage.tenants.find((t: any) => t.id === id);
@@ -45,145 +106,50 @@ export const getTenantDetails = async (req: Request, res: Response) => {
       invoices = await Invoice.find({ tenantId: id }).sort({ billDate: -1 });
     }
 
-    const tenantObj = isUsingMockData.value ? tenant : { ...tenant.toObject(), id: tenant._id };
-    const invoicesArr = isUsingMockData.value ? invoices : invoices.map(i => ({ ...i.toObject(), id: i._id }));
+    const tenantObj   = isUsingMockData.value ? tenant : { ...tenant.toObject(), id: tenant._id };
+    const invoicesArr = isUsingMockData.value ? invoices : invoices.map((i: any) => ({ ...i.toObject(), id: i._id }));
 
-    // NEW: Calculate comprehensive summary using Ledger entries
-    let ledgerEntries = [];
+    // Ledger summary
+    let ledgerEntries: any[] = [];
     if (isUsingMockData.value) {
       ledgerEntries = mockStorage.ledgers?.filter((l: any) => String(l.tenantId) === id) || [];
     } else {
       ledgerEntries = await Ledger.find({ tenantId: id }).sort({ date: 1 });
     }
 
-    const totalInvoiced = ledgerEntries.reduce((sum, entry) => sum + (entry.debit || 0), 0);
-    const totalReceived = ledgerEntries.reduce((sum, entry) => sum + (entry.credit || 0), 0);
-    const totalTds = ledgerEntries.reduce((sum, entry) => sum + (entry.tds || 0), 0);
+    const totalInvoiced  = ledgerEntries.reduce((s: number, e: any) => s + (e.debit  || 0), 0);
+    const totalReceived  = ledgerEntries.reduce((s: number, e: any) => s + (e.credit || 0), 0);
+    const totalTds       = ledgerEntries.reduce((s: number, e: any) => s + (e.tds    || 0), 0);
     const closingBalance = totalInvoiced - (totalReceived + totalTds);
 
     const paymentSummary = {
       totalInvoiced,
       totalReceived,
       totalTds,
-      pendingAmount: closingBalance, // Unified pending balance from ledger
-      lastPaymentDate: invoicesArr.filter(inv => (inv.receivedAmount || inv.received || 0) > 0).sort((a, b) => new Date(b.billDate).getTime() - new Date(a.billDate).getTime())[0]?.billDate || null
+      pendingBalance: closingBalance,
+      pendingAmount:  closingBalance,
+      lastPaymentDate: invoicesArr
+        .filter((inv: any) => (inv.receivedAmount || inv.received || 0) > 0)
+        .sort((a: any, b: any) => new Date(b.billDate).getTime() - new Date(a.billDate).getTime())[0]?.billDate || null,
     };
 
-    // Analytics: Monthly payment trend (last 12 months)
     const analytics = {
-      monthlyTrend: invoicesArr.slice(0, 12).map(inv => ({
-        month: inv.billDate ? new Date(inv.billDate).toLocaleString('default', { month: 'short', year: '2-digit' }) : 'N/A',
+      monthlyTrend: invoicesArr.slice(0, 12).map((inv: any) => ({
+        month:    inv.billDate ? new Date(inv.billDate).toLocaleString('default', { month: 'short', year: '2-digit' }) : 'N/A',
         invoiced: inv.totalInvoice || 0,
-        received: (inv.receivedAmount || inv.received || 0) + (inv.tdsAmount || 0)
-      })).reverse()
+        received: (inv.receivedAmount || inv.received || 0) + (inv.tdsAmount || 0),
+      })).reverse(),
     };
 
-    res.json({
-      tenant: tenantObj,
-      invoices: invoicesArr,
-      paymentSummary,
-      analytics
-    });
+    res.json({ tenant: tenantObj, invoices: invoicesArr, paymentSummary, analytics });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 };
 
-export const createTenant = async (req: Request, res: Response) => {
-  try {
-    const tenantData = { ...req.body };
-    delete tenantData._id;
-    delete tenantData.id;
-    if (tenantData.code === '') delete tenantData.code;
-    
-    const file = (req as any).file;
-
-    if (tenantData.currentRent !== undefined) tenantData.currentRent = parseNum(tenantData.currentRent);
-    if (tenantData.securityDeposit !== undefined) tenantData.securityDeposit = parseNum(tenantData.securityDeposit);
-    if (tenantData.escalationPercent !== undefined) tenantData.escalationPercent = parseNum(tenantData.escalationPercent);
-    if (tenantData.tenure !== undefined) tenantData.tenure = parseNum(tenantData.tenure);
-    if (tenantData.lockIn !== undefined) tenantData.lockIn = parseNum(tenantData.lockIn);
-    if (tenantData.noticePeriod !== undefined) tenantData.noticePeriod = parseNum(tenantData.noticePeriod);
-    if (tenantData.rentFreePeriodDays !== undefined) tenantData.rentFreePeriodDays = parseNum(tenantData.rentFreePeriodDays);
-    if (tenantData.openingBalanceAmount !== undefined) tenantData.openingBalanceAmount = parseNum(tenantData.openingBalanceAmount);
-    
-    if (file) {
-      if (!isCloudinaryConfigured()) {
-        const stats = fs.statSync(file.path);
-        if (stats.size > 20 * 1024 * 1024) {
-          fs.unlinkSync(file.path);
-          return res.status(400).json({ error: 'File too large! Max 20MB allowed.' });
-        }
-        const base64 = fs.readFileSync(file.path, { encoding: 'base64' });
-        tenantData.agreementFileUrl = `data:${file.mimetype};base64,${base64}`;
-        fs.unlinkSync(file.path);
-      } else {
-        const result = await cloudinary.uploader.upload(file.path, {
-          folder: 'tenants/agreements',
-          resource_type: file.mimetype === 'application/pdf' ? 'raw' : 'auto',
-          public_id: `${Date.now()}-${file.originalname.split('.')[0].replace(/\s+/g, '_')}`
-        });
-        tenantData.agreementFileUrl = result.secure_url;
-        fs.unlinkSync(file.path);
-      }
-      tenantData.agreementFileType = file.mimetype.includes('pdf') ? 'PDF' : 'IMAGE';
-    } else if (isUsingMockData.value && !tenantData.agreementFileUrl) {
-      tenantData.agreementFileUrl = 'https://res.cloudinary.com/demo/image/upload/v1312461204/sample.jpg';
-      tenantData.agreementFileType = 'IMAGE';
-    }
-
-    if (isUsingMockData.value) {
-      const tenant = { ...tenantData, _id: `m${Date.now()}`, id: `m${Date.now()}`, createdAt: new Date() };
-      mockStorage.tenants.push(tenant);
-
-      // Create Opening Balance for Mock Data
-      if (tenant.openingBalanceAmount > 0) {
-        mockStorage.ledgers.push({
-          _id: `l${Date.now()}`,
-          id: `l${Date.now()}`,
-          tenantId: tenant.id,
-          date: tenant.openingBalanceDate || new Date(),
-          type: 'OPENING_BALANCE',
-          particular: 'Opening Balance',
-          debit: tenant.openingBalanceType === 'Debit' ? tenant.openingBalanceAmount : 0,
-          credit: tenant.openingBalanceType === 'Credit' ? tenant.openingBalanceAmount : 0,
-          notes: tenant.openingBalanceNotes
-        });
-      }
-
-      return res.status(201).json(tenant);
-    }
-    
-    const tenant = new Tenant(tenantData);
-    await tenant.save();
-
-    // Create Opening Balance Ledger Entry
-    if (tenant.openingBalanceAmount > 0) {
-      const ledgerEntry = new Ledger({
-        tenantId: tenant._id,
-        date: tenant.openingBalanceDate || new Date(),
-        type: 'OPENING_BALANCE',
-        particular: 'Opening Balance',
-        debit: tenant.openingBalanceType === 'Debit' ? tenant.openingBalanceAmount : 0,
-        credit: tenant.openingBalanceType === 'Credit' ? tenant.openingBalanceAmount : 0,
-        notes: tenant.openingBalanceNotes
-      });
-      await ledgerEntry.save();
-    }
-
-    res.status(201).json({ ...tenant.toObject(), id: tenant._id });
-  } catch (err: any) {
-    console.error('Error in createTenant:', err);
-    let message = err.message;
-    if (err.code === 11000) message = 'Duplicate tenant code. Please use a unique code.';
-    if (err.name === 'ValidationError') {
-      const firstError = Object.values(err.errors)[0] as any;
-      message = firstError?.message || message;
-    }
-    res.status(400).json({ error: message });
-  }
-};
-
+// ─────────────────────────────────────────────────────────────────────────────
+// GET TENANT BY ID
+// ─────────────────────────────────────────────────────────────────────────────
 export const getTenantById = async (req: Request, res: Response) => {
   try {
     if (isUsingMockData.value) {
@@ -199,112 +165,157 @@ export const getTenantById = async (req: Request, res: Response) => {
   }
 };
 
+// ── GET NEXT SEQUENTIAL CODE ──────────────────────────────────────────────────
+export const getNextTenantCode = async (req: Request, res: Response) => {
+  try {
+    let code: string;
+
+    if (isUsingMockData.value) {
+      const num = mockStorage.tenants.length + 1;
+      code      = `TN${String(num).padStart(3, '0')}`;
+    } else {
+      // Count se next number nikalo — existing random codes ignore
+      const count = await Tenant.countDocuments();
+      let   num   = count + 1;
+      code        = `TN${String(num).padStart(3, '0')}`;
+
+      // Uniqueness ensure karo
+      let exists = await Tenant.findOne({ code });
+      while (exists) {
+        num++;
+        code   = `TN${String(num).padStart(3, '0')}`;
+        exists = await Tenant.findOne({ code });
+      }
+    }
+
+    res.json({ code });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+export const createTenant = async (req: Request, res: Response) => {
+  try {
+    const tenantData: any = { ...req.body };
+    delete tenantData._id;
+    delete tenantData.id;
+
+    // ── Auto-generate sequential TN code ──
+    if (!tenantData.code || tenantData.code === '' || tenantData.code === 'Loading...') {
+      const count = await Tenant.countDocuments();
+      let   num   = count + 1;
+      let   code  = `TN${String(num).padStart(3, '0')}`;
+
+      // Uniqueness ensure karo
+      let exists = await Tenant.findOne({ code });
+      while (exists) {
+        num++;
+        code   = `TN${String(num).padStart(3, '0')}`;
+        exists = await Tenant.findOne({ code });
+      }
+      tenantData.code = code;
+    }
+
+    parseNumericFields(tenantData);
+    // ── GridFS File Upload ──
+    const file = (req as any).file;
+    if (file) {
+      const ok = await handleFileUpload(file, tenantData, res);
+      if (!ok) return; // response already sent
+    } else if (isUsingMockData.value && !tenantData.agreementFileUrl) {
+      tenantData.agreementFileUrl  = 'https://res.cloudinary.com/demo/image/upload/v1312461204/sample.jpg';
+      tenantData.agreementFileType = 'IMAGE';
+    }
+
+    // ── Mock mode ──
+    if (isUsingMockData.value) {
+      const tenant = { ...tenantData, _id: `m${Date.now()}`, id: `m${Date.now()}`, createdAt: new Date() };
+      mockStorage.tenants.push(tenant);
+      addOpeningBalanceMock(tenant);
+      return res.status(201).json(tenant);
+    }
+
+    // ── Real DB ──
+    const tenant = new Tenant(tenantData);
+    await tenant.save();
+    await addOpeningBalanceDB(tenant);
+    res.status(201).json({ ...tenant.toObject(), id: tenant._id });
+
+  } catch (err: any) {
+    console.error('createTenant error:', err);
+    let message = err.message;
+    if (err.code === 11000) message = 'Duplicate tenant code. Please use a unique code.';
+    if (err.name === 'ValidationError') {
+      message = (Object.values(err.errors)[0] as any)?.message || message;
+    }
+    res.status(400).json({ error: message });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// UPDATE TENANT
+// ─────────────────────────────────────────────────────────────────────────────
 export const updateTenant = async (req: Request, res: Response) => {
   try {
-    const updateData = { ...req.body };
+    const updateData: any = { ...req.body };
     delete updateData._id;
     delete updateData.id;
     if (updateData.code === '') delete updateData.code;
+    parseNumericFields(updateData);
 
+    // ── GridFS File Upload ──
     const file = (req as any).file;
-
-    if (updateData.currentRent !== undefined) updateData.currentRent = parseNum(updateData.currentRent);
-    if (updateData.securityDeposit !== undefined) updateData.securityDeposit = parseNum(updateData.securityDeposit);
-    if (updateData.escalationPercent !== undefined) updateData.escalationPercent = parseNum(updateData.escalationPercent);
-    if (updateData.tenure !== undefined) updateData.tenure = parseNum(updateData.tenure);
-    if (updateData.lockIn !== undefined) updateData.lockIn = parseNum(updateData.lockIn);
-    if (updateData.noticePeriod !== undefined) updateData.noticePeriod = parseNum(updateData.noticePeriod);
-    if (updateData.rentFreePeriodDays !== undefined) updateData.rentFreePeriodDays = parseNum(updateData.rentFreePeriodDays);
-    if (updateData.openingBalanceAmount !== undefined) updateData.openingBalanceAmount = parseNum(updateData.openingBalanceAmount);
-
     if (file) {
-      if (!isCloudinaryConfigured()) {
-        const stats = fs.statSync(file.path);
-        if (stats.size > 14 * 1024 * 1024) {
-          fs.unlinkSync(file.path);
-          return res.status(400).json({ error: 'File too large for database (Max 14MB).' });
-        }
-        const base64 = fs.readFileSync(file.path, { encoding: 'base64' });
-        updateData.agreementFileUrl = `data:${file.mimetype};base64,${base64}`;
-        fs.unlinkSync(file.path);
-      } else {
-        const result = await cloudinary.uploader.upload(file.path, {
-          folder: 'tenants/agreements',
-          resource_type: file.mimetype === 'application/pdf' ? 'raw' : 'auto',
-          public_id: `${Date.now()}-${file.originalname.split('.')[0].replace(/\s+/g, '_')}`
-        });
-        updateData.agreementFileUrl = result.secure_url;
-        fs.unlinkSync(file.path);
-      }
-      updateData.agreementFileType = file.mimetype.includes('pdf') ? 'PDF' : 'IMAGE';
+      const ok = await handleFileUpload(file, updateData, res);
+      if (!ok) return; // response already sent
     }
 
+    // ── Mock mode ──
     if (isUsingMockData.value) {
       const index = mockStorage.tenants.findIndex((t: any) => t.id === req.params.id);
       if (index === -1) return res.status(404).json({ error: 'Tenant not found' });
       mockStorage.tenants[index] = { ...mockStorage.tenants[index], ...updateData };
       const tenant = mockStorage.tenants[index];
 
-      // Sync Opening Balance for Mock Data
       if (updateData.openingBalanceAmount !== undefined) {
-        mockStorage.ledgers = mockStorage.ledgers.filter((l: any) => 
-          String(l.tenantId) === req.params.id && l.type !== 'OPENING_BALANCE'
+        mockStorage.ledgers = mockStorage.ledgers.filter((l: any) =>
+          !(String(l.tenantId) === req.params.id && l.type === 'OPENING_BALANCE')
         );
-        if (tenant.openingBalanceAmount > 0) {
-          mockStorage.ledgers.push({
-            _id: `l${Date.now()}`,
-            id: `l${Date.now()}`,
-            tenantId: tenant.id,
-            date: tenant.openingBalanceDate || new Date(),
-            type: 'OPENING_BALANCE',
-            particular: 'Opening Balance',
-            debit: tenant.openingBalanceType === 'Debit' ? tenant.openingBalanceAmount : 0,
-            credit: tenant.openingBalanceType === 'Credit' ? tenant.openingBalanceAmount : 0,
-            notes: tenant.openingBalanceNotes
-          });
-        }
+        addOpeningBalanceMock(tenant);
       }
-
       return res.json(mockStorage.tenants[index]);
     }
-    
+
+    // ── Real DB ──
     const tenant = await Tenant.findByIdAndUpdate(
-      req.params.id, 
-      { $set: updateData }, 
+      req.params.id,
+      { $set: updateData },
       { new: true, runValidators: true }
     );
     if (!tenant) return res.status(404).json({ error: 'Tenant not found' });
 
-    // Sync Opening Balance Ledger Entry for Real DB
     if (updateData.openingBalanceAmount !== undefined) {
       await Ledger.deleteMany({ tenantId: tenant._id, type: 'OPENING_BALANCE' });
-      if (tenant.openingBalanceAmount > 0) {
-        const ledgerEntry = new Ledger({
-          tenantId: tenant._id,
-          date: tenant.openingBalanceDate || new Date(),
-          type: 'OPENING_BALANCE',
-          particular: 'Opening Balance',
-          debit: tenant.openingBalanceType === 'Debit' ? tenant.openingBalanceAmount : 0,
-          credit: tenant.openingBalanceType === 'Credit' ? tenant.openingBalanceAmount : 0,
-          notes: tenant.openingBalanceNotes
-        });
-        await ledgerEntry.save();
-      }
+      await addOpeningBalanceDB(tenant);
     }
 
     res.json({ ...tenant.toObject(), id: tenant._id });
+
   } catch (err: any) {
-    console.error('Error in updateTenant:', err);
+    console.error('updateTenant error:', err);
     let message = err.message;
     if (err.code === 11000) message = 'Duplicate tenant code. Please use a unique code.';
     if (err.name === 'ValidationError') {
-      const firstError = Object.values(err.errors)[0] as any;
-      message = firstError?.message || message;
+      message = (Object.values(err.errors)[0] as any)?.message || message;
     }
     res.status(400).json({ error: message });
   }
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// DELETE TENANT
+// ─────────────────────────────────────────────────────────────────────────────
 export const deleteTenant = async (req: Request, res: Response) => {
   try {
     if (isUsingMockData.value) {
