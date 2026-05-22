@@ -155,17 +155,8 @@ export default function App() {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              {/* Team avatars */}
-              <div style={{ display: 'flex' }}>
-                {['#6366f1', '#10b981', '#f97316'].map((bg, i) => (
-                  <div key={i} style={{ width: 28, height: 28, borderRadius: '50%', border: '2px solid #fff', marginLeft: i ? -8 : 0, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800, color: '#fff', zIndex: 3 - i }}>
-                    {['GS', 'AK', 'RS'][i]}
-                  </div>
-                ))}
-                <div style={{ width: 28, height: 28, borderRadius: '50%', border: '2px solid #fff', marginLeft: -8, background: '#f0f2f5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: '#9ba8b5' }}>
-                  +27
-                </div>
-              </div>
+             
+              
 
               {/* Bell */}
               <div style={{ position: 'relative' }}>
