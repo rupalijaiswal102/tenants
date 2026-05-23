@@ -14,7 +14,17 @@ import { isUsingMockData } from './mockData';
 export async function createApp() {
   const app = express();
 
-  app.use(cors());
+  app.use(cors({
+    origin: [
+      'http://localhost:5173',
+      'http://localhost:3000',
+      /\.vercel\.app$/,
+      process.env.FRONTEND_URL || '*',
+    ],
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  }));
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
@@ -47,18 +57,24 @@ export async function createApp() {
     res.status(500).json({ error: 'Internal Server Error', details: err.message });
   });
 
-  // Vite / Static Handling
+  // Vite dev server (local only)
+  // Production mein frontend Vercel pe serve hota hai — yahan sirf API
   if (process.env.NODE_ENV !== 'production') {
-    const vite = await createViteServer({
-      root: 'frontend',
-      server: { middlewareMode: true },
-      appType: 'spa',
-    });
-    app.use(vite.middlewares);
+    try {
+      const vite = await createViteServer({
+        root: 'frontend',
+        server: { middlewareMode: true },
+        appType: 'spa',
+      });
+      app.use(vite.middlewares);
+    } catch (e) {
+      console.log('Vite dev server skipped');
+    }
   } else {
-    const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (req, res) => res.sendFile(path.join(distPath, 'index.html')));
+    // Production: API only — frontend is on Vercel
+    app.get('/', (req, res) => {
+      res.json({ status: 'ok', message: 'Neoteric Backend API is running', version: '1.0.0' });
+    });
   }
 
   return app;

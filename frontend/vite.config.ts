@@ -5,6 +5,8 @@ import { defineConfig, loadEnv } from 'vite';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
+  const backendUrl = env.VITE_API_URL || 'http://localhost:3000';
+
   return {
     plugins: [react(), tailwindcss()],
     define: {
@@ -14,15 +16,13 @@ export default defineConfig(({ mode }) => {
       alias: {
         '@': path.resolve(__dirname, './src'),
       },
-      dedupe: ['react', 'react-dom', 'react-router-dom'],
     },
     build: {
-      outDir: '../dist',
+      outDir: 'dist',   // ← Vercel ke liye frontend/dist
       emptyOutDir: true,
     },
     server: {
       port: 5173,
-      hmr: process.env.DISABLE_HMR !== 'true',
       proxy: {
         '/api': {
           target: 'http://localhost:3000',

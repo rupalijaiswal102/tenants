@@ -8,7 +8,7 @@ import { seedAdminUser } from './controllers/auth.controller';
 
 dotenv.config();
 
-const PORT = 3000;
+const PORT = parseInt(process.env.PORT || "3000", 10);
 
 // Cloudinary Configuration
 if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
