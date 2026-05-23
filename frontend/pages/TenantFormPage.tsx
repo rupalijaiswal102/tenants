@@ -84,23 +84,13 @@ export default function TenantFormPage() {
   };
 
   const fetchNextCode = async () => {
-  try {
-    const r = await axios.get('/api/tenants/next-code');
-    if (r.data?.code) {
-      setValue('code', r.data.code);
-    }
-  } catch (err) {
-    console.error('fetchNextCode failed:', err);
-    // Fallback — count se generate karo
     try {
-      const t = await axios.get('/api/tenants');
-      const count = Array.isArray(t.data) ? t.data.length : 0;
-      setValue('code', `TN${String(count + 1).padStart(3, '0')}`);
+      const r = await axios.get('/api/tenants/next-code');
+      setValue('code', r.data.code);
     } catch {
-      setValue('code', 'TN001');
+      setValue('code', `TN${String(Math.floor(Math.random()*900)+100)}`);
     }
-  }
-};
+  };
 
   const fetchTenant = async () => {
     try { const r = await axios.get(`/api/tenants/${id}`); reset(r.data); }
@@ -256,8 +246,8 @@ export default function TenantFormPage() {
                       <Field label="Mobile" required error={errors.mobile && 'Required'}>
                         <input {...register('mobile', { required:true })} className={inp} placeholder="+91 98765 43210"/>
                       </Field>
-                      <Field label="Email" required error={errors.email && 'Required'}>
-                        <input {...register('email', { required:true })} type="email" className={inp} placeholder="email@company.com"/>
+                      <Field label="Email" error={errors.email && 'Required'}>
+                        <input {...register('email')} type="email" className={inp} placeholder="email@company.com"/>
                       </Field>
                       <div style={{ gridColumn:'1/-1' }}>
                         <Field label="Alternate Contact">
@@ -275,11 +265,11 @@ export default function TenantFormPage() {
                       <Field label="PAN Number">
                         <input {...register('panNumber')} className={inp} placeholder="e.g. AABCA1234Z"/>
                       </Field>
-                      <Field label="State" required error={errors.state && 'Required'}>
-                        <input {...register('state', { required:true })} className={inp} placeholder="e.g. Madhya Pradesh"/>
+                      <Field label="State">
+                        <input {...register('state')} className={inp} placeholder="e.g. Madhya Pradesh"/>
                       </Field>
-                      <Field label="Pincode" required error={errors.pincode && 'Required'}>
-                        <input {...register('pincode', { required:true })} className={inp} placeholder="e.g. 474001"/>
+                      <Field label="Pincode">
+                        <input {...register('pincode')} className={inp} placeholder="e.g. 474001"/>
                       </Field>
                       <div style={{ gridColumn:'1/-1' }}>
                         <Field label="Billing / Office Address" required error={errors.billingAddress && 'Required'}>
@@ -459,7 +449,7 @@ export default function TenantFormPage() {
                         ['Tenant Name',    watch('name')],
                         ['Company',        watch('company')],
                         ['Property',       watch('property')],
-                        ['Monthly Rent',   watch('currentRent') ? `₹${Number(watch('currentRent')).toLocaleString()}` : '—'],
+                        ['Monthly Rent',   watch('currentRent') ? formatCurrency(watch('currentRent')) : '—'],
                         ['Lease Period',   watch('leaseStart') ? `${watch('leaseStart')} → ${watch('leaseEnd')}` : '—'],
                         ['Status',         watch('agreementStatus')],
                       ].map(([k,v]) => (

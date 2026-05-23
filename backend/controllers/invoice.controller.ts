@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { Request, Response } from 'express';
 import { Invoice } from '../models/Invoice';
 import { Ledger } from '../models/Ledger';
@@ -6,27 +7,60 @@ import { mockStorage, isUsingMockData } from '../src/mockData';
 
 // ── Generate Invoice Number: {currentYear}{nextYear2d}{count3d} ──────────────
 // Example: 202627001, 202627002...
-const generateInvoiceNo = async (): Promise<string> => {
-  const now       = new Date();
-  const curYear   = now.getFullYear();                          // 2026
-  const nextYear  = String(curYear + 1).slice(-2);             // "27"
-  const prefix    = `${curYear}${nextYear}`;                   // "202627"
+// ── Company-wise Invoice Number Generator ────────────────────────────────────
+// GST:     202627001, 202627002... (per company)
+// Non-GST: FY26-27/01, FY26-27/02... (per company)
+const generateInvoiceNo = async (companyId?: string, taxOption?: string): Promise<string> => {
+  const now      = new Date();
+  const year     = now.getFullYear();
+  const isGST    = taxOption === 'GST';
+  const cId      = companyId || 'default';
 
-  // Count invoices with this year prefix
-  const count     = await Invoice.countDocuments({
-    invoiceNo: { $regex: `^${prefix}` }
-  });
-  let   num       = count + 1;
-  let   invoiceNo = `${prefix}${String(num).padStart(3, '0')}`; // "202627001"
+  if (isGST) {
+    // GST format: 202627001
+    const nextY  = String(year + 1).slice(-2);
+    const prefix = `${year}${nextY}`;                       // "202627"
 
-  // Ensure uniqueness
-  let exists = await Invoice.findOne({ invoiceNo });
-  while (exists) {
-    num++;
-    invoiceNo = `${prefix}${String(num).padStart(3, '0')}`;
-    exists    = await Invoice.findOne({ invoiceNo });
+    const count  = await Invoice.countDocuments({
+      companyId: cId,
+      taxOption: 'GST',
+      invoiceNo: { $regex: `^${prefix}` }
+    });
+    let num      = count + 1;
+    let invoiceNo = `${prefix}${String(num).padStart(3, '0')}`;
+
+    // Uniqueness check within same company
+    let exists = await Invoice.findOne({ companyId: cId, taxOption: 'GST', invoiceNo });
+    while (exists) {
+      num++;
+      invoiceNo = `${prefix}${String(num).padStart(3, '0')}`;
+      exists    = await Invoice.findOne({ companyId: cId, taxOption: 'GST', invoiceNo });
+    }
+    return invoiceNo;
+
+  } else {
+    // Non-GST format: FY26-27/01
+    // Fiscal year: April-March
+    const fyStart  = now.getMonth() >= 3 ? year : year - 1;
+    const fyEnd    = String(fyStart + 1).slice(-2);
+    const fyPrefix = `FY${String(fyStart).slice(-2)}-${fyEnd}/`; // "FY26-27/"
+
+    const count    = await Invoice.countDocuments({
+      companyId: cId,
+      taxOption:  { $ne: 'GST' },
+      invoiceNo:  { $regex: `^${fyPrefix.replace('/', '\/')}` }
+    });
+    let num        = count + 1;
+    let invoiceNo  = `${fyPrefix}${String(num).padStart(2, '0')}`;
+
+    let exists = await Invoice.findOne({ companyId: cId, taxOption: { $ne: 'GST' }, invoiceNo });
+    while (exists) {
+      num++;
+      invoiceNo = `${fyPrefix}${String(num).padStart(2, '0')}`;
+      exists    = await Invoice.findOne({ companyId: cId, taxOption: { $ne: 'GST' }, invoiceNo });
+    }
+    return invoiceNo;
   }
-  return invoiceNo;
 };
 
 export const getInvoices = async (req: Request, res: Response) => {
@@ -34,13 +68,16 @@ export const getInvoices = async (req: Request, res: Response) => {
     if (isUsingMockData.value) {
       return res.json(mockStorage.invoices);
     }
-    const invoices = await Invoice.find().sort({ createdAt: -1 });
-    res.json(invoices.map(i => ({ ...i.toObject(), id: i._id })));
+    const invoices = await Invoice.find()
+      .sort({ createdAt: -1 })
+      .lean()
+      .exec();
+    res.json(invoices.map(i => ({ ...i, id: i._id })));
   } catch (err: any) {
+    console.error('getInvoices error:', err.message);
     res.status(500).json({ error: err.message });
   }
 };
-
 
 
 export const getInvoicesByTenant = async (req: Request, res: Response) => {
@@ -127,12 +164,55 @@ export const createInvoice = async (req: Request, res: Response) => {
       return res.status(201).json(invoice);
     }
     // Auto-generate invoiceNo if not set or using old format
-    if (!data.invoiceNo || data.invoiceNo.startsWith('INV-')) {
-      data.invoiceNo = await generateInvoiceNo();
+    if (!data.invoiceNo || data.invoiceNo.startsWith('INV-') || data.invoiceNo === 'Loading...' || data.invoiceNo === '') {
+      data.invoiceNo = await generateInvoiceNo(data.companyId, data.taxOption);
     }
 
+    // Ensure companyId is set
+    if (!data.companyId) {
+      return res.status(400).json({ error: 'Company is required. Please select a company.' });
+    }
+
+    // Cast companyId to ObjectId if it's a string
+    try {
+      if (data.companyId && typeof data.companyId === 'string') {
+        data.companyId = new mongoose.Types.ObjectId(data.companyId);
+      }
+      if (data.tenantId && typeof data.tenantId === 'string') {
+        data.tenantId = new mongoose.Types.ObjectId(data.tenantId);
+      }
+    } catch (castErr: any) {
+      console.error('ObjectId cast error:', castErr.message);
+    }
+
+    // Remove undefined/null fields that could cause validation issues
+    Object.keys(data).forEach(k => {
+      if (data[k] === undefined) delete data[k];
+    });
+
     const invoice = new Invoice(data);
-    await invoice.save();
+    try {
+      await invoice.save();
+    } catch (saveErr: any) {
+      console.error('Invoice save error:', saveErr.code, saveErr.message);
+
+      if (saveErr.code === 11000) {
+        // Duplicate key — regenerate invoice number
+        console.log('Duplicate key, regenerating invoice number...');
+        data.invoiceNo = await generateInvoiceNo(String(data.companyId), data.taxOption);
+        const retryInvoice = new Invoice(data);
+        await retryInvoice.save();
+        const saved = await Invoice.findById(retryInvoice._id).lean();
+        return res.status(201).json({ ...saved, id: retryInvoice._id });
+      }
+
+      // Return exact error for debugging
+      return res.status(400).json({
+        error: saveErr.message,
+        code:  saveErr.code,
+        field: Object.keys(saveErr.errors || {})[0] || 'unknown'
+      });
+    }
 
     // Create Ledger Entries for the new Invoice
     const ledgerEntries = [];
@@ -411,18 +491,32 @@ export const deleteInvoice = async (req: Request, res: Response) => {
   }
 };
 
-// ── GET NEXT INVOICE NUMBER ───────────────────────────────────────────────────
+// ── GET NEXT INVOICE NUMBER (company-wise) ───────────────────────────────────
 export const getNextInvoiceNo = async (req: Request, res: Response) => {
   try {
+    const { companyId, taxOption } = req.query as { companyId?: string; taxOption?: string };
+
     if (isUsingMockData.value) {
-      const now     = new Date();
-      const cur     = now.getFullYear();
-      const nxt     = String(cur + 1).slice(-2);
-      const prefix  = `${cur}${nxt}`;
-      const count   = mockStorage.invoices.filter((i: any) => String(i.invoiceNo).startsWith(prefix)).length;
-      return res.json({ invoiceNo: `${prefix}${String(count + 1).padStart(3, '0')}` });
+      const now    = new Date();
+      const year   = now.getFullYear();
+      const isGST  = taxOption === 'GST';
+      if (isGST) {
+        const nxt    = String(year + 1).slice(-2);
+        const prefix = `${year}${nxt}`;
+        const count  = mockStorage.invoices.filter((i: any) =>
+          i.companyId === companyId && String(i.invoiceNo).startsWith(prefix)).length;
+        return res.json({ invoiceNo: `${prefix}${String(count + 1).padStart(3, '0')}` });
+      } else {
+        const fyStart = now.getMonth() >= 3 ? year : year - 1;
+        const fyEnd   = String(fyStart + 1).slice(-2);
+        const prefix  = `FY${String(fyStart).slice(-2)}-${fyEnd}/`;
+        const count   = mockStorage.invoices.filter((i: any) =>
+          i.companyId === companyId && String(i.invoiceNo).startsWith(prefix)).length;
+        return res.json({ invoiceNo: `${prefix}${String(count + 1).padStart(2, '0')}` });
+      }
     }
-    const invoiceNo = await generateInvoiceNo();
+
+    const invoiceNo = await generateInvoiceNo(companyId, taxOption);
     res.json({ invoiceNo });
   } catch (err: any) {
     res.status(500).json({ error: err.message });

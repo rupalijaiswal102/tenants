@@ -17,6 +17,7 @@ import { exportToExcel } from '../../src/lib/exportUtils';
 import { StatusBadge, TypeBadge, InvoiceStatusBadge, SummaryItem, TimelineItemLarge, ConfigBlock } from './TenantPrimitives';
 import { InvoiceFormModal, ViewInvoiceModal } from './InvoiceModals';
 import { OpeningAdjustmentModal, PaymentEntryModal } from './PaymentModals';
+import { formatCurrency } from '../../src/utils/formatCurrency';
 
 // ── Shared card style ─────────────────────────────────────────────────────────
 const SC: React.CSSProperties = {
@@ -215,7 +216,7 @@ export function TenantDetailsView({ tenant, onClose, companies, allTenants }: {
                       <s.Icon size={15} color={s.color}/>
                     </div>
                     <div style={{ fontSize:9, color:'#9ba8b5', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em' }}>{s.label}</div>
-                    <div style={{ fontSize:20, fontWeight:800, color:'#1a1a2e', letterSpacing:'-0.5px', marginTop:2 }}>₹{s.val.toLocaleString()}</div>
+                    <div style={{ fontSize:20, fontWeight:800, color:'#1a1a2e', letterSpacing:'-0.5px', marginTop:2 }}>{formatCurrency(s.val)}</div>
                   </div>
                 ))}
               </div>
@@ -315,8 +316,8 @@ export function TenantDetailsView({ tenant, onClose, companies, allTenants }: {
                 </div>
                 <div style={{ display:'flex', gap:10 }}>
                   {[
-                    { label:'Opening Bal', val:`₹${(ledgerData?.summary.openingBalance||0).toLocaleString()}`, style:{background:'#f8f9fb', border:'1px solid #f0f2f5', color:'#5a6474'} },
-                    { label:(ledgerData?.summary.closingBalance||0)<0?'Advance Bal':'Closing Bal', val:`₹${Math.abs(ledgerData?.summary.closingBalance||0).toLocaleString()}`, style:{background:'rgba(249,115,22,0.06)', border:'1px solid rgba(249,115,22,0.15)', color:'#f97316'} },
+                    { label:'Opening Bal', val: formatCurrency(ledgerData?.summary.openingBalance||0), style:{background:'#f8f9fb', border:'1px solid #f0f2f5', color:'#5a6474'} },
+                    { label:(ledgerData?.summary.closingBalance||0)<0?'Advance Bal':'Closing Bal', val: formatCurrency(Math.abs(ledgerData?.summary.closingBalance||0)), style:{background:'rgba(249,115,22,0.06)', border:'1px solid rgba(249,115,22,0.15)', color:'#f97316'} },
                   ].map((b,i) => (
                     <div key={i} style={{ padding:'8px 14px', borderRadius:10, textAlign:'center', ...b.style }}>
                       <p style={{ fontSize:9, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', margin:0 }}>{b.label}</p>
@@ -356,11 +357,11 @@ export function TenantDetailsView({ tenant, onClose, companies, allTenants }: {
                             {e.notes && <span style={{ fontSize:10, color:'#9ba8b5', fontStyle:'italic' }}> "{e.notes}"</span>}
                           </td>
                           <td style={{ padding:'11px 16px', fontSize:11, color:'#9ba8b5' }}>{e.refNo?`#${e.refNo}`:'-'}</td>
-                          <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#1a1a2e', textAlign:'right' }}>{e.debit>0?`₹${e.debit.toLocaleString()}`:'-'}</td>
-                          <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#10b981', textAlign:'right' }}>{e.credit>0?`₹${e.credit.toLocaleString()}`:'-'}</td>
-                          <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#8b5cf6', textAlign:'right' }}>{e.tds>0?`₹${e.tds.toLocaleString()}`:'-'}</td>
+                          <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#1a1a2e', textAlign:'right' }}>{e.debit>0?formatCurrency(e.debit):'-'}</td>
+                          <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#10b981', textAlign:'right' }}>{e.credit>0?formatCurrency(e.credit):'-'}</td>
+                          <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#8b5cf6', textAlign:'right' }}>{e.tds>0?formatCurrency(e.tds):'-'}</td>
                           <td style={{ padding:'11px 16px', fontSize:12, fontWeight:800, textAlign:'right', color:e.runningBalance<0?'#3b82f6':'#1a1a2e' }}>
-                            ₹{Math.abs(e.runningBalance||0).toLocaleString()} {e.runningBalance<0?'Cr':'Dr'}
+                            {formatCurrency(Math.abs(e.runningBalance||0))} {e.runningBalance<0?'Cr':'Dr'}
                           </td>
                         </tr>
                       ))}
@@ -380,7 +381,7 @@ export function TenantDetailsView({ tenant, onClose, companies, allTenants }: {
                   ].map((s,i) => (
                     <div key={i}>
                       <p style={{ fontSize:9, color:'#9ba8b5', fontWeight:700, textTransform:'uppercase', margin:0 }}>{s.l}</p>
-                      <p style={{ fontSize:13, fontWeight:800, color:s.c, margin:0 }}>₹{(s.v||0).toLocaleString()}</p>
+                      <p style={{ fontSize:13, fontWeight:800, color:s.c, margin:0 }}>{formatCurrency(s.v||0)}</p>
                     </div>
                   ))}
                 </div>
@@ -430,10 +431,10 @@ export function TenantDetailsView({ tenant, onClose, companies, allTenants }: {
                         onMouseLeave={e=>(e.currentTarget as HTMLElement).style.background='transparent'}>
                         <td style={{ padding:'11px 16px', fontSize:11, fontWeight:700, color:'#9ba8b5' }}>#{inv.invoiceNo}</td>
                         <td style={{ padding:'11px 16px', fontSize:12, fontWeight:600, color:'#1a1a2e' }}>{inv.billDate}</td>
-                        <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#1a1a2e', textAlign:'right' }}>₹{inv.totalInvoice?.toLocaleString()}</td>
-                        <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#10b981', textAlign:'right' }}>₹{(inv.receivedAmount||inv.received||0).toLocaleString()}</td>
-                        <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#8b5cf6', textAlign:'right' }}>₹{(inv.tdsAmount||0).toLocaleString()}</td>
-                        <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#ef4444', textAlign:'right' }}>₹{(inv.balanceAmount||inv.balance||0).toLocaleString()}</td>
+                        <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#1a1a2e', textAlign:'right' }}>{formatCurrency(inv.totalInvoice ?? 0)}</td>
+                        <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#10b981', textAlign:'right' }}>{formatCurrency(inv.receivedAmount||inv.received||0)}</td>
+                        <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#8b5cf6', textAlign:'right' }}>{formatCurrency(inv.tdsAmount||0)}</td>
+                        <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#ef4444', textAlign:'right' }}>{formatCurrency(inv.balanceAmount||inv.balance||0)}</td>
                         <td style={{ padding:'11px 16px' }}><InvoiceStatusBadge status={inv.paymentStatus}/></td>
                         <td style={{ padding:'11px 16px' }}>
                           <div style={{ display:'flex', gap:4, justifyContent:'flex-end' }}>
@@ -473,8 +474,8 @@ export function TenantDetailsView({ tenant, onClose, companies, allTenants }: {
                 </div>
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
                   {[
-                    ['Monthly Rent',      `₹${tenant.currentRent?.toLocaleString()}`, true ],
-                    ['Security Deposit',  `₹${tenant.securityDeposit?.toLocaleString()}`, true],
+                    ['Monthly Rent',      formatCurrency(tenant.currentRent ?? 0), true ],
+                    ['Security Deposit',  formatCurrency(tenant.securityDeposit ?? 0), true],
                     ['Rent-Free Period',  `${tenant.rentFreePeriodDays} Days`, false],
                     ['Notice Period',     `${tenant.noticePeriod} Days`, false],
                     ['Lease Tenure',      `${tenant.tenure} Months`, false],

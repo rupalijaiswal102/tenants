@@ -11,6 +11,7 @@ import jsPDF from 'jspdf';
 import { type Invoice, type Tenant, type Company } from '../../src/types';
 import { InvoicePreview } from './InvoicePreview';
 import { generateInvoicePDF } from './invoicePdf';
+import { formatCurrency } from '@/utils/formatCurrency';
 
 // ── numberToWords ─────────────────────────────────────────────────────────────
 function numberToWords(num: number): string {
@@ -64,7 +65,7 @@ export function InvoiceFormModal({ tenants, companies, onClose, onSuccess, initi
   });
 
   const { fields, append, remove } = useFieldArray({ control, name:'items' });
-  const watchedItems     = watch('items') as Array<{ amount?: number | string; particular?: string }>;
+  const watchedItems     = watch('items');
   const watchedTaxOption = watch('taxOption');
   const watchedReceived  = watch('receivedAmount');
   const watchedTds       = watch('tdsAmount');
@@ -77,21 +78,34 @@ export function InvoiceFormModal({ tenants, companies, onClose, onSuccess, initi
   const watchPartyName   = watch('partyName');
   const watchCompany     = watch('company');
 
-  // Fetch next invoice number on mount (only for new invoice)
-  useEffect(() => {
-    if (!initialData?.invoiceNo) {
-      axios.get('/api/invoices/next-no')
-        .then(r => { if (r.data?.invoiceNo) setValue('invoiceNo', r.data.invoiceNo); })
-        .catch(() => {
-          const now = new Date();
-          const nxt = String(now.getFullYear() + 1).slice(-2);
-          setValue('invoiceNo', `${now.getFullYear()}${nxt}001`);
-        });
-    }
-  }, []);
+  // Fetch next invoice number when companyId or taxOption changes
+  const watchedCompanyId  = watch('companyId');
+  const watchedTaxOpt     = watch('taxOption');
 
   useEffect(() => {
-    const sub   = watchedItems.reduce((a,i) => a+(Number(i.amount)||0), 0);
+    if (initialData?.invoiceNo) return; // editing — keep existing
+    if (!watchedCompanyId)      return; // wait for company selection
+
+    const apiBase = (import.meta as any).env?.VITE_API_URL || '';
+    axios.get(`${apiBase}/api/invoices/next-no`, {
+      params: { companyId: watchedCompanyId, taxOption: watchedTaxOpt || 'None' }
+    })
+    .then(r => { if (r.data?.invoiceNo) setValue('invoiceNo', r.data.invoiceNo); })
+    .catch(() => {
+      const now  = new Date();
+      const isGST = watchedTaxOpt === 'GST';
+      if (isGST) {
+        const nxt = String(now.getFullYear() + 1).slice(-2);
+        setValue('invoiceNo', `${now.getFullYear()}${nxt}001`);
+      } else {
+        const yr = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+        setValue('invoiceNo', `FY${String(yr).slice(-2)}-${String(yr+1).slice(-2)}/01`);
+      }
+    });
+  }, [watchedCompanyId, watchedTaxOpt]);
+
+  useEffect(() => {
+    const sub   = watchedItems.reduce((a: number, i: any) => a + (Number(i.amount) || 0), 0);
     const isGST = watchedTaxOption === 'GST';
     const cgstV = isGST ? Number((sub*0.09).toFixed(2)) : 0;
     const sgstV = isGST ? Number((sub*0.09).toFixed(2)) : 0;
@@ -122,12 +136,19 @@ export function InvoiceFormModal({ tenants, companies, onClose, onSuccess, initi
   const onFormSubmit = async (data: any) => {
     setLoading(true);
     try {
-      const url    = initialData?.id ? `/api/invoices/${initialData.id}` : '/api/invoices';
+      const apiBase = (import.meta as any).env?.VITE_API_URL || '';
+      const url    = initialData?.id
+        ? `${apiBase}/api/invoices/${initialData.id}`
+        : `${apiBase}/api/invoices`;
       const method = initialData?.id ? 'PUT' : 'POST';
       const res    = await axios({ url, method, data });
       if (res.status===200||res.status===201) onSuccess();
       else toast.error('Failed to save invoice');
-    } catch { toast.error('Error saving invoice'); }
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || err?.response?.data?.message || 'Error saving invoice';
+      console.error('Invoice save error:', err?.response?.data);
+      toast.error(msg);
+    }
     finally  { setLoading(false); }
   };
 
@@ -233,19 +254,19 @@ export function InvoiceFormModal({ tenants, companies, onClose, onSuccess, initi
               <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 blur-[60px] rounded-full -mr-16 -mt-16"/>
               <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-6">Financial Summary</h3>
               <div className="space-y-4">
-                <div className="flex justify-between items-center text-slate-400 text-sm"><span>SubTotal</span><span className="font-bold text-white">₹{watchBaseRent.toLocaleString()}</span></div>
+                <div className="flex justify-between items-center text-slate-400 text-sm"><span>SubTotal</span><span className="font-bold text-white">{formatCurrency(watchBaseRent)}</span></div>
                 {watchedTaxOption==='GST'&&<>
-                  <div className="flex justify-between items-center text-slate-400 text-xs"><span>CGST (9%)</span><span className="font-bold text-white">₹{watchCgst.toLocaleString()}</span></div>
-                  <div className="flex justify-between items-center text-slate-400 text-xs"><span>SGST (9%)</span><span className="font-bold text-white">₹{watchSgst.toLocaleString()}</span></div>
+                  <div className="flex justify-between items-center text-slate-400 text-xs"><span>CGST (9%)</span><span className="font-bold text-white">{formatCurrency(watchCgst)}</span></div>
+                  <div className="flex justify-between items-center text-slate-400 text-xs"><span>SGST (9%)</span><span className="font-bold text-white">{formatCurrency(watchSgst)}</span></div>
                 </>}
                 <div className="h-px bg-white/10 my-4"/>
                 <div className="flex justify-between items-end">
-                  <div><p className="text-[10px] text-primary font-black uppercase tracking-wider">Total Payable</p><p className="text-3xl font-black">₹{watchTotalInvoice.toLocaleString()}</p></div>
+                  <div><p className="text-[10px] text-primary font-black uppercase tracking-wider">Total Payable</p><p className="text-3xl font-black">{formatCurrency(watchTotalInvoice)}</p></div>
                   <div className="text-right"><p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Received</p><input type="number" {...register('receivedAmount',{valueAsNumber:true})} className="w-24 bg-white/10 border border-white/20 rounded px-2 py-1 text-right text-sm font-bold focus:bg-white/20 outline-none transition-all"/></div>
                 </div>
                 <div className="flex justify-between items-center pt-2">
                   <div className="flex flex-col"><span className="text-[10px] text-slate-400 font-bold uppercase">TDS Deducted</span><input type="number" {...register('tdsAmount',{valueAsNumber:true})} className="w-24 bg-white/10 border border-white/20 rounded px-2 py-1 text-right text-xs font-bold focus:bg-white/20 outline-none transition-all mt-1"/></div>
-                  <div className="text-right"><span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Balance Due</span><p className={cn("text-lg font-black",watchBalance>0?"text-rose-400":"text-emerald-400")}>₹{watchBalance.toLocaleString()}</p></div>
+                  <div className="text-right"><span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Balance Due</span><p className={cn("text-lg font-black",watchBalance>0?"text-rose-400":"text-emerald-400")}>{formatCurrency(watchBalance)}</p></div>
                 </div>
                 <div className="mt-4 flex items-center gap-2">
                   <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Status:</span>

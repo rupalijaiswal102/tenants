@@ -6,7 +6,7 @@ import { toast } from 'react-hot-toast';
 import { cn } from '@/lib/utils';
 import { type Invoice, type Tenant } from '../../src/types';
 import { FormInput } from './TenantPrimitives';
-
+import { formatCurrency } from '../../src/utils/formatCurrency';
 // ── Opening Balance Adjustment Modal ─────────────────────────────────────────
 export function OpeningAdjustmentModal({ tenant, onClose, onSuccess }: { tenant: Tenant, onClose: () => void, onSuccess: () => void }) {
   const [loading, setLoading] = useState(false);
@@ -61,7 +61,7 @@ export function OpeningAdjustmentModal({ tenant, onClose, onSuccess }: { tenant:
         <form onSubmit={handleSubmit} className="p-6 md:p-8 space-y-6 overflow-y-auto">
           <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Current Opening Balance</p>
-            <p className="text-xl font-black text-slate-800">₹{tenant.openingBalanceAmount?.toLocaleString() || 0} ({tenant.openingBalanceType})</p>
+            <p className="text-xl font-black text-slate-800">{formatCurrency(tenant.openingBalanceAmount || 0)} ({tenant.openingBalanceType})</p>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <FormInput label="Entry Date"  type="date"   value={formData.date}   onChange={(v:string)=>setFormData({...formData,date:v})}  required/>
@@ -143,11 +143,11 @@ export function PaymentEntryModal({ invoice, onClose, onSuccess }: { invoice: In
         <div className="px-6 md:px-8 py-4 bg-slate-50/50 border-b border-slate-50 grid grid-cols-2 gap-3 flex-shrink-0">
           <div className="p-3 bg-white rounded-xl border border-slate-100 shadow-sm">
             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Total Payable (+Penalty)</p>
-            <p className="text-base font-black text-slate-800">₹{(invoice.totalInvoice + calculatedPenalty).toLocaleString()}</p>
+            <p className="text-base font-black text-slate-800">{formatCurrency(invoice.totalInvoice + calculatedPenalty)}</p>
           </div>
           <div className={cn('p-3 rounded-xl border shadow-sm', remainingBalance<=0?'bg-emerald-50 border-emerald-100':'bg-rose-50 border-rose-100')}>
             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Final Balance Due</p>
-            <p className={cn('text-base font-black', remainingBalance<=0?'text-emerald-600':'text-rose-600')}>₹{remainingBalance.toLocaleString()}</p>
+            <p className={cn('text-base font-black', remainingBalance<=0?'text-emerald-600':'text-rose-600')}>{formatCurrency(remainingBalance)}</p>
           </div>
         </div>
 
@@ -162,7 +162,7 @@ export function PaymentEntryModal({ invoice, onClose, onSuccess }: { invoice: In
             </div>
             <div className="text-right">
               <span className="text-[10px] font-bold text-amber-700 uppercase tracking-widest block">Penalty Charge</span>
-              <span className="text-xl font-black text-amber-900">₹{calculatedPenalty.toLocaleString()}</span>
+              <span className="text-xl font-black text-amber-900">{formatCurrency(calculatedPenalty)}</span>
             </div>
           </div>
 

@@ -10,6 +10,7 @@ import { InvoiceStatCards }  from '../components/invoices/InvoiceStatCards';
 import { InvoiceTable }      from '../components/invoices/InvoiceTable';
 import { InvoiceDeleteModal }from '../components/invoices/InvoiceDeleteModal';
 import { InvoiceFormModal, ViewInvoiceModal } from '../components/tenants/InvoiceModals';
+import { formatCurrency } from '../src/utils/formatCurrency';
 
 // ─────────────────────────────────────────────────────────────────────────────
 export default function InvoiceList() {
@@ -21,6 +22,7 @@ export default function InvoiceList() {
   const [search,          setSearch]          = useState('');
   const [statusFilter,    setStatusFilter]    = useState('All Status');
   const [monthFilter,     setMonthFilter]     = useState('All Months');
+  const [companyFilter,   setCompanyFilter]   = useState('All Companies');
   const [showForm,        setShowForm]        = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice|null>(null);
   const [editingInvoice,  setEditingInvoice]  = useState<Invoice|null>(null);
@@ -82,9 +84,12 @@ export default function InvoiceList() {
     const mQ = inv.invoiceNo.toLowerCase().includes(q) ||
                inv.partyName.toLowerCase().includes(q) ||
                inv.company.toLowerCase().includes(q);
-    const mS = statusFilter === 'All Status' || inv.paymentStatus === statusFilter;
-    const mM = monthFilter  === 'All Months' || (inv.billDate && new Date(inv.billDate).getMonth() === parseInt(monthFilter));
-    return mQ && mS && mM;
+    const mS = statusFilter   === 'All Status'    || inv.paymentStatus === statusFilter;
+    const mM = monthFilter    === 'All Months'    || (inv.billDate && new Date(inv.billDate).getMonth() === parseInt(monthFilter));
+    const mC = companyFilter  === 'All Companies' ||
+               inv.companyId  === companyFilter   ||
+               inv.company    === companyFilter;
+    return mQ && mS && mM && mC;
   });
 
   const totalInvoiced    = filtered.reduce((a,i) => a+(i.totalInvoice||0), 0);
@@ -123,13 +128,16 @@ export default function InvoiceList() {
       {/* ── Table + Filters ── */}
       <InvoiceTable
         invoices={filtered}
+        companies={companies}
         loading={loading}
         search={search}
         statusFilter={statusFilter}
         monthFilter={monthFilter}
+        companyFilter={companyFilter}
         onSearch={setSearch}
         onStatus={setStatusFilter}
         onMonth={setMonthFilter}
+        onCompany={setCompanyFilter}
         onView={setSelectedInvoice}
         onEdit={setEditingInvoice}
         onDelete={setDeletingInvoice}

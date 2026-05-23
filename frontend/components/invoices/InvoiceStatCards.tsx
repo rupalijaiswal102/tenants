@@ -1,4 +1,5 @@
 import { ReceiptIndianRupee } from 'lucide-react';
+import { formatCurrency } from '../../src/utils/formatCurrency';
 
 interface Props {
   totalInvoiced:   number;
@@ -25,7 +26,7 @@ export function InvoiceStatCards({ totalInvoiced, totalReceived, totalOutstandin
           </div>
           <div>
             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{c.label}</p>
-            <p className="text-2xl font-bold text-slate-800">₹{c.value.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-slate-800">{formatCurrency(c.value)}</p>
           </div>
         </div>
       ))}

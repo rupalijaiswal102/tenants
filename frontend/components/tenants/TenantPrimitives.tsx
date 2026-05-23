@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils';
 import { type Tenant } from '../../src/types';
+import { formatCurrency } from '../../src/utils/formatCurrency';
 
 // ── Status Badge (Agreement Status) ──────────────────────────────────────────
 export function StatusBadge({ status }: { status: string }) {
@@ -71,7 +72,7 @@ export function SummaryItem({ label, value, color }: any) {
   return (
     <div>
       <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">{label}</p>
-      <p className={cn('text-sm font-black', colors[color])}>₹{value?.toLocaleString()}</p>
+      <p className={cn('text-sm font-black', colors[color])}>{formatCurrency(value ?? 0)}</p>
     </div>
   );
 }

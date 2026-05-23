@@ -10,7 +10,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell
 } from 'recharts';
-
+import { formatCurrency } from '../src/utils/formatCurrency';
 // ── Shared card style ────────────────────────────────────────────────────────
 const S = {
   card: {
@@ -68,9 +68,9 @@ export default function Dashboard() {
 
   const stats = [
     { label: 'Active Tenants',   value: tenants.length,         fmt: (v: any) => v,                        color: '#f97316', bg: '#fff7ed', icon: Users,          trend: '+12%', up: true  },
-    { label: 'Monthly Revenue',  value: totalRevenue,           fmt: (v: any) => `₹${v.toLocaleString()}`, color: '#10b981', bg: '#f0fdf4', icon: IndianRupee,    trend: '+8%',  up: true  },
-    { label: 'Rent Collected',   value: Math.round(collected),  fmt: (v: any) => `₹${v.toLocaleString()}`, color: '#3b82f6', bg: '#eff6ff', icon: TrendingUp,     trend: '+5%',  up: true  },
-    { label: 'Pending Dues',     value: Math.round(totalDues),  fmt: (v: any) => `₹${v.toLocaleString()}`, color: '#ef4444', bg: '#fff1f2', icon: Clock,          trend: '-4%',  up: false },
+    { label: 'Monthly Revenue',  value: totalRevenue,           fmt: (v: any) => formatCurrency(v), color: '#10b981', bg: '#f0fdf4', icon: IndianRupee,    trend: '+8%',  up: true  },
+    { label: 'Rent Collected',   value: Math.round(collected),  fmt: (v: any) => formatCurrency(v), color: '#3b82f6', bg: '#eff6ff', icon: TrendingUp,     trend: '+5%',  up: true  },
+    { label: 'Pending Dues',     value: Math.round(totalDues),  fmt: (v: any) => formatCurrency(v), color: '#ef4444', bg: '#fff1f2', icon: Clock,          trend: '-4%',  up: false },
     { label: 'Expiring Leases',  value: expiring,               fmt: (v: any) => v,                        color: '#f59e0b', bg: '#fffbeb', icon: Calendar,       trend: expiring > 0 ? 'Action!' : 'Clear', up: expiring === 0 },
     { label: 'Properties',       value: new Set(tenants.map(t => t.property)).size, fmt: (v: any) => v,   color: '#64748b', bg: '#f8fafc', icon: Building2,      trend: 'Stable', up: true  },
   ];
@@ -152,8 +152,8 @@ export default function Dashboard() {
               ))}
             </div>
           </div>
-          <div style={{ height: 240 }}>
-            <ResponsiveContainer width="100%" height="100%">
+          <div style={{ height: 240, minHeight: 240, width: "100%", minWidth: 0 }}>
+            <ResponsiveContainer width="100%" height={240}>
               <AreaChart data={areaData} margin={{ left: -20 }}>
                 <defs>
                   <linearGradient id="gB" x1="0" y1="0" x2="0" y2="1">
@@ -239,7 +239,7 @@ export default function Dashboard() {
                 </div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <p style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', margin: 0 }}>₹{t.currentRent.toLocaleString()}</p>
+                <p style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', margin: 0 }}>{formatCurrency(t.currentRent)}</p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end', marginTop: 2 }}>
                   <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#10b981' }} />
                   <span style={{ fontSize: 9, fontWeight: 600, color: '#15803d' }}>Active</span>
@@ -265,7 +265,7 @@ export default function Dashboard() {
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <p style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', margin: 0 }}>#{inv.invoiceNo}</p>
-                    <span style={{ fontSize: 12, fontWeight: 800, color: inv.paymentStatus === 'Pending' ? '#ef4444' : '#f59e0b' }}>₹{(inv.balanceAmount || inv.balance || 0).toLocaleString()}</span>
+                    <span style={{ fontSize: 12, fontWeight: 800, color: inv.paymentStatus === 'Pending' ? '#ef4444' : '#f59e0b' }}>₹{formatCurrency(inv.balanceAmount || inv.balance || 0)}</span>
                   </div>
                   <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{inv.partyName} — {inv.paymentStatus}</p>
                 </div>

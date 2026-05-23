@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatCurrencyExact } from '../../src/utils/formatCurrency';
 import { type Invoice, type Tenant, type Company } from '../../src/types';
 import { buildInvoiceData } from './invoicePdf';
 
@@ -17,69 +18,77 @@ function numberToWords(n: number): string {
   return c(Math.floor(n));
 }
 
-interface Props {
-  invoice: Invoice;
-  tenant?: Tenant;
-  company?: Company;
-}
+interface Props { invoice: Invoice; tenant?: Tenant; company?: Company; }
 
 export function InvoicePreview({ invoice, tenant, company }: Props) {
   const d  = buildInvoiceData(invoice, tenant);
   const p0: React.CSSProperties = { margin: 0 };
-  const gr = '#555', dk = '#1a1a1a';
-
-  const Cell = ({ children, right=false, bold=false }: any) => (
-    <td style={{ padding:'9px 9px', fontSize:10.5, textAlign:right?'right':'left', fontWeight:bold?700:'normal' }}>
-      {children}
-    </td>
-  );
+  const gr = '#4a4a4a', dk = '#1a1a1a';
 
   return (
-    <div style={{ background:'#fff', width:'100%', maxWidth:800, padding:'44px 56px 52px', fontFamily:'Arial,sans-serif', color:dk, fontSize:11, lineHeight:1.6 }}>
+    <div style={{ background:'#fff', width:'100%', maxWidth:800, padding:'36px 48px 48px', fontFamily:'Arial,sans-serif', color:dk, fontSize:11, lineHeight:1.6 }}>
 
-      {/* Company Header */}
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:20 }}>
-        <div>
-          <p style={{ ...p0, fontSize:15, fontWeight:700, marginBottom:7 }}>{company?.companyName||invoice.company}</p>
-          <div style={{ fontSize:10.5, color:gr, lineHeight:1.9 }}>
-            {company?.address && <p style={p0}>{company.address}</p>}
+      {/* ── Company Header ── */}
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:18 }}>
+        <div style={{ flex:1, minWidth:0, paddingRight:16 }}>
+          <p style={{ ...p0, fontSize:14, fontWeight:700, marginBottom:6, wordBreak:'break-word' }}>
+            {company?.companyName||invoice.company}
+          </p>
+          <div style={{ fontSize:10.5, color:gr, lineHeight:1.85 }}>
+            {company?.address && <p style={{ ...p0, wordBreak:'break-word' }}>{company.address}</p>}
             <p style={p0}>Phone no. : {company?.phoneNumber||'N/A'}</p>
             <p style={p0}>Email : {company?.email||'N/A'}</p>
             <p style={p0}>GSTIN : {company?.gstNumber||'N/A'}</p>
             <p style={p0}>State: {company?.state||'Madhya Pradesh'}</p>
           </div>
         </div>
-        {company?.logoUrl && <img src={company.logoUrl} alt="Logo" referrerPolicy="no-referrer" style={{ width:72, height:72, objectFit:'contain' }}/>}
+        {company?.logoUrl && (
+          <img src={company.logoUrl} alt="Logo" referrerPolicy="no-referrer"
+            style={{ width:68, height:68, objectFit:'contain', flexShrink:0 }}/>
+        )}
       </div>
 
-      {/* INVOICE Title */}
-      <div style={{ borderTop:'1.5px solid #c8c8c8', borderBottom:'1.5px solid #c8c8c8', textAlign:'center', padding:'10px 0 9px', margin:'0 0 22px' }}>
-        <span style={{ fontSize:25, fontWeight:700, letterSpacing:'0.38em', color:'#8a8a8a' }}>INVOICE</span>
+      {/* ── INVOICE Title — only top border ── */}
+      <div style={{ borderTop:'1.5px solid #c8c8c8', textAlign:'center', padding:'10px 0 10px', margin:'0 0 20px' }}>
+        <span style={{ fontSize:22, fontWeight:700, letterSpacing:'0.38em', color:'#8a8a8a' }}>INVOICE</span>
       </div>
 
-      {/* Bill To / Ship To / Invoice Details */}
-      <div style={{ display:'grid', gridTemplateColumns:'1.35fr 1fr 0.85fr', gap:16, marginBottom:22, fontSize:10.5 }}>
-        <div>
-          <p style={{ ...p0, fontWeight:700, fontSize:11, marginBottom:5 }}>Bill To</p>
-          <p style={{ ...p0, fontWeight:700, marginBottom:4 }}>{tenant?.legalName||tenant?.name||invoice.partyName}</p>
-          <div style={{ color:gr, lineHeight:1.9 }}>
-            {tenant?.billingAddress && <p style={{ ...p0, whiteSpace:'pre-line' }}>{tenant.billingAddress}</p>}
+      {/* ── Bill To / Ship To / Invoice Details ── */}
+      <div style={{ display:'grid', gridTemplateColumns:'1.4fr 1fr 0.9fr', gap:12, marginBottom:20, fontSize:10.5 }}>
+
+        {/* Bill To */}
+        <div style={{ overflow:'hidden', minWidth:0 }}>
+          <p style={{ ...p0, fontWeight:800, fontSize:11.5, marginBottom:6, color:dk }}>Bill To</p>
+          <p style={{ ...p0, fontWeight:700, marginBottom:4, wordBreak:'break-word' }}>
+            {tenant?.legalName||tenant?.name||invoice.partyName}
+          </p>
+          <div style={{ color:gr, lineHeight:1.85 }}>
+            {tenant?.billingAddress && (
+              <p style={{ ...p0, whiteSpace:'pre-line', wordBreak:'break-word' }}>{tenant.billingAddress}</p>
+            )}
             <p style={p0}>GSTIN : {tenant?.gstNo||'Unregistered'}</p>
             <p style={p0}>State: 23-Madhya Pradesh</p>
             <p style={p0}>Security Deposit : {tenant?.securityDeposit?`${tenant.securityDeposit}/-`:'-'}</p>
             {tenant?.leaseStart && <p style={p0}>Rent Start Date : {d.lng(tenant.leaseStart)}</p>}
             {tenant?.leaseEnd   && <p style={p0}>Agreement End Date: {d.lng(tenant.leaseEnd)}</p>}
-            {tenant?.nextEscalationDate && <p style={p0}>Rent Escalation : {new Date(tenant.nextEscalationDate).toLocaleDateString('en-GB')}</p>}
+            {tenant?.nextEscalationDate && (
+              <p style={p0}>Rent Escalation : {new Date(tenant.nextEscalationDate).toLocaleDateString('en-GB')}</p>
+            )}
           </div>
         </div>
-        <div>
-          <p style={{ ...p0, fontWeight:700, fontSize:11, marginBottom:5 }}>Ship To</p>
-          <p style={{ ...p0, fontWeight:700, marginBottom:4 }}>{tenant?.name||invoice.partyName}</p>
-          <p style={{ ...p0, color:gr, whiteSpace:'pre-line', lineHeight:1.9 }}>{tenant?.property||''}</p>
+
+        {/* Ship To — only property, no tenant name */}
+        <div style={{ overflow:'hidden', minWidth:0 }}>
+          <p style={{ ...p0, fontWeight:800, fontSize:11.5, marginBottom:6, color:dk }}>Ship To</p>
+          <p style={{ ...p0, color:gr, whiteSpace:'pre-line', lineHeight:1.85, wordBreak:'break-word' }}>
+            {tenant?.property||''}
+          </p>
         </div>
-        <div style={{ textAlign:'right' }}>
-          <p style={{ ...p0, fontWeight:700, fontSize:11, marginBottom:5 }}>Invoice Details</p>
-          <div style={{ color:gr, lineHeight:2.1 }}>
+
+        {/* Invoice Details — right aligned */}
+        <div style={{ textAlign:'right', minWidth:0 }}>
+          <p style={{ ...p0, fontWeight:800, fontSize:11.5, marginBottom:6, color:dk }}>Invoice Details</p>
+          <div style={{ color:gr, lineHeight:2.0 }}>
             <p style={p0}>Invoice No. : {invoice.invoiceNo}</p>
             <p style={p0}>Date : {d.fmt(d.bd)}</p>
             <p style={p0}>Due Date : {d.fmt(d.due)}</p>
@@ -87,92 +96,109 @@ export function InvoicePreview({ invoice, tenant, company }: Props) {
         </div>
       </div>
 
-      {/* Items Table */}
+      {/* ── Items Table ── */}
       <table style={{ width:'100%', borderCollapse:'collapse', marginBottom:20 }}>
         <thead>
           <tr>
-            {['#','Particular','HSN/ SAC','Month','From','To','Amount'].map((h,i) => (
-              <th key={h} style={{ padding:'9px 9px', fontSize:10.5, fontWeight:700, color:'#fff', backgroundColor:'#232323', textAlign:i===6?'right':'left', whiteSpace:'nowrap' }}>{h}</th>
+            {[
+              {h:'#',          w:'5%',  right:false},
+              {h:'Particular', w:'35%', right:false},
+              {h:'HSN/ SAC',   w:'12%', right:false},
+              {h:'Month',      w:'13%', right:false},
+              {h:'From',       w:'11%', right:false},
+              {h:'To',         w:'11%', right:false},
+              {h:'Amount',     w:'13%', right:true },
+            ].map(({h, w, right}) => (
+              <th key={h} style={{ padding:'9px 10px', fontSize:10.5, fontWeight:700, color:'#fff', backgroundColor:'#232323', textAlign:right?'right':'left', whiteSpace:'nowrap', width:w }}>
+                {h}
+              </th>
             ))}
           </tr>
         </thead>
         <tbody>
           {d.rows.map((item:any, i:number) => (
             <tr key={i} style={{ borderBottom:'1px solid #e0e0e0' }}>
-              <Cell>{i+1}</Cell>
-              <Cell bold>{item.particular}</Cell>
-              <Cell>{item.hsnSac}</Cell>
-              <Cell>{item.month}</Cell>
-              <Cell>{item.fromDate ? new Date(item.fromDate).toLocaleDateString('en-GB') : '-'}</Cell>
-              <Cell>{item.toDate   ? new Date(item.toDate).toLocaleDateString('en-GB')   : '-'}</Cell>
-              <Cell right>₹ {(item.amount||0).toLocaleString('en-IN',{minimumFractionDigits:2})}</Cell>
+              <td style={{ padding:'9px 10px', fontSize:10.5 }}>{i+1}</td>
+              <td style={{ padding:'9px 10px', fontSize:10.5, fontWeight:700 }}>{item.particular}</td>
+              <td style={{ padding:'9px 10px', fontSize:10.5 }}>{item.hsnSac}</td>
+              <td style={{ padding:'9px 10px', fontSize:10.5 }}>{item.month}</td>
+              <td style={{ padding:'9px 10px', fontSize:10.5 }}>{item.fromDate ? new Date(item.fromDate).toLocaleDateString('en-GB') : '-'}</td>
+              <td style={{ padding:'9px 10px', fontSize:10.5 }}>{item.toDate   ? new Date(item.toDate).toLocaleDateString('en-GB')   : '-'}</td>
+              <td style={{ padding:'9px 10px', fontSize:10.5, textAlign:'right' }}>{formatCurrencyExact(item.amount||0)}</td>
             </tr>
           ))}
-          <tr style={{ borderTop:'2.5px solid #1a1a1a', borderBottom:'1px solid #ddd' }}>
-            <td colSpan={4} style={{ padding:'9px 9px' }}/>
-            <td colSpan={2} style={{ padding:'9px 9px', fontWeight:700, textAlign:'right', fontSize:11 }}>Total</td>
-            <td style={{ padding:'9px 9px', fontWeight:700, fontSize:13, textAlign:'right' }}>
-              ₹ {d.base.toLocaleString('en-IN',{minimumFractionDigits:2})}
+          {/* Total row */}
+          <tr style={{ borderTop:'2px solid #1a1a1a' }}>
+            <td colSpan={5} style={{ padding:'9px 10px' }}/>
+            <td style={{ padding:'9px 10px', fontWeight:700, fontSize:11, textAlign:'left' }}>Total</td>
+            <td style={{ padding:'9px 10px', fontWeight:700, fontSize:13, textAlign:'right' }}>
+              {formatCurrencyExact(d.base)}
             </td>
           </tr>
         </tbody>
       </table>
 
-      {/* Description + GST */}
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 240px', gap:26, marginBottom:24 }}>
+      {/* ── Description + GST Summary ── */}
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 230px', gap:24, marginBottom:22 }}>
+
         <div style={{ fontSize:10.5 }}>
-          {[
-            { label:'Description',            text: d.desc,                          italic:false },
-            { label:'Invoice Amount In Words', text:`${numberToWords(d.fin)} Rupees Only`, italic:true  },
-            { label:'Terms and Conditions',    text:'Please pay before due date.\nLate payment penalty charges # 1.5% Per Month', italic:false },
-          ].map(({ label, text, italic }) => (
-            <div key={label} style={{ marginBottom:12 }}>
-              <p style={{ ...p0, fontWeight:700, marginBottom:4 }}>{label}</p>
-              <p style={{ ...p0, color:gr, fontStyle:italic?'italic':'normal', whiteSpace:'pre-line', lineHeight:1.9 }}>{text}</p>
-            </div>
-          ))}
+          <div style={{ marginBottom:11 }}>
+            <p style={{ ...p0, fontWeight:700, marginBottom:3 }}>Description</p>
+            <p style={{ ...p0, color:gr, lineHeight:1.85 }}>{d.desc}</p>
+          </div>
+          <div style={{ marginBottom:11 }}>
+            <p style={{ ...p0, fontWeight:700, marginBottom:3 }}>Invoice Amount In Words</p>
+            <p style={{ ...p0, color:gr, fontStyle:'italic', lineHeight:1.85 }}>
+              {numberToWords(d.fin)} Rupees Only
+            </p>
+          </div>
+          <div>
+            <p style={{ ...p0, fontWeight:700, marginBottom:3 }}>Terms and Conditions</p>
+            <p style={{ ...p0, color:gr, lineHeight:1.85 }}>
+              Please pay before due date.<br/>
+              Late payment penalty charges # 1.5% Per Month
+            </p>
+          </div>
         </div>
 
+        {/* GST summary — no border between rows */}
         <div style={{ fontSize:11 }}>
           {[
-            { l:'Sub Total',          v: d.base },
-            { l:`SGST@${d.tax}%`,     v: d.sgst },
-            { l:`CGST@${d.tax}%`,     v: d.cgst },
-            { l:'Round off',          v: d.ro   },
+            { l:'Sub Total',        v: d.base },
+            { l:`SGST@${d.tax}%`,   v: d.sgst },
+            { l:`CGST@${d.tax}%`,   v: d.cgst },
+            { l:'Round off',        v: d.ro   },
           ].map(({ l, v }, i) => (
-            <div key={i} style={{ display:'flex', justifyContent:'space-between', padding:'6px 0', borderBottom:'1px solid #e8e8e8' }}>
+            <div key={i} style={{ display:'flex', justifyContent:'space-between', padding:'4px 0' }}>
               <span style={{ color:gr }}>{l}</span>
-              <span style={{ fontWeight:600, color:dk }}>₹ {Math.abs(v).toLocaleString('en-IN',{minimumFractionDigits:2})}</span>
+              <span style={{ fontWeight:600, color:dk }}>{formatCurrencyExact(Math.abs(v))}</span>
             </div>
           ))}
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', background:'#232323', padding:'10px 13px', marginTop:8 }}>
-            <span style={{ fontWeight:700, fontSize:12, letterSpacing:'0.06em', color:'#fff' }}>Total</span>
-            <span style={{ fontWeight:800, fontSize:15, color:'#fff' }}>₹ {d.fin.toLocaleString('en-IN',{minimumFractionDigits:2})}</span>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', background:'#232323', padding:'9px 12px', marginTop:8 }}>
+            <span style={{ fontWeight:700, fontSize:12, letterSpacing:'0.05em', color:'#fff' }}>Total</span>
+            <span style={{ fontWeight:800, fontSize:14, color:'#fff' }}>{formatCurrencyExact(d.fin)}</span>
           </div>
         </div>
       </div>
 
-      {/* Pay To + Signature — side by side, signature on far right */}
-      <div style={{ borderTop:'1px solid #d0d0d0', paddingTop:20, display:'grid', gridTemplateColumns:'1fr auto', gap:0, fontSize:10.5 }}>
-        {/* Pay To */}
+      {/* ── Pay To + Signature ── */}
+      <div style={{ borderTop:'1px solid #c8c8c8', paddingTop:18, display:'grid', gridTemplateColumns:'1fr auto', gap:0, fontSize:10.5 }}>
         <div>
-          <p style={{ ...p0, fontWeight:700, fontSize:12, marginBottom:12 }}>Pay To:</p>
-          <div style={{ lineHeight:2.1 }}>
+          <p style={{ ...p0, fontWeight:700, fontSize:12, marginBottom:10 }}>Pay To:</p>
+          <div style={{ lineHeight:2.0 }}>
             <p style={p0}>Bank Name : {company?.bankName||'N/A'}</p>
             <p style={p0}>Bank Account No. : {company?.accountNumber||'N/A'}</p>
             <p style={p0}>Bank IFSC code : {company?.ifscCode||'N/A'}</p>
             <p style={p0}>Account holder's name : {company?.accountHolderName||company?.companyName||invoice.company}</p>
           </div>
         </div>
-        {/* Signature — far right */}
-        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', minWidth:180, paddingLeft:24 }}>
-          <p style={{ ...p0, fontSize:11, marginBottom:14, alignSelf:'flex-start' }}>For :{company?.companyName||invoice.company}</p>
-          <div style={{ marginBottom:10 }}>
-            {company?.logoUrl
-              ? <img src={company.logoUrl} alt="Seal" referrerPolicy="no-referrer" style={{ width:70, height:70, objectFit:'contain', opacity:0.85 }}/>
-              : <div style={{ width:70, height:70, borderRadius:'50%', border:'1.5px solid #c0c0c0', display:'flex', alignItems:'center', justifyContent:'center' }}><span style={{ fontSize:9, color:'#aaa', fontWeight:600 }}>SEAL</span></div>}
-          </div>
-          <div style={{ borderTop:'1px solid #bbb', paddingTop:6, textAlign:'center', width:'100%' }}>
+        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', minWidth:170, paddingLeft:20 }}>
+          <p style={{ ...p0, fontSize:11, marginBottom:10, alignSelf:'flex-start' }}>
+            For :{company?.companyName||invoice.company}
+          </p>
+          {/* Empty space for physical seal */}
+          <div style={{ width:68, height:68, marginBottom:10 }}/>
+          <div style={{ borderTop:'1px solid #bbb', paddingTop:5, textAlign:'center', width:'100%' }}>
             <p style={{ ...p0, fontSize:11, fontWeight:700 }}>Authorized Signatory</p>
           </div>
         </div>
