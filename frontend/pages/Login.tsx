@@ -3,6 +3,8 @@ import { Eye, EyeOff, LogIn, AlertCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 import axios from 'axios';
 
+const API_URL = (import.meta as any).env?.VITE_API_URL || '';
+
 interface Props {
   onLogin: (user: { name:string; role:string; initials:string; token:string }) => void;
 }
@@ -19,7 +21,7 @@ export default function Login({ onLogin }: Props) {
     setError('');
     setLoading(true);
     try {
-      const res = await axios.post('/api/auth/login', {
+      const res = await axios.post(`${API_URL}/api/auth/login`, {
         email:    email.trim().toLowerCase(),
         password,
       });

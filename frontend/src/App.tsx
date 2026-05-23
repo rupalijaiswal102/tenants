@@ -35,9 +35,14 @@ export default function App() {
   // ── Auth ──
   const getAuth = () => {
     try {
+      // Set baseURL for all axios calls
+      axios.defaults.baseURL = import.meta.env.VITE_API_URL || '';
       const data = JSON.parse(localStorage.getItem('neoteric_auth') || 'null');
       // Set axios default auth header on app load
-      if (data?.token) axios.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
+      if (data?.token) {
+        axios.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
+        axios.defaults.baseURL = import.meta.env.VITE_API_URL || '';
+      }
       return data;
     } catch { return null; }
   };
@@ -77,7 +82,8 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    fetch('/api/status').then(r => r.json()).then(setDbStatus).catch(() => setDbStatus({ isDemo: true }));
+    const apiBase = import.meta.env.VITE_API_URL || '';
+    fetch(`${apiBase}/api/status`).then(r => r.json()).then(setDbStatus).catch(() => setDbStatus({ isDemo: true }));
     if (isMobile) setSidebarOpen(false);
   }, [location.pathname]);
 
@@ -155,8 +161,17 @@ export default function App() {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-             
-              
+              {/* Team avatars */}
+              <div style={{ display: 'flex' }}>
+                {['#6366f1', '#10b981', '#f97316'].map((bg, i) => (
+                  <div key={i} style={{ width: 28, height: 28, borderRadius: '50%', border: '2px solid #fff', marginLeft: i ? -8 : 0, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800, color: '#fff', zIndex: 3 - i }}>
+                    {['GS', 'AK', 'RS'][i]}
+                  </div>
+                ))}
+                <div style={{ width: 28, height: 28, borderRadius: '50%', border: '2px solid #fff', marginLeft: -8, background: '#f0f2f5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: '#9ba8b5' }}>
+                  +27
+                </div>
+              </div>
 
               {/* Bell */}
               <div style={{ position: 'relative' }}>
