@@ -14,6 +14,7 @@ import { toast } from 'react-hot-toast';
 import imageCompression from 'browser-image-compression';
 import { cn } from '@/lib/utils';
 import { type Tenant, type Company } from '../src/types';
+import { formatCurrency } from '../src/utils/formatCurrency';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const inp = "w-full h-11 px-4 bg-white border-2 border-slate-100 rounded-xl text-sm text-slate-800 outline-none transition-all focus:border-orange-400 focus:ring-4 focus:ring-orange-50 placeholder:text-slate-300 font-medium";
@@ -68,7 +69,8 @@ export default function TenantFormPage() {
       name: '', company: '', property: '', contactPerson: '', designation: '',
       mobile: '', email: '', alternateContactPerson: '', rentalPurpose: '',
       leaseStart: '', leaseEnd: '', tenure: 12, lockIn: 6, noticePeriod: 60,
-      escalationPercent: 5, nextEscalationDate: '', securityDeposit: 0,
+      escalationPercent: 5, nextEscalationDate: '', referenceDate: '',
+      securityDeposit: 0,
       currentRent: 0, rentFreePeriodDays: 0, gstNo: '', panNumber: '',
       legalName: '', billingAddress: '', state: '', pincode: '',
       agreementStatus: 'Pending' as const, agreementFileUrl: '', agreementFileType: 'PDF',
@@ -93,7 +95,47 @@ export default function TenantFormPage() {
   };
 
   const fetchTenant = async () => {
-    try { const r = await axios.get(`/api/tenants/${id}`); reset(r.data); }
+    try {
+      const r = await axios.get(`/api/tenants/${id}`);
+      const t = r.data;
+      // Map ALL fields explicitly so nothing is missed during edit
+      reset({
+        code:                  t.code                 || '',
+        name:                  t.name                 || '',
+        company:               t.company              || '',
+        property:              t.property             || '',
+        contactPerson:         t.contactPerson        || '',
+        designation:           t.designation          || '',
+        mobile:                t.mobile               || '',
+        email:                 t.email                || '',
+        alternateContactPerson:t.alternateContactPerson || '',
+        rentalPurpose:         t.rentalPurpose        || '',
+        leaseStart:            t.leaseStart           || '',
+        leaseEnd:              t.leaseEnd             || '',
+        tenure:                t.tenure               || 12,
+        lockIn:                t.lockIn               || 6,
+        noticePeriod:          t.noticePeriod         || 60,
+        escalationPercent:     t.escalationPercent    || 5,
+        nextEscalationDate:    t.nextEscalationDate   || '',
+        referenceDate:         t.referenceDate        || '',
+        securityDeposit:       t.securityDeposit      || 0,
+        currentRent:           t.currentRent          || 0,
+        rentFreePeriodDays:    t.rentFreePeriodDays   || 0,
+        gstNo:                 t.gstNo                || '',
+        panNumber:             t.panNumber            || '',
+        legalName:             t.legalName            || '',
+        billingAddress:        t.billingAddress       || '',
+        state:                 t.state                || '',
+        pincode:               t.pincode              || '',
+        agreementStatus:       t.agreementStatus      || 'Pending',
+        agreementFileUrl:      t.agreementFileUrl     || '',
+        agreementFileType:     t.agreementFileType    || 'PDF',
+        openingBalanceAmount:  t.openingBalanceAmount || 0,
+        openingBalanceType:    t.openingBalanceType   || 'Debit',
+        openingBalanceDate:    t.openingBalanceDate   || new Date().toISOString().split('T')[0],
+        openingBalanceNotes:   t.openingBalanceNotes  || '',
+      });
+    }
     catch { toast.error('Failed to load tenant'); navigate('/tenants'); }
     finally { setInitialLoading(false); }
   };
@@ -324,6 +366,9 @@ export default function TenantFormPage() {
                     <Field label="Next Escalation Date">
                       <input {...register('nextEscalationDate')} type="date" className={inp}/>
                     </Field>
+                    <Field label="Reference Date">
+                      <input {...register('referenceDate')} type="date" className={inp}/>
+                    </Field>
                     <Field label="Agreement Status">
                       <select {...register('agreementStatus')} className={inp} style={{ cursor:'pointer' }}>
                         <option value="Pending">Pending Verification</option>
@@ -400,6 +445,42 @@ export default function TenantFormPage() {
                     <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".pdf,image/*" style={{ display:'none' }}/>
 
                     {/* Upload zone */}
+                    {/* Show existing file from DB when editing */}
+                    {!agreementFile && watch('agreementFileUrl') && (
+                      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 18px', background:'#f0fdf4', border:'1.5px solid #86efac', borderRadius:14 }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+                          <div style={{ width:40, height:40, background:'#fff', borderRadius:10, display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 1px 4px rgba(0,0,0,0.08)' }}>
+                            <FileCheck size={20} color="#10b981"/>
+                          </div>
+                          <div>
+                            <p style={{ fontSize:13, fontWeight:700, color:'#0f172a', margin:0 }}>Existing Agreement File</p>
+                            <p style={{ fontSize:11, color:'#16a34a', margin:'2px 0 0', fontWeight:500 }}>File uploaded previously</p>
+                          </div>
+                        </div>
+                        <div style={{ display:'flex', gap:8 }}>
+                          <button type="button" onClick={async () => {
+                              const url = watch('agreementFileUrl');
+                              if (!url) return;
+                              try {
+                                const base = (import.meta as any).env?.VITE_API_URL || '';
+                                const full = url.startsWith('http') ? url : `${base}${url}`;
+                                const r = await fetch(full, { headers: { Authorization: `Bearer ${JSON.parse(localStorage.getItem('neoteric_auth')||'{}')?.token||''}` } });
+                                if (!r.ok) throw new Error('Failed');
+                                const blob = await r.blob();
+                                window.open(URL.createObjectURL(blob), '_blank');
+                              } catch { alert('Could not open file'); }
+                            }}
+                            style={{ padding:'6px 14px', background:'#fff', border:'1px solid #86efac', borderRadius:8, fontSize:11, fontWeight:700, color:'#16a34a', cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', gap:5 }}>
+                            👁 View
+                          </button>
+                          <button type="button" onClick={() => fileInputRef.current?.click()}
+                            style={{ padding:'6px 14px', background:'#f97316', border:'none', borderRadius:8, fontSize:11, fontWeight:700, color:'#fff', cursor:'pointer', fontFamily:'inherit' }}>
+                            Replace
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                     <div onClick={() => fileInputRef.current?.click()}
                       style={{ border:`2px dashed ${agreementFile ? '#10b981' : '#e2e8f0'}`, borderRadius:16, padding:'36px 24px', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', cursor:'pointer', background: agreementFile ? '#f0fdf4' : '#fafbfd', textAlign:'center', transition:'all 0.15s' }}>
                       {agreementFile ? (
@@ -420,7 +501,9 @@ export default function TenantFormPage() {
                           <div style={{ width:48, height:48, background:'#fff', borderRadius:14, display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 1px 4px rgba(0,0,0,0.06)', marginBottom:12 }}>
                             <Upload size={22} color="#94a3b8"/>
                           </div>
-                          <p style={{ fontSize:14, fontWeight:700, color:'#475569', margin:0 }}>Click to Upload Agreement</p>
+                          <p style={{ fontSize:14, fontWeight:700, color:'#475569', margin:0 }}>
+                            {watch('agreementFileUrl') ? 'Upload New File (Replace)' : 'Click to Upload Agreement'}
+                          </p>
                           <p style={{ fontSize:11, color:'#94a3b8', marginTop:5, fontWeight:500 }}>PDF or Image — Max 25MB</p>
                         </>
                       )}

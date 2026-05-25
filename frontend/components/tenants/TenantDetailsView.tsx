@@ -34,6 +34,38 @@ const TABS = [
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
+
+// ── FileViewer: Cloudinary URL direct open ───────────────────────────────────
+function FileViewer({ fileUrl }: { fileUrl: string }) {
+  const base    = (import.meta as any).env?.VITE_API_URL || '';
+  const fullUrl = fileUrl.startsWith('http') ? fileUrl : `${base}${fileUrl}`;
+  const isPDF   = fileUrl.includes('/raw/') || fileUrl.toLowerCase().endsWith('.pdf');
+
+  return (
+    <div style={{ background:'#fff', borderRadius:16, border:'1px solid #f0f2f5', padding:24, maxWidth:380, display:'flex', flexDirection:'column', alignItems:'center', gap:16, textAlign:'center' }}>
+      <div style={{ width:56, height:56, borderRadius:14, background:'#f0fdf4', display:'flex', alignItems:'center', justifyContent:'center' }}>
+        <FileCheck size={26} color="#10b981"/>
+      </div>
+      <div>
+        <p style={{ fontSize:14, fontWeight:800, color:'#1a1a2e', margin:0 }}>Lease Agreement</p>
+        <p style={{ fontSize:11, color:'#9ba8b5', marginTop:4 }}>
+          {isPDF ? 'PDF Document' : 'Image Document'}
+        </p>
+      </div>
+      <div style={{ display:'flex', gap:10, width:'100%' }}>
+        <a href={fullUrl} target="_blank" rel="noopener noreferrer"
+          style={{ flex:1, padding:'9px', background:'#f8f9fb', color:'#5a6474', borderRadius:9, fontWeight:600, fontSize:12, textAlign:'center', textDecoration:'none', border:'1px solid #f0f2f5' }}>
+          👁 Preview
+        </a>
+        <a href={fullUrl} download rel="noopener noreferrer"
+          style={{ flex:1, padding:'9px', background:'#10b981', color:'#fff', borderRadius:9, fontWeight:700, fontSize:12, textAlign:'center', textDecoration:'none' }}>
+          ⬇ Download
+        </a>
+      </div>
+    </div>
+  );
+}
+
 export function TenantDetailsView({ tenant, onClose, companies, allTenants }: {
   tenant: Tenant; onClose: () => void; companies: Company[]; allTenants: Tenant[];
 }) {
@@ -57,18 +89,23 @@ export function TenantDetailsView({ tenant, onClose, companies, allTenants }: {
     return d.toISOString().split('T')[0];
   })() : '';
 
-  useEffect(() => { fetchDetails(); fetchLedger(); }, [tenant.id]);
+  const tenantId = tenant?.id || tenant?.id || '';
+  useEffect(() => {
+    if (!tenantId) return;
+    fetchDetails();
+    fetchLedger();
+  }, [tenantId]);
 
   const fetchDetails = () => {
     setLoading(true);
-    axios.get(`/api/tenants/${tenant.id}/details`)
+    axios.get(`/api/tenants/${tenantId}/details`)
       .then(r => { setDetails(r.data); setLoading(false); })
       .catch(() => setLoading(false));
   };
 
   const fetchLedger = () => {
     setLedgerLoading(true);
-    axios.get(`/api/ledger/tenant/${tenant.id}`)
+    axios.get(`/api/ledger/tenant/${tenantId}`)
       .then(r => { setLedgerData(r.data); setLedgerLoading(false); })
       .catch(() => setLedgerLoading(false));
   };
@@ -124,7 +161,7 @@ export function TenantDetailsView({ tenant, onClose, companies, allTenants }: {
       {/* ── STICKY HEADER (below app topbar at 58px) ── */}
       <div style={{
         position: 'sticky',
-        top: 0,          /* App topbar height */
+        top: 58,          /* App topbar height */
         zIndex: 30,
         background: '#fff',
         borderBottom: '2px solid #f0f2f5',
@@ -492,17 +529,7 @@ export function TenantDetailsView({ tenant, onClose, companies, allTenants }: {
           {activeTab === 'documents' && (
             <motion.div key="doc" initial={{opacity:0,y:8}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-8}}>
               {tenant.agreementFileUrl ? (
-                <div style={{ ...SC, padding:24, maxWidth:360, display:'flex', flexDirection:'column', alignItems:'center', gap:16, textAlign:'center' }}>
-                  <div style={{ width:56, height:56, borderRadius:14, background:'#f0fdf4', display:'flex', alignItems:'center', justifyContent:'center' }}><FileCheck size={26} color="#10b981"/></div>
-                  <div>
-                    <p style={{ fontSize:14, fontWeight:800, color:'#1a1a2e', margin:0 }}>Lease Agreement</p>
-                    <p style={{ fontSize:11, color:'#9ba8b5', marginTop:4 }}>Digital scanned copy of original contract</p>
-                  </div>
-                  <div style={{ display:'flex', gap:10, width:'100%' }}>
-                    <a href={tenant.agreementFileUrl} target="_blank" style={{ flex:1, padding:'9px', background:'#f8f9fb', color:'#5a6474', borderRadius:9, fontWeight:600, fontSize:12, textAlign:'center', textDecoration:'none', border:'1px solid #f0f2f5' }}>Preview</a>
-                    <a href={tenant.agreementFileUrl} download style={{ flex:1, padding:'9px', background:'#10b981', color:'#fff', borderRadius:9, fontWeight:700, fontSize:12, textAlign:'center', textDecoration:'none' }}>Download</a>
-                  </div>
-                </div>
+                <FileViewer fileUrl={tenant.agreementFileUrl} />
               ) : (
                 <div style={{ ...SC, padding:40, maxWidth:300, display:'flex', flexDirection:'column', alignItems:'center', gap:10, textAlign:'center', border:'2px dashed #f0f2f5', background:'transparent' }}>
                   <FileText size={32} color="#e0e4ea"/>

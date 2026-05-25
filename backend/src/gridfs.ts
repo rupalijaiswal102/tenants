@@ -1,62 +1,57 @@
-import mongoose from 'mongoose';
-import { GridFSBucket, ObjectId } from 'mongodb';
-import fs from 'fs';
+import { v2 as cloudinary } from 'cloudinary';
+import { existsSync, unlinkSync } from 'fs';
 
-// ── Upload file to GridFS ─────────────────────────────────────────────────────
-export const uploadToGridFS = (file: any): Promise<string> => {
+interface UploadedFile {
+  path:         string;
+  originalname: string;
+  mimetype:     string;
+}
+
+const cleanup = (filePath: string) => {
+  try { if (existsSync(filePath)) unlinkSync(filePath); } catch {}
+};
+
+export const uploadToGridFS = (file: UploadedFile): Promise<string> => {
   return new Promise((resolve, reject) => {
     try {
-      const db = mongoose.connection.db;
-      if (!db) {
-        return reject(new Error('MongoDB not connected'));
-      }
+      const isPDF        = file.mimetype === 'application/pdf' ||
+                           file.originalname.toLowerCase().endsWith('.pdf');
+      const resourceType = isPDF ? 'raw' : 'image';
 
-      if (mongoose.connection.readyState !== 1) {
-        return reject(new Error('MongoDB connection not ready'));
-      }
-
-      const bucket   = new GridFSBucket(db, { bucketName: 'agreements' });
-      const filename = `${Date.now()}-${file.originalname.replace(/\s+/g, '_')}`;
-
-     const uploadStream = bucket.openUploadStream(filename, {
-  metadata: {
-    contentType:  file.mimetype,
-    originalName: file.originalname,
-  },
-});
-      const readStream = fs.createReadStream(file.path);
-      readStream.pipe(uploadStream);
-
-      uploadStream.on('finish', () => {
-        if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
-        resolve(`/api/files/${uploadStream.id}`);
+      cloudinary.uploader.upload(file.path, {
+        folder:        'tenants/agreements',
+        resource_type: resourceType,
+        public_id:     `${Date.now()}-${file.originalname.replace(/\s+/g, '_').replace(/\.[^/.]+$/, '')}`,
+        use_filename:  true,
+        overwrite:     false,
+      }, (err, result) => {
+        cleanup(file.path);
+        if (err)               return reject(new Error(err.message));
+        if (!result?.secure_url) return reject(new Error('No URL returned'));
+        console.log(`✅ Cloudinary upload: ${result.secure_url}`);
+        resolve(result.secure_url);
       });
 
-      uploadStream.on('error', (err) => {
-        if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
-        reject(err);
-      });
-
-      readStream.on('error', (err) => {
-        if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
-        reject(err);
-      });
-
-    } catch (err) {
-      if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
-      reject(err);
+    } catch (err: unknown) {
+      cleanup(file.path);
+      reject(err instanceof Error ? err : new Error(String(err)));
     }
   });
 };
 
-// ── Delete file from GridFS ───────────────────────────────────────────────────
-export const deleteFromGridFS = async (fileId: string): Promise<void> => {
+export const deleteFromGridFS = async (fileUrl: string): Promise<void> => {
   try {
-    const db = mongoose.connection.db;
-    if (!db) return;
-    const bucket = new GridFSBucket(db, { bucketName: 'agreements' });
-    await bucket.delete(new ObjectId(fileId));
-  } catch (err) {
-    console.error('GridFS delete error:', err);
+    if (!fileUrl?.includes('cloudinary.com')) return;
+    const parts     = fileUrl.split('/');
+    const uploadIdx = parts.indexOf('upload');
+    if (uploadIdx === -1) return;
+    const afterUpload = parts.slice(uploadIdx + 1);
+    if (afterUpload[0]?.startsWith('v')) afterUpload.shift();
+    const publicId = afterUpload.join('/').replace(/\.[^/.]+$/, '');
+    await cloudinary.uploader.destroy(publicId, {
+      resource_type: fileUrl.includes('/raw/') ? 'raw' : 'image'
+    });
+  } catch (err: unknown) {
+    console.error('Cloudinary delete error:', err instanceof Error ? err.message : err);
   }
 };
