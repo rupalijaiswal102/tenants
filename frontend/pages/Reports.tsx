@@ -116,12 +116,7 @@ export default function Reports() {
             {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download size={16} />}
             <span>Export Excel</span>
           </button>
-          <button 
-            onClick={handlePrint}
-            className="flex items-center gap-2 px-6 py-3 bg-slate-800 text-white rounded-2xl font-bold text-xs hover:bg-slate-900 transition-all shadow-xl"
-          >
-            <Printer size={16} /> Print Report
-          </button>
+         
         </div>
       </div>
 

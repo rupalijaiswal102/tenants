@@ -203,26 +203,9 @@ export default function App() {
                       <p style={{ fontSize: 10, color: '#9ba8b5', margin: '2px 0 0' }}>{authUser.role}</p>
                     </div>
 
-                    {/* Profile */}
-                    <button
-                      onClick={() => setShowUserMenu(false)}
-                      style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '11px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#5a6474', fontFamily: 'inherit', transition: 'background 0.1s', textAlign: 'left' }}
-                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#f8f9fb'}
-                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'none'}
-                    >
-                      <User size={14} color="#9ba8b5" /> My Profile
-                    </button>
-
-                    {/* Settings */}
-                    <button
-                      onClick={() => setShowUserMenu(false)}
-                      style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '11px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#5a6474', fontFamily: 'inherit', transition: 'background 0.1s', textAlign: 'left' }}
-                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#f8f9fb'}
-                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'none'}
-                    >
-                      <Settings size={14} color="#9ba8b5" /> Settings
-                    </button>
-
+                   
+                   
+                   
                     {/* Divider */}
                     <div style={{ height: 1, background: '#f0f2f5', margin: '4px 0' }} />
 

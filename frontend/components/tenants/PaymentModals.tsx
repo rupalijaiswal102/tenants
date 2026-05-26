@@ -7,15 +7,18 @@ import { cn } from '@/lib/utils';
 import { type Invoice, type Tenant } from '../../src/types';
 import { FormInput } from './TenantPrimitives';
 import { formatCurrency } from '../../src/utils/formatCurrency';
+
+
 // ── Opening Balance Adjustment Modal ─────────────────────────────────────────
 export function OpeningAdjustmentModal({ tenant, onClose, onSuccess }: { tenant: Tenant, onClose: () => void, onSuccess: () => void }) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    date:       new Date().toISOString().split('T')[0],
-    amount:     0,
-    type:       'PAYMENT',
-    particular: 'Opening Balance Adjustment',
-    notes:      ''
+    date:          new Date().toISOString().split('T')[0],
+    amount:        0,
+    type:          'ADJUSTMENT',
+    adjustmentSide:'DEBIT',   // ← NEW: DEBIT or CREDIT
+    particular:    'Adjustment',
+    notes:         ''
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -23,21 +26,26 @@ export function OpeningAdjustmentModal({ tenant, onClose, onSuccess }: { tenant:
     if (formData.amount <= 0) { toast.error('Amount must be greater than 0'); return; }
     setLoading(true);
     try {
-      await axios.post('/api/ledger/entry', {
-        tenantId: tenant.id,
-        date:      formData.date,
-        type:      formData.type,
+      // Debit or Credit based on adjustmentSide
+      const isDebit  = formData.adjustmentSide === 'DEBIT';
+      const apiBase  = (import.meta as any).env?.VITE_API_URL || '';
+      await axios.post(`${apiBase}/api/ledger/entry`, {
+        tenantId:   tenant.id,
+        date:       formData.date,
+        type:       formData.type,
         particular: formData.particular,
-        credit: formData.type === 'PAYMENT'    ? formData.amount : 0,
-        debit:  formData.type === 'ADJUSTMENT' ? formData.amount : 0,
-        notes:  formData.notes
+        debit:      isDebit  ? formData.amount : 0,   // ← Debit column
+        credit:     !isDebit ? formData.amount : 0,   // ← Credit column
+        notes:      formData.notes,
       });
-      toast.success('Adjustment saved successfully');
+      toast.success(`${formData.adjustmentSide} Adjustment saved!`);
       onSuccess();
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Failed to save adjustment');
     } finally { setLoading(false); }
   };
+
+  const isDebit = formData.adjustmentSide === 'DEBIT';
 
   return (
     <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
@@ -45,40 +53,110 @@ export function OpeningAdjustmentModal({ tenant, onClose, onSuccess }: { tenant:
       <motion.div initial={{scale:0.9,opacity:0,y:20}} animate={{scale:1,opacity:1,y:0}} exit={{scale:0.9,opacity:0,y:20}}
         className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
 
+        {/* Header */}
         <div className="p-6 md:p-8 bg-amber-50 border-b border-amber-100 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center shadow-inner">
               <History size={20}/>
             </div>
             <div>
-              <h3 className="font-black text-slate-800 tracking-tight">Opening Bal Adjustment</h3>
-              <p className="text-[10px] font-bold text-amber-700 uppercase tracking-widest">Action for {tenant.name}</p>
+              <h3 className="font-black text-slate-800 tracking-tight">Ledger Adjustment</h3>
+              <p className="text-[10px] font-bold text-amber-700 uppercase tracking-widest">{tenant.name}</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 transition-colors"><X size={20}/></button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 md:p-8 space-y-6 overflow-y-auto">
-          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Current Opening Balance</p>
-            <p className="text-xl font-black text-slate-800">{formatCurrency(tenant.openingBalanceAmount || 0)} ({tenant.openingBalanceType})</p>
+        <form onSubmit={handleSubmit} className="p-6 md:p-8 space-y-5 overflow-y-auto">
+
+          {/* ── Debit / Credit Toggle ── */}
+          <div>
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-1 block mb-2">
+              Adjustment Side *
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              {/* DEBIT */}
+              <button type="button"
+                onClick={() => setFormData({...formData, adjustmentSide:'DEBIT'})}
+                style={{
+                  padding:'14px 0',
+                  borderRadius:14,
+                  border: isDebit ? '2px solid #ef4444' : '2px solid #f1f5f9',
+                  background: isDebit ? '#fff1f2' : '#f8f9fb',
+                  color: isDebit ? '#ef4444' : '#94a3b8',
+                  fontWeight:800, fontSize:14, cursor:'pointer',
+                  fontFamily:'inherit', transition:'all 0.15s',
+                  display:'flex', flexDirection:'column', alignItems:'center', gap:4,
+                }}>
+                <span style={{fontSize:22}}>📤</span>
+                <span>DEBIT</span>
+                <span style={{fontSize:10, fontWeight:500, opacity:0.7}}>Goes to Debit col</span>
+              </button>
+
+              {/* CREDIT */}
+              <button type="button"
+                onClick={() => setFormData({...formData, adjustmentSide:'CREDIT'})}
+                style={{
+                  padding:'14px 0',
+                  borderRadius:14,
+                  border: !isDebit ? '2px solid #10b981' : '2px solid #f1f5f9',
+                  background: !isDebit ? '#f0fdf4' : '#f8f9fb',
+                  color: !isDebit ? '#10b981' : '#94a3b8',
+                  fontWeight:800, fontSize:14, cursor:'pointer',
+                  fontFamily:'inherit', transition:'all 0.15s',
+                  display:'flex', flexDirection:'column', alignItems:'center', gap:4,
+                }}>
+                <span style={{fontSize:22}}>📥</span>
+                <span>CREDIT</span>
+                <span style={{fontSize:10, fontWeight:500, opacity:0.7}}>Goes to Credit col</span>
+              </button>
+            </div>
+            {/* Live preview */}
+            <div style={{
+              marginTop:10, padding:'10px 14px', borderRadius:10,
+              background: isDebit ? '#fff1f2' : '#f0fdf4',
+              border: `1px solid ${isDebit ? '#fecdd3' : '#86efac'}`,
+              fontSize:12, fontWeight:600,
+              color: isDebit ? '#ef4444' : '#10b981',
+            }}>
+              {isDebit
+                ? '📤 This amount will appear in DEBIT column (amount going out / charge)'
+                : '📥 This amount will appear in CREDIT column (amount received / refund)'}
+            </div>
           </div>
+
+          {/* Date + Amount */}
           <div className="grid grid-cols-2 gap-4">
-            <FormInput label="Entry Date"  type="date"   value={formData.date}   onChange={(v:string)=>setFormData({...formData,date:v})}  required/>
-            <FormInput label="Entry Type"  type="select" options={['PAYMENT','ADJUSTMENT']} value={formData.type} onChange={(v:string)=>setFormData({...formData,type:v})} required/>
+            <FormInput label="Entry Date" type="date" value={formData.date}
+              onChange={(v:string)=>setFormData({...formData,date:v})} required/>
+            <FormInput label="Amount (₹)" type="number" value={formData.amount}
+              onChange={(v:string)=>setFormData({...formData,amount:parseFloat(v)||0})} required/>
           </div>
-          <FormInput label="Adjustment Amount" type="number" value={formData.amount}     onChange={(v:string)=>setFormData({...formData,amount:parseFloat(v)||0})} required/>
-          <FormInput label="Particular"                      value={formData.particular} onChange={(v:string)=>setFormData({...formData,particular:v})} required/>
+
+          {/* Particular */}
+          <FormInput label="Particular" value={formData.particular}
+            onChange={(v:string)=>setFormData({...formData,particular:v})} required/>
+
+          {/* Notes */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-1">Notes / Remarks</label>
-            <textarea className="form-input-saas min-h-[100px] py-3 h-auto"
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-1">Notes</label>
+            <textarea className="form-input-saas min-h-[80px] py-3 h-auto"
               value={formData.notes} onChange={e=>setFormData({...formData,notes:e.target.value})}
-              placeholder="e.g. Received from client or manual reconciliation"/>
+              placeholder="Reason for adjustment..."/>
           </div>
+
+          {/* Submit */}
           <button type="submit" disabled={loading}
-            className="w-full py-4 bg-slate-800 text-white rounded-2xl font-bold hover:bg-slate-900 transition-all shadow-xl shadow-slate-200 flex items-center justify-center gap-2">
+            style={{
+              width:'100%', padding:'14px 0', borderRadius:16,
+              background: isDebit ? '#ef4444' : '#10b981',
+              color:'#fff', fontWeight:800, fontSize:15,
+              border:'none', cursor:loading?'wait':'pointer',
+              fontFamily:'inherit', display:'flex', alignItems:'center',
+              justifyContent:'center', gap:8, transition:'all 0.15s',
+            }}>
             {loading ? <Loader2 size={18} className="animate-spin"/> : <ShieldCheck size={18}/>}
-            {loading ? 'Processing...' : 'Save Manual Entry'}
+            {loading ? 'Saving...' : `Save ${formData.adjustmentSide} Adjustment`}
           </button>
         </form>
       </motion.div>
