@@ -2,21 +2,38 @@ import { Eye, Edit2, Trash2, Search, ReceiptIndianRupee, Building2 } from 'lucid
 import { cn } from '@/lib/utils';
 import { type Invoice, type Company } from '../../src/types';
 
+// Predefined charge types + dynamic from data
+const DEFAULT_PARTICULARS = [
+  'Rental Charges',
+  'Common Area Maintenance',
+  'Electricity Charges',
+  'Water Charges',
+  'Parking Charges',
+  'Security Deposit',
+  'Generator Charges',
+  'Housekeeping Charges',
+  'Property Tax',
+  'Insurance',
+];
+
 interface Props {
-  invoices:      Invoice[];
-  companies:     Company[];
-  loading:       boolean;
-  search:        string;
-  statusFilter:  string;
-  monthFilter:   string;
-  companyFilter: string;
-  onSearch:      (v: string) => void;
-  onStatus:      (v: string) => void;
-  onMonth:       (v: string) => void;
-  onCompany:     (v: string) => void;
-  onView:        (inv: Invoice) => void;
-  onEdit:        (inv: Invoice) => void;
-  onDelete:      (inv: Invoice) => void;
+  invoices:         Invoice[];
+  companies:        Company[];
+  particulars:      string[];
+  loading:          boolean;
+  search:           string;
+  statusFilter:     string;
+  monthFilter:      string;
+  companyFilter:    string;
+  particularFilter: string;
+  onSearch:         (v: string) => void;
+  onStatus:         (v: string) => void;
+  onMonth:          (v: string) => void;
+  onCompany:        (v: string) => void;
+  onParticular:     (v: string) => void;
+  onView:           (inv: Invoice) => void;
+  onEdit:           (inv: Invoice) => void;
+  onDelete:         (inv: Invoice) => void;
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -42,9 +59,12 @@ const COL_STYLES = {
 };
 
 export function InvoiceTable({
-  invoices, companies, loading, search, statusFilter, monthFilter, companyFilter,
-  onSearch, onStatus, onMonth, onCompany, onView, onEdit, onDelete
+  invoices, companies, particulars, loading, search,
+  statusFilter, monthFilter, companyFilter, particularFilter,
+  onSearch, onStatus, onMonth, onCompany, onParticular, onView, onEdit, onDelete
 }: Props) {
+  // Merge default + dynamic particulars, deduplicate
+  const allTypes = Array.from(new Set([...DEFAULT_PARTICULARS, ...particulars])).sort();
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
 
@@ -66,6 +86,20 @@ export function InvoiceTable({
             <option value="All Companies">All Companies</option>
             {companies.map(c=>(
               <option key={c.id} value={c.id||c.companyName}>{c.companyName}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Particular / Charge Type Filter */}
+        <div style={{ display:'flex', alignItems:'center', gap:6, height:38, background:'#f8f9fb', border:'1.5px solid #f0f2f5', borderRadius:10, padding:'0 12px', minWidth:170 }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="2.5">
+            <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+          </svg>
+          <select value={particularFilter} onChange={e=>onParticular(e.target.value)}
+            style={{ border:'none', outline:'none', fontSize:12, color:'#5a6474', background:'transparent', fontFamily:'inherit', cursor:'pointer', flex:1 }}>
+            <option value="All Types">All Charge Types</option>
+            {allTypes.map(p=>(
+              <option key={p} value={p}>{p}</option>
             ))}
           </select>
         </div>
@@ -163,13 +197,19 @@ export function InvoiceTable({
                     <p style={{ fontSize:13, fontWeight:700, color:'#1a1a2e', margin:'0 0 2px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                       {inv.partyName}
                     </p>
-                    <div style={{ display:'flex', alignItems:'center', gap:4, marginBottom:1 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:4, marginBottom:2 }}>
                       <Building2 size={9} color="#9ba8b5"/>
                       <span style={{ fontSize:10, color:'#9ba8b5', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                         {inv.company}
                       </span>
                     </div>
-                    <p style={{ fontSize:10, color:'#c5cdd6', margin:0 }}>{inv.billDate}</p>
+                    {/* Charge type badge */}
+                    {inv.items?.[0]?.particular && (
+                      <span style={{ fontSize:9, fontWeight:700, color:'#f97316', background:'rgba(249,115,22,0.08)', border:'1px solid rgba(249,115,22,0.15)', borderRadius:5, padding:'1px 7px', display:'inline-block' }}>
+                        {inv.items[0].particular}
+                      </span>
+                    )}
+                    <p style={{ fontSize:10, color:'#c5cdd6', margin:'2px 0 0' }}>{inv.billDate}</p>
                   </td>
 
                   {/* Amount */}

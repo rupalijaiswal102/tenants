@@ -457,25 +457,28 @@ export default function TenantFormPage() {
                             <p style={{ fontSize:11, color:'#16a34a', margin:'2px 0 0', fontWeight:500 }}>File uploaded previously</p>
                           </div>
                         </div>
-                        <div style={{ display:'flex', gap:8 }}>
-                          <button type="button" onClick={async () => {
-                              const url = watch('agreementFileUrl');
-                              if (!url) return;
-                              try {
-                                const base = (import.meta as any).env?.VITE_API_URL || '';
-                                const full = url.startsWith('http') ? url : `${base}${url}`;
-                                const r = await fetch(full, { headers: { Authorization: `Bearer ${JSON.parse(localStorage.getItem('neoteric_auth')||'{}')?.token||''}` } });
-                                if (!r.ok) throw new Error('Failed');
-                                const blob = await r.blob();
-                                window.open(URL.createObjectURL(blob), '_blank');
-                              } catch { alert('Could not open file'); }
-                            }}
-                            style={{ padding:'6px 14px', background:'#fff', border:'1px solid #86efac', borderRadius:8, fontSize:11, fontWeight:700, color:'#16a34a', cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', gap:5 }}>
+                        <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+                          <a href={`${(import.meta as any).env?.VITE_API_URL||''}${watch('agreementFileUrl')}`}
+                             target="_blank"
+                             rel="noopener noreferrer"
+                             style={{ padding:'6px 14px', background:'#fff', border:'1px solid #86efac', borderRadius:8, fontSize:11, fontWeight:700, color:'#16a34a', textDecoration:'none', display:'flex', alignItems:'center', gap:5 }}>
                             👁 View
-                          </button>
+                          </a>
                           <button type="button" onClick={() => fileInputRef.current?.click()}
                             style={{ padding:'6px 14px', background:'#f97316', border:'none', borderRadius:8, fontSize:11, fontWeight:700, color:'#fff', cursor:'pointer', fontFamily:'inherit' }}>
-                            Replace
+                            🔄 Replace
+                          </button>
+                          {/* Delete document button */}
+                          <button type="button"
+                            onClick={() => {
+                              if (window.confirm('Are you sure you want to delete this document?')) {
+                                setValue('agreementFileUrl', '');
+                                setValue('agreementFileType', '');
+                                toast.success('Document removed. Save to confirm deletion.');
+                              }
+                            }}
+                            style={{ padding:'6px 10px', background:'#fff1f2', border:'1.5px solid #fecdd3', borderRadius:8, fontSize:11, fontWeight:700, color:'#e11d48', cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', gap:4 }}>
+                            🗑 Delete
                           </button>
                         </div>
                       </div>

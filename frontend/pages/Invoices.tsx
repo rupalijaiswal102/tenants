@@ -23,6 +23,7 @@ export default function InvoiceList() {
   const [statusFilter,    setStatusFilter]    = useState('All Status');
   const [monthFilter,     setMonthFilter]     = useState('All Months');
   const [companyFilter,   setCompanyFilter]   = useState('All Companies');
+  const [particularFilter, setParticularFilter] = useState('All Types');
   const [showForm,        setShowForm]        = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice|null>(null);
   const [editingInvoice,  setEditingInvoice]  = useState<Invoice|null>(null);
@@ -79,17 +80,29 @@ export default function InvoiceList() {
   };
 
   // ── Filter ──────────────────────────────────────────────────────────────────
+  // All unique particulars from all invoices
+  const allParticulars = Array.from(new Set(
+    invoices.flatMap(inv =>
+      inv.items?.map((it: any) => it.particular).filter(Boolean) || []
+    )
+  )).sort() as string[];
+
   const filtered = invoices.filter(inv => {
     const q  = search.toLowerCase();
     const mQ = inv.invoiceNo.toLowerCase().includes(q) ||
                inv.partyName.toLowerCase().includes(q) ||
                inv.company.toLowerCase().includes(q);
-    const mS = statusFilter   === 'All Status'    || inv.paymentStatus === statusFilter;
-    const mM = monthFilter    === 'All Months'    || (inv.billDate && new Date(inv.billDate).getMonth() === parseInt(monthFilter));
-    const mC = companyFilter  === 'All Companies' ||
-               inv.companyId  === companyFilter   ||
-               inv.company    === companyFilter;
-    return mQ && mS && mM && mC;
+    const mS = statusFilter    === 'All Status'    || inv.paymentStatus === statusFilter;
+    const mM = monthFilter     === 'All Months'    || (inv.billDate && new Date(inv.billDate).getMonth() === parseInt(monthFilter));
+    const mC = companyFilter   === 'All Companies' ||
+               inv.companyId   === companyFilter   ||
+               inv.company     === companyFilter;
+    // Particular filter — match any item in invoice
+    const mP = particularFilter === 'All Types' ||
+               (inv.items?.some((it: any) =>
+                 it.particular?.toLowerCase().includes(particularFilter.toLowerCase())
+               ));
+    return mQ && mS && mM && mC && mP;
   });
 
   const totalInvoiced    = filtered.reduce((a,i) => a+(i.totalInvoice||0), 0);
@@ -134,10 +147,13 @@ export default function InvoiceList() {
         statusFilter={statusFilter}
         monthFilter={monthFilter}
         companyFilter={companyFilter}
+        particularFilter={particularFilter}
+        particulars={allParticulars}
         onSearch={setSearch}
         onStatus={setStatusFilter}
         onMonth={setMonthFilter}
         onCompany={setCompanyFilter}
+        onParticular={setParticularFilter}
         onView={setSelectedInvoice}
         onEdit={setEditingInvoice}
         onDelete={setDeletingInvoice}
