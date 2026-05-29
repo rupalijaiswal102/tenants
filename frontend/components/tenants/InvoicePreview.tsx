@@ -49,11 +49,11 @@ export function InvoicePreview({ invoice, tenant, company }: Props) {
       </div>
 
       {/* ── INVOICE Title — only top border ── */}
-      <div style={{ borderTop:'1.5px solid #c8c8c8', textAlign:'center', padding:'10px 0 10px', margin:'0 0 20px' }}>
+      <div style={{ borderTop:'1.5px solid #c8c8c8', textAlign:'center', padding:'10px 0 14px', margin:'0 0 20px' }}>
         <span style={{ fontSize:22, fontWeight:700, letterSpacing:'0.38em', color:'#8a8a8a' }}>INVOICE</span>
       </div>
 
-      {/* ── Bill To / Ship To / Invoice Details ── */}
+      {/* ── Bill To / Ship To / Invoice Details — no top border ── */}
       <div style={{ display:'grid', gridTemplateColumns:'1.4fr 1fr 0.9fr', gap:12, marginBottom:20, fontSize:10.5 }}>
 
         {/* Bill To */}
@@ -111,7 +111,7 @@ export function InvoicePreview({ invoice, tenant, company }: Props) {
       </div>
 
       {/* ── Items Table ── */}
-      <table style={{ width:'100%', borderCollapse:'collapse', marginBottom:20 }}>
+      <table style={{ width:'100%', borderCollapse:'collapse', marginBottom:20, borderTop:'none' }}>
         <thead>
           <tr>
             {[
@@ -123,7 +123,7 @@ export function InvoicePreview({ invoice, tenant, company }: Props) {
               {h:'To',         w:'11%', right:false},
               {h:'Amount',     w:'13%', right:true },
             ].map(({h, w, right}) => (
-              <th key={h} style={{ padding:'9px 10px', fontSize:10.5, fontWeight:700, color:'#fff', backgroundColor:'#232323', textAlign:right?'right':'left', whiteSpace:'nowrap', width:w }}>
+              <th key={h} style={{ padding:'9px 10px', fontSize:10.5, fontWeight:700, color:'#fff', backgroundColor:'#555555', textAlign:right?'right':'left', whiteSpace:'nowrap', width:w }}>
                 {h}
               </th>
             ))}
@@ -142,7 +142,7 @@ export function InvoicePreview({ invoice, tenant, company }: Props) {
             </tr>
           ))}
           {/* Total row — "Total" under Particular column */}
-          <tr style={{ borderTop:'2px solid #1a1a1a' }}>
+          <tr style={{ borderTop:'1.5px solid #aaaaaa', borderBottom:'1.5px solid #d0d0d0' }}>
             <td style={{ padding:'9px 10px' }}/>
             <td style={{ padding:'9px 10px', fontWeight:800, fontSize:12, textAlign:'left', color:'#1a1a1a' }}>Total</td>
             <td colSpan={4} style={{ padding:'9px 10px' }}/>
@@ -190,7 +190,7 @@ export function InvoicePreview({ invoice, tenant, company }: Props) {
               <span style={{ fontWeight:600, color:dk }}>{formatCurrencyExact(Math.abs(v))}</span>
             </div>
           ))}
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', background:'#232323', padding:'9px 12px', marginTop:8 }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', background:'#555555', padding:'9px 12px', marginTop:8 }}>
             <span style={{ fontWeight:700, fontSize:12, letterSpacing:'0.05em', color:'#fff' }}>Total</span>
             <span style={{ fontWeight:800, fontSize:14, color:'#fff' }}>{formatCurrencyExact(d.fin)}</span>
           </div>
@@ -218,51 +218,49 @@ export function InvoicePreview({ invoice, tenant, company }: Props) {
             For : {company?.companyName||invoice.company}
           </p>
 
-          {/* Signature + Seal side by side */}
-          <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:10 }}>
-
-            {/* Signature box */}
-            <div style={{ width:88, height:56, border:'1px solid #e8e8e8', borderRadius:6, display:'flex', alignItems:'center', justifyContent:'center', background:'#fafafa' }}>
-              {invoice.approved && invoice.signatureImage ? (
-                <img src={invoice.signatureImage} alt="Signature"
-                  style={{ maxWidth:82, maxHeight:50, objectFit:'contain' }}/>
-              ) : (
-                <span style={{ fontSize:9, color:'#ccc' }}>Signature</span>
+          {/* Signature + Seal — ONLY when approved */}
+          {invoice.approved ? (
+            <>
+              <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:8 }}>
+                {/* Signature image */}
+                {invoice.signatureImage && (
+                  <img src={invoice.signatureImage} alt="Signature"
+                    style={{ maxWidth:88, maxHeight:50, objectFit:'contain' }}/>
+                )}
+                {/* Circular Seal */}
+                <div style={{
+                  width:64, height:64, borderRadius:'50%',
+                  border:'2px solid #1a1a2e',
+                  display:'flex', flexDirection:'column',
+                  alignItems:'center', justifyContent:'center',
+                  position:'relative', overflow:'hidden',
+                  background:'#fff', flexShrink:0,
+                }}>
+                  <div style={{ position:'absolute', inset:4, borderRadius:'50%', border:'1px solid #1a1a2e' }}/>
+                  {company?.logoUrl ? (
+                    <img src={company.logoUrl} alt="Seal" referrerPolicy="no-referrer"
+                      style={{ width:52, height:52, objectFit:'contain', borderRadius:'50%', position:'relative', zIndex:1 }}/>
+                  ) : (
+                    <>
+                      <p style={{ ...p0, fontSize:16, fontWeight:900, color:'#1a1a2e', lineHeight:1, position:'relative', zIndex:1 }}>
+                        {(company?.companyName||invoice.company).split(' ').map((w:string)=>w[0]?.toUpperCase()||'').slice(0,3).join('')}
+                      </p>
+                      <p style={{ ...p0, fontSize:5.5, fontWeight:700, color:'#1a1a2e', textAlign:'center', maxWidth:50, wordBreak:'break-word', lineHeight:1.3, position:'relative', zIndex:1, marginTop:2 }}>
+                        {(company?.companyName||invoice.company).toUpperCase().slice(0,18)}
+                      </p>
+                    </>
+                  )}
+                </div>
+              </div>
+              {invoice.approvedBy && (
+                <p style={{ ...p0, fontSize:8, color:'#10b981', fontWeight:600, marginBottom:6 }}>
+                  ✓ Approved by: {invoice.approvedBy}
+                </p>
               )}
-            </div>
-
-            {/* Circular Seal */}
-            <div style={{
-              width:64, height:64, borderRadius:'50%',
-              border:'2px solid #1a1a2e',
-              display:'flex', flexDirection:'column',
-              alignItems:'center', justifyContent:'center',
-              position:'relative', overflow:'hidden',
-              background:'#fff', flexShrink:0,
-            }}>
-              {/* Inner ring */}
-              <div style={{ position:'absolute', inset:4, borderRadius:'50%', border:'1px solid #1a1a2e' }}/>
-              {company?.logoUrl ? (
-                <img src={company.logoUrl} alt="Seal" referrerPolicy="no-referrer"
-                  style={{ width:52, height:52, objectFit:'contain', borderRadius:'50%', position:'relative', zIndex:1 }}/>
-              ) : (
-                <>
-                  <p style={{ ...p0, fontSize:16, fontWeight:900, color:'#1a1a2e', lineHeight:1, position:'relative', zIndex:1 }}>
-                    {(company?.companyName||invoice.company).split(' ').map((w:string)=>w[0]?.toUpperCase()||'').slice(0,3).join('')}
-                  </p>
-                  <p style={{ ...p0, fontSize:5.5, fontWeight:700, color:'#1a1a2e', textAlign:'center', maxWidth:50, wordBreak:'break-word', lineHeight:1.3, position:'relative', zIndex:1, marginTop:2 }}>
-                    {(company?.companyName||invoice.company).toUpperCase().slice(0,18)}
-                  </p>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Approved by line (small, below signature) */}
-          {invoice.approved && invoice.approvedBy && (
-            <p style={{ ...p0, fontSize:8, color:'#10b981', fontWeight:600, marginBottom:4 }}>
-              ✓ Approved by: {invoice.approvedBy}
-            </p>
+            </>
+          ) : (
+            /* Not approved — blank space */
+            <div style={{ height:70 }}/>
           )}
 
           {/* Separator line + Authorized Signatory */}
