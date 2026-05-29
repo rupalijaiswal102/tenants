@@ -7,7 +7,7 @@ import { generateLedgerPDF } from './ledgerPdf';
 import { type Tenant, type Company, type Invoice, type LedgerEntry, type LedgerSummary } from '../../src/types';
 import { exportToExcel } from '../../src/lib/exportUtils';
 import { InvoiceFormModal, ViewInvoiceModal } from './InvoiceModals';
-import { OpeningAdjustmentModal, PaymentEntryModal } from './PaymentModals';
+import { OpeningAdjustmentModal, PaymentEntryModal, EditAdjustmentModal } from './PaymentModals';
 import { TenantOverviewTab }              from './TenantOverviewTab';
 import { TenantLedgerTab }               from './TenantLedgerTab';
 import { TenantBillingTab, TenantLeaseTab, TenantDocumentsTab } from './TenantLeaseDocsTab';
@@ -33,6 +33,8 @@ export function TenantDetailsView({ tenant, onClose, companies, allTenants }: {
   const [editingInvoice,  setEditingInvoice]  = useState<Invoice | null>(null);
   const [deletingInvoice, setDeletingInvoice] = useState<Invoice | null>(null);
   const [payingInvoice,   setPayingInvoice]   = useState<Invoice | null>(null);
+  const [editingEntry,    setEditingEntry]    = useState<any>(null);
+  const [deletingEntry,   setDeletingEntry]   = useState<any>(null);
   const [exportingExcel,  setExportingExcel]  = useState(false);
   const [exportingPDF,    setExportingPDF]    = useState(false);
   const ledgerRef = useRef<HTMLDivElement>(null);
@@ -73,6 +75,18 @@ export function TenantDetailsView({ tenant, onClose, companies, allTenants }: {
     catch { alert('Failed to delete invoice'); }
   };
 
+  const handleDeleteEntry = async (entry: any) => {
+    if (!window.confirm(`Delete adjustment "${entry.particular}"?`)) return;
+    try {
+      const apiBase = (import.meta as any).env?.VITE_API_URL || '';
+      await axios.delete(`${apiBase}/api/ledger/entry/${entry.id}`);
+      toast.success('Adjustment deleted!');
+      fetchLedger(); fetchDetails();
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Delete failed');
+    }
+  };
+
   const handleExportExcel = () => {
     if (!ledgerData) return toast.error('Ledger not loaded');
     setExportingExcel(true);
@@ -109,7 +123,7 @@ export function TenantDetailsView({ tenant, onClose, companies, allTenants }: {
     <div style={{ minHeight:'100vh', background:'#F5F7FA' }}>
 
       {/* ── Sticky Header ── */}
-      <div style={{ position:'sticky', top:0, zIndex:50, background:'#fff', borderBottom:'1px solid #f0f2f5', boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
+      <div style={{ position:'sticky', top:58, zIndex:50, background:'#fff', borderBottom:'1px solid #f0f2f5', boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
         <div style={{ maxWidth:1200, margin:'0 auto', padding:'0 20px' }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', height:60 }}>
             <div style={{ display:'flex', alignItems:'center', gap:14 }}>
@@ -124,7 +138,14 @@ export function TenantDetailsView({ tenant, onClose, companies, allTenants }: {
                 <p style={{ fontSize:10, color:'#9ba8b5', margin:0 }}>{tenant.code} · {tenant.company}</p>
               </div>
             </div>
-            
+            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+              <button onClick={() => setShowOpeningAdj(true)} style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 14px', background:'#fffbeb', border:'1.5px solid #fde68a', borderRadius:10, cursor:'pointer', fontSize:12, fontWeight:700, color:'#b45309', fontFamily:'inherit' }}>
+                <Plus size={13}/> Adjustment
+              </button>
+              <button onClick={() => setEditingInvoice({} as Invoice)} style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 16px', background:'#f97316', border:'none', borderRadius:10, cursor:'pointer', fontSize:12, fontWeight:700, color:'#fff', fontFamily:'inherit' }}>
+                <Plus size={13}/> Invoice
+              </button>
+            </div>
           </div>
 
           {/* Tab Bar */}
@@ -161,6 +182,8 @@ export function TenantDetailsView({ tenant, onClose, companies, allTenants }: {
               onAdjustment={() => setShowOpeningAdj(true)}
               onExportExcel={handleExportExcel}
               onExportPDF={handleExportPDF}
+              onEditEntry={setEditingEntry}
+              onDeleteEntry={handleDeleteEntry}
             />
           )}
 
@@ -216,6 +239,11 @@ export function TenantDetailsView({ tenant, onClose, companies, allTenants }: {
               </div>
             </div>
           </div>
+        )}
+        {editingEntry && (
+          <EditAdjustmentModal entry={editingEntry}
+            onClose={() => setEditingEntry(null)}
+            onSuccess={() => { setEditingEntry(null); fetchLedger(); fetchDetails(); }}/>
         )}
         {payingInvoice && (
           <PaymentEntryModal invoice={payingInvoice}

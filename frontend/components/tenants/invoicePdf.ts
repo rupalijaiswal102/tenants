@@ -90,9 +90,9 @@ export function generateInvoicePDF(invoice: Invoice, tenant?: Tenant, company?: 
   S(8.5,'normal',70,70,70);
   [
     ...(tenant?.billingAddress||'').split('\n').filter(Boolean),
-    `GSTIN : ${tenant?.gstNo||'Unregistered'}`,
+    ...(tenant?.gstNo && tenant.gstNo !== 'Unregistered' ? [`GSTIN : ${tenant.gstNo}`] : []),
     'State: 23-Madhya Pradesh',
-    `Security Deposit : ${tenant?.securityDeposit?`${tenant.securityDeposit}/-`:'-'}`,
+    ...(tenant?.securityDeposit && Number(tenant.securityDeposit) > 0 ? [`Security Deposit : ${tenant.securityDeposit}/-`] : []),
     ...(tenant?.leaseStart?[`Rent Start Date : ${d.lng(tenant.leaseStart)}`]:[]),
     ...(tenant?.leaseEnd?[`Agreement End Date: ${d.lng(tenant.leaseEnd)}`]:[]),
     ...(tenant?.nextEscalationDate?[`Rent Escalation : ${new Date(tenant.nextEscalationDate).toLocaleDateString('en-GB')}`]:[]),
@@ -114,6 +114,18 @@ export function generateInvoicePDF(invoice: Invoice, tenant?: Tenant, company?: 
   S(8.5,'normal',70,70,70);
   [`Invoice No. : ${invoice.invoiceNo}`, `Date : ${d.fmt(d.bd)}`, `Due Date : ${d.fmt(d.due)}`]
     .forEach(l=>{ pdf.text(l, c3-pdf.getTextWidth(l), iy); iy+=4.8; });
+  // CRM Contact — no line, simple format
+  const inv = invoice as any;
+  if (inv.crmName || inv.crmPhone || inv.crmEmail) {
+    S(8.5,'normal',70,70,70);
+    iy+=2; // small gap only
+    if (inv.crmName)  { const t=`CRM : ${inv.crmName}`;    pdf.text(t, c3-pdf.getTextWidth(t), iy); iy+=4.5; }
+    if (inv.crmPhone) { const t=`Phone : ${inv.crmPhone}`; pdf.text(t, c3-pdf.getTextWidth(t), iy); iy+=4.5; }
+    if (inv.crmEmail) {
+      const emailLines = pdf.splitTextToSize(`Email : ${inv.crmEmail}`, cw*0.28);
+      emailLines.forEach((l:string) => { pdf.text(l, c3-pdf.getTextWidth(l), iy); iy+=4; });
+    }
+  }
 
   y = Math.max(y, sy, iy) + 7;
 
@@ -149,13 +161,14 @@ export function generateInvoicePDF(invoice: Invoice, tenant?: Tenant, company?: 
     y+=RH;
   });
 
-  // Total row
+  // Total row — "Total" under Particular column, amount right-aligned
   pdf.setDrawColor(35,35,35); pdf.setLineWidth(0.8); pdf.line(mg, y, mg+cw, y); y+=2;
   S(9,'bold',26,26,26);
   const totStr = fmtAmt(d.base);
-  // "Total" text aligned before last column
-  const totalLabelX = mg + COLS.slice(0,5).reduce((a,b)=>a+b,0) + 2;
-  pdf.text('Total', totalLabelX, y+5.5);
+  // "Total" text under Particular column (col 1 = after # col)
+  const particularColX = mg + COLS[0] + 2.5;   // under Particular column
+  pdf.text('Total', particularColX, y+5.5);
+  // Amount right-aligned in last column
   pdf.text(totStr, mg+cw-pdf.getTextWidth(totStr)-2, y+5.5);
   y+=14;
 
@@ -180,7 +193,8 @@ export function generateInvoicePDF(invoice: Invoice, tenant?: Tenant, company?: 
   pdf.text('Late payment penalty charges # 1.5% Per Month', lX, ly);
 
   // GST rows — no border lines
-  [{l:'Sub Total',v:d.base},{l:`SGST@${d.tax}%`,v:d.sgst},{l:`CGST@${d.tax}%`,v:d.cgst},{l:'Round off',v:d.ro}]
+  [{l:'Sub Total',v:d.base,always:true},{l:`CGST@${d.tax}%`,v:d.cgst,always:false},{l:`SGST@${d.tax}%`,v:d.sgst,always:false},{l:'Round off',v:d.ro,always:true}]
+    .filter(row => row.always || row.v > 0)  // hide 0 GST rows in PDF
     .forEach(({l,v})=>{
       const vs = fmtAmt(v);
       S(9,'normal',80,80,80); pdf.text(l, rX, ry+5);
@@ -196,27 +210,87 @@ export function generateInvoicePDF(invoice: Invoice, tenant?: Tenant, company?: 
 
   y = Math.max(ly, ry+10) + 12;
 
-  // ── 6. Pay To + Signature ─────────────────────────────────────────────────
-  pdf.setDrawColor(190,190,190); pdf.setLineWidth(0.4); pdf.line(mg, y, mg+cw, y); y+=9;
+  // ── 6. Pay To + Signature + Seal (matches Preview exactly) ─────────────────
+  
+  const payX = mg;
+  const sigX = mg + cw * 0.62;
+  let payY   = y;
+  let sigY   = y;
 
-  const payX=mg, sigX=mg+cw*0.62;
-  let payY=y, sigY=y;
-
+  // Pay To — left column
   S(10.5,'bold',26,26,26); pdf.text('Pay To:', payX, payY); payY+=6;
   S(8.5,'normal',26,26,26);
   [
-    `Bank Name : ${company?.bankName||'N/A'}`,
-    `Bank Account No. : ${company?.accountNumber||'N/A'}`,
-    `Bank IFSC code : ${company?.ifscCode||'N/A'}`,
-    `Account holder's name : ${company?.accountHolderName||company?.companyName||invoice.company}`,
-  ].forEach(l=>{ pdf.text(l, payX, payY); payY+=5; });
+    { label: `Bank Name : ${company?.bankName||'N/A'}`, multiline: true  },
+    { label: `Bank Account No. : ${company?.accountNumber||'N/A'}`, multiline: false },
+    { label: `Bank IFSC code : ${company?.ifscCode||'N/A'}`,        multiline: false },
+    { label: `Account holder's name : ${company?.accountHolderName||company?.companyName||invoice.company}`, multiline: false },
+  ].forEach(item => {
+    if (item.multiline) {
+      pdf.splitTextToSize(item.label, cw * 0.55)
+        .forEach((l:string) => { pdf.text(l, payX, payY); payY+=4.5; });
+    } else {
+      pdf.text(item.label, payX, payY); payY+=5;
+    }
+  });
 
-  // Signature — empty space for physical seal
+  // ── For: Company Name ──────────────────────────────────────────────────────
   S(9,'normal',26,26,26);
-  pdf.text(`For :${company?.companyName||invoice.company}`, sigX, sigY); sigY+=20;
-  // Empty seal space (no circle, no logo)
-  sigY+=7;
+  pdf.text(`For : ${company?.companyName||invoice.company}`, sigX, sigY); sigY+=8;
+
+  // ── Signature box (left) + Circular Seal (right) ─────────────────────────
+  const signBoxX = sigX;
+  const signBoxW = 28, signBoxH = 18;
+  const sealCX   = sigX + signBoxW + 8 + 12;  // seal center X
+  const sealCY   = sigY + 12;                   // seal center Y
+  const sealR    = 12;                           // seal radius mm
+
+  // Signature box border
+  pdf.setDrawColor(220,220,220); pdf.setLineWidth(0.3);
+  pdf.rect(signBoxX, sigY, signBoxW, signBoxH);
+
+  // Draw digital signature inside box if approved
+  if ((invoice as any).approved && (invoice as any).signatureImage) {
+    try {
+      pdf.addImage(
+        (invoice as any).signatureImage, 'PNG',
+        signBoxX+1, sigY+1, signBoxW-2, signBoxH-2
+      );
+    } catch {}
+  }
+
+  // ── Circular company seal ─────────────────────────────────────────────────
+  pdf.setDrawColor(26,26,26); pdf.setLineWidth(0.7);
+  pdf.circle(sealCX, sealCY, sealR);           // outer circle
+  pdf.setLineWidth(0.3);
+  pdf.circle(sealCX, sealCY, sealR - 2);       // inner ring
+
+  if (company?.logoUrl) {
+    try {
+      pdf.addImage(
+        company.logoUrl, 'PNG',
+        sealCX - (sealR-3), sealCY - (sealR-3),
+        (sealR-3)*2, (sealR-3)*2
+      );
+    } catch {}
+  } else {
+    // Company initials
+    const initials = (company?.companyName||invoice.company)
+      .split(' ').map((w:string) => w[0]?.toUpperCase()||'').slice(0,3).join('');
+    S(9,'bold',26,26,26);
+    pdf.text(initials, sealCX - pdf.getTextWidth(initials)/2, sealCY+1);
+    S(4.5,'bold',26,26,26);
+    const shortName = (company?.companyName||invoice.company).toUpperCase().slice(0,16);
+    pdf.text(shortName, sealCX - pdf.getTextWidth(shortName)/2, sealCY+6);
+  }
+
+  sigY += signBoxH + 5;
+
+  // Approved by (small text, green)
   
+
+  // Line + Authorized Signatory
+ 
   S(9,'bold',26,26,26); pdf.text('Authorized Signatory', sigX, sigY);
 
   pdf.save(`Invoice_${invoice.invoiceNo}.pdf`);

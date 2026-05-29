@@ -522,3 +522,31 @@ export const getNextInvoiceNo = async (req: Request, res: Response) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// ── Approve Invoice with Digital Signature ───────────────────────────────────
+export const approveInvoice = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { approvedBy, signatureImage } = req.body;
+
+    if (!signatureImage) {
+      return res.status(400).json({ error: 'Signature is required' });
+    }
+
+    const invoice = await Invoice.findByIdAndUpdate(
+      id,
+      {
+        approved:       true,
+        approvedBy:     approvedBy || 'Authorized Signatory',
+        approvedAt:     new Date().toISOString(),
+        signatureImage: signatureImage,
+      },
+      { new: true }
+    );
+
+    if (!invoice) return res.status(404).json({ error: 'Invoice not found' });
+    res.json({ message: 'Invoice approved successfully', invoice });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};

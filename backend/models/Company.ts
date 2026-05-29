@@ -12,7 +12,9 @@ const companySchema = new mongoose.Schema({
   accountNumber: String,
   ifscCode: String,
   accountHolderName: String,
-  logoUrl: String,
+  logoUrl:      String,
+  sealUrl:      String,   // Company seal image
+  signatureUrl: String,   // Pre-uploaded signature
   status: { type: Boolean, default: true },
 }, { timestamps: true });
 

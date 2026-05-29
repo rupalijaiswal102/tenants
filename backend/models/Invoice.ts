@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 
 const invoiceSchema = new mongoose.Schema({
-  invoiceNo:   { type: String },   // ← NO unique here
+  invoiceNo:   { type: String },
   billDate:    String,
   tenantId:    { type: mongoose.Schema.Types.ObjectId, ref: 'Tenant' },
   companyId:   { type: mongoose.Schema.Types.ObjectId, ref: 'Company' },
@@ -35,10 +35,21 @@ const invoiceSchema = new mongoose.Schema({
   latePenaltyAmount:     { type: Number, default: 0 },
   status:                String,
   remarks:               String,
+
+  // ── CRM Contact ──────────────────────────────────────────────────────────
+  crmName:               String,
+  crmPhone:              String,
+  crmEmail:              String,
+
+  // ── Digital Approval / Signature ─────────────────────────────────────────
+  approved:              { type: Boolean, default: false },
+  approvedBy:            String,
+  approvedAt:            String,
+  signatureImage:        String,   // base64 drawn signature
+
 }, { timestamps: true });
 
-// ── Compound unique: same invoiceNo allowed for DIFFERENT companies ───────────
-// GLR: 202627001 ✅  +  Gravity: 202627001 ✅  =  No conflict
+// ── Compound unique: same invoiceNo allowed for DIFFERENT companies ──────────
 invoiceSchema.index(
   { companyId: 1, invoiceNo: 1 },
   { unique: true, sparse: true, name: 'company_invoice_unique' }

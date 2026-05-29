@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Download, FileText, Loader2 } from 'lucide-react';
+import { Plus, Download, FileText, Loader2, Edit2, Trash2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { type Tenant, type Company, type LedgerEntry, type LedgerSummary } from '../../src/types';
 import { TypeBadge } from './TenantPrimitives';
@@ -18,11 +18,14 @@ interface Props {
   onAdjustment:    () => void;
   onExportExcel:   () => void;
   onExportPDF:     () => void;
+  onEditEntry?:    (entry: LedgerEntry) => void;
+  onDeleteEntry?:  (entry: LedgerEntry) => void;
 }
 
 export function TenantLedgerTab({
   tenant, company, ledgerData, ledgerLoading, ledgerRef,
   exportingExcel, exportingPDF, onAdjustment, onExportExcel, onExportPDF,
+  onEditEntry, onDeleteEntry,
 }: Props) {
   return (
     <motion.div key="ld" initial={{opacity:0,y:8}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-8}}
@@ -64,7 +67,7 @@ export function TenantLedgerTab({
           <table style={{ width:'100%', borderCollapse:'collapse' }}>
             <thead style={{ position:'sticky', top:0, background:'#f8f9fb', zIndex:5 }}>
               <tr>
-                {['Date','Particular','Ref No.','Debit','Credit','TDS','Running Balance'].map((h,i) => (
+                {['Date','Particular','Ref No.','Debit','Credit','TDS','Running Balance',''].map((h,i) => (
                   <th key={h} style={{ padding:'10px 16px', fontSize:9, fontWeight:800, color:['','','','#1a1a2e','#10b981','#8b5cf6','#1a1a2e'][i]||'#9ba8b5', textTransform:'uppercase', letterSpacing:'0.08em', borderBottom:'2px solid #f0f2f5', textAlign:i>=3?'right':'left', whiteSpace:'nowrap' }}>{h}</th>
                 ))}
               </tr>
@@ -88,6 +91,21 @@ export function TenantLedgerTab({
                   <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#8b5cf6', textAlign:'right' }}>{e.tds>0?formatCurrency(e.tds):'-'}</td>
                   <td style={{ padding:'11px 16px', fontSize:12, fontWeight:800, textAlign:'right', color:e.runningBalance<0?'#3b82f6':'#1a1a2e' }}>
                     {formatCurrency(Math.abs(e.runningBalance||0))} {e.runningBalance<0?'Cr':'Dr'}
+                  </td>
+                  {/* Edit/Delete — only for ADJUSTMENT entries */}
+                  <td style={{ padding:'11px 10px', width:70 }}>
+                    {e.type === 'ADJUSTMENT' && (
+                      <div style={{ display:'flex', gap:5, justifyContent:'center' }}>
+                        <button type="button" title="Edit" onClick={() => onEditEntry?.(e)}
+                          style={{ width:28, height:28, borderRadius:7, background:'#fffbeb', border:'1px solid #fde68a', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#b45309' }}>
+                          <Edit2 size={12}/>
+                        </button>
+                        <button type="button" title="Delete" onClick={() => onDeleteEntry?.(e)}
+                          style={{ width:28, height:28, borderRadius:7, background:'#fff1f2', border:'1px solid #fecdd3', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#e11d48' }}>
+                          <Trash2 size={12}/>
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}

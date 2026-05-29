@@ -122,3 +122,45 @@ export const createLedgerEntry = async (req: Request, res: Response) => {
     res.status(400).json({ error: err.message });
   }
 };
+
+
+// ── UPDATE Ledger Entry (ADJUSTMENT only) ────────────────────────────────────
+export const updateLedgerEntry = async (req: Request, res: Response) => {
+  try {
+    const { id }  = req.params;
+    const { date, particular, debit, credit, notes } = req.body;
+
+    const entry = await Ledger.findById(id);
+    if (!entry) return res.status(404).json({ error: 'Entry not found' });
+    if (entry.type !== 'ADJUSTMENT') {
+      return res.status(400).json({ error: 'Only ADJUSTMENT entries can be edited' });
+    }
+
+    entry.date       = date       ? new Date(date) : entry.date;
+    entry.particular = particular || entry.particular;
+    entry.debit      = debit  !== undefined ? Number(debit)  : entry.debit;
+    entry.credit     = credit !== undefined ? Number(credit) : entry.credit;
+    entry.notes      = notes  !== undefined ? notes          : entry.notes;
+
+    await entry.save();
+    res.json({ message: 'Entry updated', entry });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// ── DELETE Ledger Entry (ADJUSTMENT only) ────────────────────────────────────
+export const deleteLedgerEntry = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const entry  = await Ledger.findById(id);
+    if (!entry) return res.status(404).json({ error: 'Entry not found' });
+    if (entry.type !== 'ADJUSTMENT') {
+      return res.status(400).json({ error: 'Only ADJUSTMENT entries can be deleted' });
+    }
+    await Ledger.findByIdAndDelete(id);
+    res.json({ message: 'Entry deleted' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};

@@ -8,7 +8,6 @@ import { type Invoice, type Tenant } from '../../src/types';
 import { FormInput } from './TenantPrimitives';
 import { formatCurrency } from '../../src/utils/formatCurrency';
 
-
 // ── Opening Balance Adjustment Modal ─────────────────────────────────────────
 export function OpeningAdjustmentModal({ tenant, onClose, onSuccess }: { tenant: Tenant, onClose: () => void, onSuccess: () => void }) {
   const [loading, setLoading] = useState(false);
@@ -263,6 +262,113 @@ export function PaymentEntryModal({ invoice, onClose, onSuccess }: { invoice: In
             {loading ? 'Processing...' : 'Save Payment & Penalty'}
           </button>
         </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+
+// ── Edit Adjustment Modal ────────────────────────────────────────────────────
+export function EditAdjustmentModal({ entry, onClose, onSuccess }: {
+  entry: any; onClose: () => void; onSuccess: () => void;
+}) {
+  const [loading, setLoading] = useState(false);
+  const isDebit = entry.debit > 0;
+  const [form, setForm] = useState({
+    date:           entry.date?.split('T')[0] || new Date().toISOString().split('T')[0],
+    amount:         entry.debit > 0 ? entry.debit : entry.credit,
+    adjustmentSide: entry.debit > 0 ? 'DEBIT' : 'CREDIT',
+    particular:     entry.particular || 'Adjustment',
+    notes:          entry.notes || '',
+  });
+
+  const side = form.adjustmentSide === 'DEBIT';
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (form.amount <= 0) { toast.error('Amount must be > 0'); return; }
+    setLoading(true);
+    try {
+      const apiBase = (import.meta as any).env?.VITE_API_URL || '';
+      await axios.put(`${apiBase}/api/ledger/entry/${entry.id}`, {
+        date:       form.date,
+        particular: form.particular,
+        debit:      side  ? form.amount : 0,
+        credit:     !side ? form.amount : 0,
+        notes:      form.notes,
+      });
+      toast.success('Adjustment updated!');
+      onSuccess();
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Update failed');
+    } finally { setLoading(false); }
+  };
+
+  return (
+    <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
+      className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <motion.div initial={{scale:0.9,opacity:0,y:20}} animate={{scale:1,opacity:1,y:0}} exit={{scale:0.9,opacity:0,y:20}}
+        className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden flex flex-col">
+
+        <div className="p-6 bg-amber-50 border-b border-amber-100 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center">
+              <History size={20}/>
+            </div>
+            <div>
+              <h3 className="font-black text-slate-800">Edit Adjustment</h3>
+              <p className="text-[10px] font-bold text-amber-700 uppercase tracking-widest">Modify ledger entry</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600"><X size={20}/></button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto">
+
+          {/* Debit / Credit toggle */}
+          <div>
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-1 block mb-2">Adjustment Side *</label>
+            <div className="grid grid-cols-2 gap-3">
+              {(['DEBIT','CREDIT'] as const).map(s => (
+                <button key={s} type="button" onClick={() => setForm({...form, adjustmentSide:s})}
+                  style={{
+                    padding:'12px 0', borderRadius:14, fontFamily:'inherit', cursor:'pointer',
+                    border: form.adjustmentSide===s ? `2px solid ${s==='DEBIT'?'#ef4444':'#10b981'}` : '2px solid #f1f5f9',
+                    background: form.adjustmentSide===s ? (s==='DEBIT'?'#fff1f2':'#f0fdf4') : '#f8f9fb',
+                    color: form.adjustmentSide===s ? (s==='DEBIT'?'#ef4444':'#10b981') : '#94a3b8',
+                    fontWeight:800, fontSize:13, display:'flex', flexDirection:'column', alignItems:'center', gap:3,
+                  }}>
+                  <span style={{fontSize:20}}>{s==='DEBIT'?'📤':'📥'}</span>
+                  <span>{s}</span>
+                </button>
+              ))}
+            </div>
+            <div style={{
+              marginTop:8, padding:'8px 12px', borderRadius:10, fontSize:11, fontWeight:600,
+              background: side ? '#fff1f2' : '#f0fdf4',
+              border: `1px solid ${side ? '#fecdd3' : '#86efac'}`,
+              color: side ? '#ef4444' : '#10b981',
+            }}>
+              {side ? '📤 Will appear in DEBIT column' : '📥 Will appear in CREDIT column'}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <FormInput label="Entry Date"  type="date"   value={form.date}   onChange={(v:string)=>setForm({...form,date:v})} required/>
+            <FormInput label="Amount (₹)"  type="number" value={form.amount} onChange={(v:string)=>setForm({...form,amount:parseFloat(v)||0})} required/>
+          </div>
+          <FormInput label="Particular" value={form.particular} onChange={(v:string)=>setForm({...form,particular:v})} required/>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-1">Notes</label>
+            <textarea className="form-input-saas min-h-[70px] py-3 h-auto"
+              value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} placeholder="Reason..."/>
+          </div>
+          <button type="submit" disabled={loading}
+            style={{ width:'100%', padding:'13px 0', borderRadius:14, background: side ? '#ef4444' : '#10b981', color:'#fff', fontWeight:800, fontSize:14, border:'none', cursor:loading?'wait':'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+            {loading ? <Loader2 size={17} className="animate-spin"/> : <ShieldCheck size={17}/>}
+            {loading ? 'Saving...' : `Update ${form.adjustmentSide} Adjustment`}
+          </button>
+        </form>
       </motion.div>
     </motion.div>
   );

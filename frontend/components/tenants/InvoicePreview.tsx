@@ -66,9 +66,15 @@ export function InvoicePreview({ invoice, tenant, company }: Props) {
             {tenant?.billingAddress && (
               <p style={{ ...p0, whiteSpace:'pre-line', wordBreak:'break-word' }}>{tenant.billingAddress}</p>
             )}
-            <p style={p0}>GSTIN : {tenant?.gstNo||'Unregistered'}</p>
+            {/* GSTIN — hide if empty or Unregistered */}
+            {tenant?.gstNo && tenant.gstNo !== 'Unregistered' && (
+              <p style={p0}>GSTIN : {tenant.gstNo}</p>
+            )}
             <p style={p0}>State: 23-Madhya Pradesh</p>
-            <p style={p0}>Security Deposit : {tenant?.securityDeposit?`${tenant.securityDeposit}/-`:'-'}</p>
+            {/* Security Deposit — hide if 0 or empty */}
+            {tenant?.securityDeposit && Number(tenant.securityDeposit) > 0 && (
+              <p style={p0}>Security Deposit : {tenant.securityDeposit}/-</p>
+            )}
             {tenant?.leaseStart && <p style={p0}>Rent Start Date : {d.lng(tenant.leaseStart)}</p>}
             {tenant?.leaseEnd   && <p style={p0}>Agreement End Date: {d.lng(tenant.leaseEnd)}</p>}
             {tenant?.nextEscalationDate && (
@@ -92,6 +98,14 @@ export function InvoicePreview({ invoice, tenant, company }: Props) {
             <p style={p0}>Invoice No. : {invoice.invoiceNo}</p>
             <p style={p0}>Date : {d.fmt(d.bd)}</p>
             <p style={p0}>Due Date : {d.fmt(d.due)}</p>
+            {/* CRM Contact — show only if filled, no border line */}
+            {(invoice.crmName || invoice.crmPhone || invoice.crmEmail) && (
+              <div style={{ marginTop:6 }}>
+                {invoice.crmName  && <p style={p0}>CRM : {invoice.crmName}</p>}
+                {invoice.crmPhone && <p style={p0}>Phone : {invoice.crmPhone}</p>}
+                {invoice.crmEmail && <p style={p0}>Email : {invoice.crmEmail}</p>}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -127,10 +141,11 @@ export function InvoicePreview({ invoice, tenant, company }: Props) {
               <td style={{ padding:'9px 10px', fontSize:10.5, textAlign:'right' }}>{formatCurrencyExact(item.amount||0)}</td>
             </tr>
           ))}
-          {/* Total row */}
+          {/* Total row — "Total" under Particular column */}
           <tr style={{ borderTop:'2px solid #1a1a1a' }}>
-            <td colSpan={5} style={{ padding:'9px 10px' }}/>
-            <td style={{ padding:'9px 10px', fontWeight:700, fontSize:11, textAlign:'left' }}>Total</td>
+            <td style={{ padding:'9px 10px' }}/>
+            <td style={{ padding:'9px 10px', fontWeight:800, fontSize:12, textAlign:'left', color:'#1a1a1a' }}>Total</td>
+            <td colSpan={4} style={{ padding:'9px 10px' }}/>
             <td style={{ padding:'9px 10px', fontWeight:700, fontSize:13, textAlign:'right' }}>
               {formatCurrencyExact(d.base)}
             </td>
@@ -164,11 +179,12 @@ export function InvoicePreview({ invoice, tenant, company }: Props) {
         {/* GST summary — no border between rows */}
         <div style={{ fontSize:11 }}>
           {[
-            { l:'Sub Total',        v: d.base },
-            { l:`SGST@${d.tax}%`,   v: d.sgst },
-            { l:`CGST@${d.tax}%`,   v: d.cgst },
-            { l:'Round off',        v: d.ro   },
-          ].map(({ l, v }, i) => (
+            { l:'Sub Total',        v: d.base, always: true  },
+            { l:`CGST@${d.tax}%`,   v: d.cgst, always: false },
+            { l:`SGST@${d.tax}%`,   v: d.sgst, always: false },
+            { l:'Round off',        v: d.ro,   always: true  },
+          ].filter(row => row.always || row.v > 0)   // hide GST rows if 0
+           .map(({ l, v }, i) => (
             <div key={i} style={{ display:'flex', justifyContent:'space-between', padding:'4px 0' }}>
               <span style={{ color:gr }}>{l}</span>
               <span style={{ fontWeight:600, color:dk }}>{formatCurrencyExact(Math.abs(v))}</span>
@@ -181,25 +197,77 @@ export function InvoicePreview({ invoice, tenant, company }: Props) {
         </div>
       </div>
 
-      {/* ── Pay To + Signature ── */}
-      <div style={{ borderTop:'1px solid #c8c8c8', paddingTop:18, display:'grid', gridTemplateColumns:'1fr auto', gap:0, fontSize:10.5 }}>
+      {/* ── Pay To + Signature + Seal ── */}
+      <div style={{ borderTop:'1px solid #c8c8c8', paddingTop:16, display:'grid', gridTemplateColumns:'1fr auto', gap:0, fontSize:10.5 }}>
+
+        {/* Pay To — left */}
         <div>
           <p style={{ ...p0, fontWeight:700, fontSize:12, marginBottom:10 }}>Pay To:</p>
           <div style={{ lineHeight:2.0 }}>
-            <p style={p0}>Bank Name : {company?.bankName||'N/A'}</p>
+            <p style={{ ...p0, whiteSpace:'pre-line', wordBreak:'break-word' }}>Bank Name : {company?.bankName||'N/A'}</p>
             <p style={p0}>Bank Account No. : {company?.accountNumber||'N/A'}</p>
             <p style={p0}>Bank IFSC code : {company?.ifscCode||'N/A'}</p>
             <p style={p0}>Account holder's name : {company?.accountHolderName||company?.companyName||invoice.company}</p>
           </div>
         </div>
-        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', minWidth:170, paddingLeft:20 }}>
-          <p style={{ ...p0, fontSize:11, marginBottom:10, alignSelf:'flex-start' }}>
-            For :{company?.companyName||invoice.company}
+
+        {/* Signature + Seal — right */}
+        <div style={{ minWidth:190, paddingLeft:20, display:'flex', flexDirection:'column' }}>
+          {/* For: Company */}
+          <p style={{ ...p0, fontSize:10.5, fontWeight:600, marginBottom:12 }}>
+            For : {company?.companyName||invoice.company}
           </p>
-          {/* Empty space for physical seal */}
-          <div style={{ width:68, height:68, marginBottom:10 }}/>
-          <div style={{ borderTop:'1px solid #bbb', paddingTop:5, textAlign:'center', width:'100%' }}>
-            <p style={{ ...p0, fontSize:11, fontWeight:700 }}>Authorized Signatory</p>
+
+          {/* Signature + Seal side by side */}
+          <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:10 }}>
+
+            {/* Signature box */}
+            <div style={{ width:88, height:56, border:'1px solid #e8e8e8', borderRadius:6, display:'flex', alignItems:'center', justifyContent:'center', background:'#fafafa' }}>
+              {invoice.approved && invoice.signatureImage ? (
+                <img src={invoice.signatureImage} alt="Signature"
+                  style={{ maxWidth:82, maxHeight:50, objectFit:'contain' }}/>
+              ) : (
+                <span style={{ fontSize:9, color:'#ccc' }}>Signature</span>
+              )}
+            </div>
+
+            {/* Circular Seal */}
+            <div style={{
+              width:64, height:64, borderRadius:'50%',
+              border:'2px solid #1a1a2e',
+              display:'flex', flexDirection:'column',
+              alignItems:'center', justifyContent:'center',
+              position:'relative', overflow:'hidden',
+              background:'#fff', flexShrink:0,
+            }}>
+              {/* Inner ring */}
+              <div style={{ position:'absolute', inset:4, borderRadius:'50%', border:'1px solid #1a1a2e' }}/>
+              {company?.logoUrl ? (
+                <img src={company.logoUrl} alt="Seal" referrerPolicy="no-referrer"
+                  style={{ width:52, height:52, objectFit:'contain', borderRadius:'50%', position:'relative', zIndex:1 }}/>
+              ) : (
+                <>
+                  <p style={{ ...p0, fontSize:16, fontWeight:900, color:'#1a1a2e', lineHeight:1, position:'relative', zIndex:1 }}>
+                    {(company?.companyName||invoice.company).split(' ').map((w:string)=>w[0]?.toUpperCase()||'').slice(0,3).join('')}
+                  </p>
+                  <p style={{ ...p0, fontSize:5.5, fontWeight:700, color:'#1a1a2e', textAlign:'center', maxWidth:50, wordBreak:'break-word', lineHeight:1.3, position:'relative', zIndex:1, marginTop:2 }}>
+                    {(company?.companyName||invoice.company).toUpperCase().slice(0,18)}
+                  </p>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Approved by line (small, below signature) */}
+          {invoice.approved && invoice.approvedBy && (
+            <p style={{ ...p0, fontSize:8, color:'#10b981', fontWeight:600, marginBottom:4 }}>
+              ✓ Approved by: {invoice.approvedBy}
+            </p>
+          )}
+
+          {/* Separator line + Authorized Signatory */}
+          <div style={{ borderTop:'1px solid #999', paddingTop:5 }}>
+            <p style={{ ...p0, fontSize:10.5, fontWeight:700 }}>Authorized Signatory</p>
           </div>
         </div>
       </div>

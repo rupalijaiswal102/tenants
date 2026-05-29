@@ -114,6 +114,15 @@ export interface Invoice {
   latePenaltyPercentage?: number;
   latePenaltyAmount?: number;
   remarks?: string;
+  // CRM Contact
+  crmName?:           string;
+  crmPhone?:          string;
+  crmEmail?:          string;
+  // Digital Approval
+  approved?:          boolean;
+  approvedBy?:        string;
+  approvedAt?:        string;
+  signatureImage?:    string;
 }
 
 export interface NavItem {
