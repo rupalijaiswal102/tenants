@@ -179,10 +179,12 @@ export function ApproveSignatureModal({ invoice, company, onClose, onSuccess }: 
           </div>
 
           {/* Company Seal Preview */}
-          {company?.logoUrl && (
+          {(company?.sealUrl || company?.logoUrl) && (
             <div style={{ marginBottom:16, padding:'10px 14px', background:'#f0fdf4', border:'1px solid #86efac', borderRadius:10, display:'flex', alignItems:'center', gap:10 }}>
-              <img src={company.logoUrl} alt="Seal" referrerPolicy="no-referrer"
-                style={{ width:40, height:40, objectFit:'contain', borderRadius:8 }}/>
+              <img
+                src={company?.sealUrl || company?.logoUrl}
+                alt="Seal" referrerPolicy="no-referrer"
+                style={{ width:40, height:40, objectFit:'contain', borderRadius:'50%', border:'1.5px solid #d1fae5' }}/>
               <div>
                 <p style={{ fontSize:11, fontWeight:700, color:'#15803d', margin:0 }}>Company seal will be applied</p>
                 <p style={{ fontSize:10, color:'#9ba8b5', margin:'2px 0 0' }}>{company.companyName}</p>

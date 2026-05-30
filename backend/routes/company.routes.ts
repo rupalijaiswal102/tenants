@@ -4,12 +4,16 @@ import { upload } from '../middleware/multer';
 
 const router = express.Router();
 
-const logoUpload = upload.single('logoFile');
+// Accept both logoFile and sealFile in one request
+const companyUpload = upload.fields([
+  { name: 'logoFile', maxCount: 1 },
+  { name: 'sealFile', maxCount: 1 },
+]);
 
-router.get('/', getCompanies);
-router.post('/', logoUpload, createCompany);
-router.get('/:id', getCompanyById);
-router.put('/:id', logoUpload, updateCompany);
+router.get('/',     getCompanies);
+router.post('/',    companyUpload, createCompany);
+router.get('/:id',  getCompanyById);
+router.put('/:id',  companyUpload, updateCompany);
 router.delete('/:id', deleteCompany);
 
 export default router;

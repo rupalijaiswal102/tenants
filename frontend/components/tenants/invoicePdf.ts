@@ -241,7 +241,7 @@ export function generateInvoicePDF(invoice:Invoice, tenant?:Tenant, company?:Com
 
   // ── 6. PAY TO + SIGNATURE + SEAL ─────────────────────────────────────────
   if(y>ph-50){ pdf.addPage(); y=mg; }
-  HR(y,0.4,180); y+=8;
+  y+=6;  // no line above Pay To
 
   const payX=mg, sigX=mg+cw*0.60;
   let payY=y, sigY=y;
@@ -268,39 +268,29 @@ export function generateInvoicePDF(invoice:Invoice, tenant?:Tenant, company?:Com
 
   // ── Signature + Seal — ONLY when approved ───────────────────────────────
   if(inv.approved){
+    const sealSize = 30;  // seal square size in mm (bigger)
+    const signW    = 30, signH = 20;
+    const sealX    = sigX + signW + 1;  // 4mm gap only
+
     // Signature image
     if(inv.signatureImage){
       try {
-        pdf.addImage(inv.signatureImage,'PNG',sigX,sigY,30,16);
+        pdf.addImage(inv.signatureImage,'PNG', sigX, sigY, signW, signH);
       } catch {}
     }
-    // Circular seal
-    const sealCX = sigX+46, sealCY=sigY+12, sealR=13;
-    pdf.setDrawColor(26,26,26); pdf.setLineWidth(0.7);
-    pdf.circle(sealCX,sealCY,sealR);
-    pdf.setLineWidth(0.3);
-    pdf.circle(sealCX,sealCY,sealR-2.5);
-    if(company?.logoUrl){
+
+    // Seal image — NO circles/borders, just the image
+    const sealImg = company?.sealUrl || company?.logoUrl;
+    if(sealImg){
       try {
-        pdf.addImage(company.logoUrl,'PNG',
-          sealCX-(sealR-3.5),sealCY-(sealR-3.5),(sealR-3.5)*2,(sealR-3.5)*2);
+        pdf.addImage(sealImg,'PNG', sealX, sigY-4, sealSize, sealSize);
       } catch {}
-    } else {
-      S(9,true,26,26,26);
-      const ini = coName.split(' ').map((w:string)=>w[0]?.toUpperCase()||'').slice(0,3).join('');
-      pdf.text(ini, sealCX-pdf.getTextWidth(ini)/2, sealCY+1.5);
-      S(4.5,false,26,26,26);
-      const sn = coName.toUpperCase().slice(0,16);
-      pdf.text(sn, sealCX-pdf.getTextWidth(sn)/2, sealCY+6.5);
     }
-    sigY+=sealR*2+5;
-    if(inv.approvedBy){
-      S(7,false,16,185,129);
-      pdf.text(`✓ Approved: ${inv.approvedBy}`,sigX,sigY); sigY+=5;
-    }
+
+    sigY += sealSize + 0;
+    // NO green "Approved" text
   } else {
-    // Not approved — blank space only
-    sigY+=32;
+    sigY += 20;
   }
   // Authorized Signatory
   S(9,true,26,26,26); pdf.text('Authorized Signatory',sigX,sigY);

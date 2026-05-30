@@ -14,7 +14,8 @@ export interface Company {
   accountNumber?: string;
   ifscCode?: string;
   accountHolderName?: string;
-  logoUrl?: string;
+   logoUrl?: string;
+  sealUrl?: string;
   status: boolean;
   createdAt: string;
 }

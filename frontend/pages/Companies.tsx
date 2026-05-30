@@ -37,6 +37,7 @@ export default function CompanyList() {
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [sealPreview, setSealPreview] = useState<string | null>(null);
 
   const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm<Partial<Company>>();
 
@@ -66,6 +67,7 @@ export default function CompanyList() {
   const openAddModal = () => {
     setSelectedCompany(null);
     setLogoPreview(null);
+    setSealPreview(null);
     reset({
       status: true,
       state: 'Maharashtra'
@@ -76,6 +78,7 @@ export default function CompanyList() {
   const openEditModal = (company: Company) => {
     setSelectedCompany(company);
     setLogoPreview(company.logoUrl || null);
+    setSealPreview(company.sealUrl || null);
     reset({
       ...company
     });
@@ -85,6 +88,15 @@ export default function CompanyList() {
   const openViewModal = (company: Company) => {
     setSelectedCompany(company);
     setViewModalOpen(true);
+  };
+
+  const handleSealChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => { setSealPreview(reader.result as string); };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -112,6 +124,10 @@ export default function CompanyList() {
       const logoInput = document.getElementById('logoFile') as HTMLInputElement;
       if (logoInput?.files?.[0]) {
         formData.append('logoFile', logoInput.files[0]);
+      }
+      const sealInput = document.getElementById('sealFile') as HTMLInputElement;
+      if (sealInput?.files?.[0]) {
+        formData.append('sealFile', sealInput.files[0]);
       }
 
       if (selectedCompany) {
@@ -521,6 +537,56 @@ export default function CompanyList() {
                             <span className="text-[10px] text-slate-400 mt-1 block">Ideal size: 400x200px (Transparent)</span>
                           </div>
                         </label>
+                      </div>
+                    </div>
+                  </section>
+
+                  {/* ── Company Seal Section ── */}
+                  <section>
+                    <h3 className="text-xs font-bold text-orange-500 uppercase tracking-widest mb-6 flex items-center gap-2">
+                      <span className="w-4 h-px bg-orange-200"></span>
+                      Company Seal
+                    </h3>
+                    <div className="flex flex-col md:flex-row items-center gap-10">
+                      {/* Seal Preview — circular */}
+                      <div className="w-32 h-32 rounded-full bg-slate-50 border-2 border-slate-200 flex-shrink-0 flex items-center justify-center overflow-hidden p-2">
+                        {sealPreview ? (
+                          <img src={sealPreview} alt="Seal Preview" className="w-full h-full object-contain rounded-full" referrerPolicy="no-referrer"/>
+                        ) : (
+                          <div className="flex flex-col items-center gap-1">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
+                            <span className="text-[9px] text-slate-300 font-bold">SEAL</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2 ml-1">
+                          Upload Company Seal (Scanned PNG/JPG with transparent background)
+                        </label>
+                        <p className="text-[10px] text-slate-400 mb-4 ml-1">
+                          💡 Tip: Scan your company seal on white paper, then remove background using remove.bg or similar tool for best results.
+                        </p>
+                        <label className="flex items-center justify-center bg-white border-2 border-dashed border-slate-200 hover:border-orange-500 hover:bg-orange-50/30 px-6 py-6 rounded-3xl cursor-pointer transition-all group">
+                          <input
+                            type="file"
+                            id="sealFile"
+                            accept="image/*"
+                            onChange={handleSealChange}
+                            className="hidden"
+                          />
+                          <div className="text-center">
+                            <Upload className="mx-auto mb-2 text-slate-400 group-hover:text-orange-500 transition-colors" size={24}/>
+                            <span className="text-xs font-bold text-slate-500 block">Click to upload company seal</span>
+                            <span className="text-[10px] text-slate-400 mt-1 block">PNG with transparent background recommended</span>
+                          </div>
+                        </label>
+                        {sealPreview && (
+                          <button type="button"
+                            onClick={() => { setSealPreview(null); const i = document.getElementById('sealFile') as HTMLInputElement; if(i) i.value=''; }}
+                            className="mt-3 text-[10px] font-bold text-red-400 hover:text-red-600 transition-colors">
+                            ✕ Remove Seal
+                          </button>
+                        )}
                       </div>
                     </div>
                   </section>

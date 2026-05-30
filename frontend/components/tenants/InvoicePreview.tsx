@@ -227,29 +227,15 @@ export function InvoicePreview({ invoice, tenant, company }: Props) {
                   <img src={invoice.signatureImage} alt="Signature"
                     style={{ maxWidth:88, maxHeight:50, objectFit:'contain' }}/>
                 )}
-                {/* Circular Seal */}
-                <div style={{
-                  width:64, height:64, borderRadius:'50%',
-                  border:'2px solid #1a1a2e',
-                  display:'flex', flexDirection:'column',
-                  alignItems:'center', justifyContent:'center',
-                  position:'relative', overflow:'hidden',
-                  background:'#fff', flexShrink:0,
-                }}>
-                  <div style={{ position:'absolute', inset:4, borderRadius:'50%', border:'1px solid #1a1a2e' }}/>
-                  {company?.logoUrl ? (
-                    <img src={company.logoUrl} alt="Seal" referrerPolicy="no-referrer"
-                      style={{ width:52, height:52, objectFit:'contain', borderRadius:'50%', position:'relative', zIndex:1 }}/>
-                  ) : (
-                    <>
-                      <p style={{ ...p0, fontSize:16, fontWeight:900, color:'#1a1a2e', lineHeight:1, position:'relative', zIndex:1 }}>
-                        {(company?.companyName||invoice.company).split(' ').map((w:string)=>w[0]?.toUpperCase()||'').slice(0,3).join('')}
-                      </p>
-                      <p style={{ ...p0, fontSize:5.5, fontWeight:700, color:'#1a1a2e', textAlign:'center', maxWidth:50, wordBreak:'break-word', lineHeight:1.3, position:'relative', zIndex:1, marginTop:2 }}>
-                        {(company?.companyName||invoice.company).toUpperCase().slice(0,18)}
-                      </p>
-                    </>
-                  )}
+                {/* Seal — no border, just image */}
+                <div style={{ width:80, height:80, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                  {(company as any)?.sealUrl ? (
+                    <img src={(company as any).sealUrl} alt="Seal" referrerPolicy="no-referrer"
+                      style={{ width:80, height:80, objectFit:'contain' }}/>
+                  ) : company?.sealUrl ? (
+                    <img src={company.sealUrl} alt="Seal" referrerPolicy="no-referrer"
+                      style={{ width:80, height:80, objectFit:'contain' }}/>
+                  ) : null}
                 </div>
               </div>
               {invoice.approvedBy && (
