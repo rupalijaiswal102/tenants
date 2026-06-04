@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useRef ,useState, useEffect  } from 'react';
+import { useResponsive } from '../src/hooks/useResponsive';
+
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Plus, Search, Eye, Edit2, Trash2, Users, IndianRupee, ShieldCheck, Download } from 'lucide-react';
@@ -9,10 +11,10 @@ import { type Tenant, type Company } from '../src/types';
 import { TenantDetailsView }      from '../components/tenants/TenantDetailsView';
 import { StatusBadge }            from '../components/tenants/TenantPrimitives';
 import { DeleteConfirmationModal } from '../components/tenants/DeleteConfirmationModal';
-import {formatCurrency} from '../src/utils/formatCurrency';
 
 export default function TenantList() {
   const { id }   = useParams();
+  const { isMobile, isTablet } = useResponsive();
   const navigate = useNavigate();
 
   const [tenants,           setTenants]          = useState<Tenant[]>([]);
@@ -76,11 +78,11 @@ export default function TenantList() {
   };
 
   const filtered = tenants.filter(t => {
+    if (companyFilter !== 'All Companies' && t.company !== companyFilter) return false;
     const q  = search.toLowerCase();
     const mQ = t.name.toLowerCase().includes(q) || t.company.toLowerCase().includes(q) || t.code.toLowerCase().includes(q);
-    const mM = monthFilter    === 'All Months'    || (t.leaseStart && new Date(t.leaseStart).getMonth() === parseInt(monthFilter));
-    const mC = companyFilter  === 'All Companies' || t.company === companyFilter;
-    return mQ && mM && mC;
+    const mM = monthFilter === 'All Months' || (t.leaseStart && new Date(t.leaseStart).getMonth() === parseInt(monthFilter));
+    return mQ && mM;
   });
 
   const activeCount = filtered.filter(t => t.agreementStatus === 'Active').length;
@@ -116,7 +118,7 @@ export default function TenantList() {
 
   // ── LIST VIEW — with padding wrapper ─────────────────────────────────────
   return (
-    <div style={{ padding: 24, maxWidth: 1300, margin: '0 auto' }}>
+    <div style={{ padding: isMobile ? 12 : 24, width: '100%' }}>
 
       {/* ── Header ── */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:24, flexWrap:'wrap', gap:12 }}>
@@ -137,11 +139,11 @@ export default function TenantList() {
       </div>
 
       {/* ── Stat Cards ── */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14, marginBottom:22 }}>
+      <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3,1fr)', gap: isMobile ? 10 : 14, marginBottom:22 }}>
         {[
           { label:'Total Tenants',     val:filtered.length,                   icon:<Users size={18} color="#f97316"/>,      bg:'#fff7ed', border:'#f97316' },
           { label:'Active Agreements', val:activeCount,                       icon:<ShieldCheck size={18} color="#10b981"/>, bg:'#f0fdf4', border:'#10b981' },
-          { label:'Monthly Rent Roll', val:formatCurrency(rentTotal),  icon:<IndianRupee size={18} color="#6366f1"/>, bg:'#eef2ff', border:'#6366f1' },
+          { label:'Monthly Rent Roll', val:`₹${rentTotal.toLocaleString()}`,  icon:<IndianRupee size={18} color="#6366f1"/>, bg:'#eef2ff', border:'#6366f1' },
         ].map((s, i) => (
           <div key={i} style={{ background:'#fff', borderRadius:'0 16px 16px 0', borderLeft:`3px solid ${s.border}`, border:'1px solid #f0f2f5', borderLeftWidth:3, borderLeftColor:s.border, padding:'18px 20px', boxShadow:'0 1px 3px rgba(0,0,0,0.04)', transition:'all 0.2s' }}
             onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.transform='translateY(-2px)'; el.style.boxShadow='0 6px 20px rgba(0,0,0,0.07)'; }}
@@ -154,25 +156,21 @@ export default function TenantList() {
       </div>
 
       {/* ── Filter Bar ── */}
-      <div style={{ background:'#fff', borderRadius:16, border:'1px solid #f0f2f5', padding:'12px 16px', display:'flex', gap:10, flexWrap:'wrap', alignItems:'center', marginBottom:16, boxShadow:'0 1px 3px rgba(0,0,0,0.04)' }}>
+      <div style={{ background:'#fff', borderRadius:16, border:'1px solid #f0f2f5', padding: isMobile ? '10px 12px' : '12px 16px', display:'flex', gap:8, flexWrap:'wrap', alignItems:'center', marginBottom:16, boxShadow:'0 1px 3px rgba(0,0,0,0.04)' }}>
+        {/* Company filter */}
+        <select value={companyFilter} onChange={e=>setCompanyFilter(e.target.value)}
+          style={{ padding:'6px 10px', borderRadius:9, border:'1.5px solid #f0f2f5', fontSize:12, fontWeight:600, color:'#5a6474', background:'#f8f9fb', outline:'none', cursor:'pointer', fontFamily:'inherit' }}>
+          <option value="All Companies">🏢 All Companies</option>
+          {[...new Set(tenants.map(t=>t.company).filter(Boolean))].sort().map((c:string)=>(
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
         <div style={{ flex:1, minWidth:220, display:'flex', alignItems:'center', gap:8, height:40, background:'#f8f9fb', border:'1.5px solid #f0f2f5', borderRadius:10, padding:'0 14px' }}>
           <Search size={14} color="#9ba8b5"/>
           <input value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Search by name, company or code..."
             style={{ border:'none', outline:'none', fontSize:13, color:'#1a1a2e', background:'transparent', flex:1, fontFamily:'inherit' }}/>
         </div>
-        {/* Company Filter */}
-        <div style={{ display:'flex', alignItems:'center', gap:6, height:40, background:'#f8f9fb', border:'1.5px solid #f0f2f5', borderRadius:10, padding:'0 12px', minWidth:170 }}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
-          <select value={companyFilter} onChange={e => setCompanyFilter(e.target.value)}
-            style={{ border:'none', outline:'none', fontSize:12, color:'#5a6474', background:'transparent', fontFamily:'inherit', cursor:'pointer', flex:1 }}>
-            <option value="All Companies">All Companies</option>
-            {companies.map((c: any) => (
-              <option key={c.id} value={c.companyName}>{c.companyName}</option>
-            ))}
-          </select>
-        </div>
-
         <select value={monthFilter} onChange={e => setMonthFilter(e.target.value)}
           style={{ height:40, padding:'0 12px', borderRadius:10, border:'1.5px solid #f0f2f5', fontSize:12, color:'#5a6474', background:'#f8f9fb', fontFamily:'inherit', outline:'none', cursor:'pointer' }}>
           <option value="All Months">All Lease Starts</option>
@@ -184,6 +182,7 @@ export default function TenantList() {
 
       {/* ── Table ── */}
       <div style={{ background:'#fff', borderRadius:16, border:'1px solid #f0f2f5', overflow:'hidden', boxShadow:'0 1px 3px rgba(0,0,0,0.04)' }}>
+      <div className="table-responsive">
         <div style={{ overflowX:'auto' }}>
           <table style={{ width:'100%', borderCollapse:'collapse' }}>
             <thead>
@@ -211,7 +210,7 @@ export default function TenantList() {
                   </td>
                 </tr>
               ) : filtered.map((t, idx) => (
-                <tr key={t.id} 
+                <tr key={t.id} onClick={() => openView(t)}
                   style={{ cursor:'pointer', transition:'background 0.12s', borderBottom:'1px solid #f8f9fb' }}
                   onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#fafbfc'}
                   onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
@@ -240,10 +239,9 @@ export default function TenantList() {
                   </td>
 
                   {/* Rent */}
-                  <td style={{ whiteSpace:'nowrap' }}>
-                    <span style={{ whiteSpace:'nowrap', display:'block' }}>
-                    {formatCurrency(t.currentRent)}
-  m                </span>
+                  <td style={{ padding:'14px 18px', textAlign:'right' }}>
+                    <span style={{ fontSize:14, fontWeight:800, color:'#1a1a2e' }}>₹{t.currentRent.toLocaleString()}</span>
+                    <p style={{ fontSize:9, color:'#9ba8b5', margin:'2px 0 0', textAlign:'right' }}>/month</p>
                   </td>
 
                   {/* Status */}
@@ -286,6 +284,7 @@ export default function TenantList() {
         )}
       </AnimatePresence>
 
+    </div>
     </div>
   );
 }

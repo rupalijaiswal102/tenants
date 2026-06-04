@@ -1,12 +1,8 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
-import { Menu, Bell, ChevronRight, Settings, LogOut, User, ChevronDown } from 'lucide-react';
+import { Menu, Bell, ChevronRight, Settings } from 'lucide-react';
 import { motion } from 'motion/react';
-
-// ── Auth ─────────────────────────────────────────────────────────────────────
-import Login from '../pages/Login';
 
 // ── Sidebar Component ─────────────────────────────────────────────────────────
 import Sidebar from '../components/Sidebar';
@@ -31,48 +27,13 @@ const PAGE_TITLES: Record<string, string> = {
 
 export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [isMobile,    setIsMobile]    = useState(window.innerWidth <= 1024);
-  // ── Auth ──
-  const getAuth = () => {
-    try {
-      // Set baseURL for all axios calls
-      axios.defaults.baseURL = (import.meta as any).env?.VITE_API_URL || '';
-      const data = JSON.parse(localStorage.getItem('neoteric_auth') || 'null');
-      // Set axios default auth header on app load
-      if (data?.token) {
-        axios.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
-        axios.defaults.baseURL = (import.meta as any).env?.VITE_API_URL || '';
-      }
-      return data;
-    } catch { return null; }
-  };
-  const [authUser, setAuthUser] = useState<{ name:string; role:string; initials:string; token?:string }|null>(getAuth);
-  const [showUserMenu, setShowUserMenu] = useState(false);
-
-  // ── Logout ──
-  const handleLogout = () => {
-    localStorage.removeItem('neoteric_auth');
-    delete axios.defaults.headers.common['Authorization'];
-    setAuthUser(null);
-    setShowUserMenu(false);
-  };
-
-  // Close dropdown on outside click
-  useEffect(() => {
-    if (!showUserMenu) return;
-    const handler = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      if (!target.closest('[data-user-menu]')) setShowUserMenu(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [showUserMenu]);
+  const [isMobile,    setIsMobile]    = useState(window.innerWidth <= 768);
   const [dbStatus,    setDbStatus]    = useState<{ isDemo: boolean } | null>(null);
   const location = useLocation();
 
   useEffect(() => {
     const onResize = () => {
-      const mobile = window.innerWidth <= 1024;
+      const mobile = window.innerWidth <= 768;
       setIsMobile(mobile);
       if (mobile) setSidebarOpen(false);
       else setSidebarOpen(true);
@@ -82,26 +43,12 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const apiBase = (import.meta as any).env?.VITE_API_URL || '';
-    fetch(`${apiBase}/api/status`).then(r => r.json()).then(setDbStatus).catch(() => setDbStatus({ isDemo: true }));
+    fetch('/api/status').then(r => r.json()).then(setDbStatus).catch(() => setDbStatus({ isDemo: true }));
     if (isMobile) setSidebarOpen(false);
   }, [location.pathname]);
 
   const pageTitle = PAGE_TITLES[location.pathname]
     || (location.pathname.startsWith('/tenants') ? 'Tenants' : location.pathname.replace('/', '').replace(/-/g, ' ') || 'Overview');
-
-  // ── Show Login if not authenticated ──
-  if (!authUser) {
-    return (
-      <>
-        <Toaster position="top-right" toastOptions={{ style: { fontFamily:'system-ui,sans-serif', fontSize:13, borderRadius:12 } }}/>
-        <Login onLogin={user => {
-          axios.defaults.headers.common['Authorization'] = `Bearer ${user.token}`;
-          setAuthUser(user);
-        }} />
-      </>
-    );
-  }
 
   return (
     <div style={{ display: 'flex', height: '100vh', background: '#F5F7FA', overflow: 'hidden', flexDirection: 'column' }}>
@@ -161,8 +108,10 @@ export default function App() {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-             
+              {/* Team avatars */}
               
+              
+
               {/* Bell */}
               <div style={{ position: 'relative' }}>
                 <button style={{ width: 34, height: 34, borderRadius: 9, border: '1px solid #f0f2f5', background: '#fafafa', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
@@ -171,55 +120,9 @@ export default function App() {
                 <div style={{ position: 'absolute', top: 7, right: 7, width: 7, height: 7, background: '#ef4444', borderRadius: '50%', border: '2px solid #fff' }} />
               </div>
 
-              {/* Avatar + Logout Dropdown */}
-              <div data-user-menu style={{ position: 'relative' }}>
-                <button
-                  onClick={() => setShowUserMenu(v => !v)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '5px 10px 5px 5px', background: '#fff', border: '1.5px solid #f0f2f5', borderRadius: 10, cursor: 'pointer', transition: 'all 0.15s' }}
-                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.borderColor = '#f97316'}
-                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor = '#f0f2f5'}
-                >
-                  <div style={{ width: 30, height: 30, borderRadius: 8, background: '#f97316', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: '#fff', boxShadow: '0 2px 6px rgba(249,115,22,0.25)' }}>
-                    {authUser.initials}
-                  </div>
-                  <div style={{ textAlign: 'left' }}>
-                    <p style={{ fontSize: 12, fontWeight: 700, color: '#1a1a2e', margin: 0 }}>{authUser.name}</p>
-                    <p style={{ fontSize: 9, color: '#9ba8b5', margin: 0 }}>{authUser.role}</p>
-                  </div>
-                  <ChevronDown size={13} color="#9ba8b5" style={{ transition: 'transform 0.2s', transform: showUserMenu ? 'rotate(180deg)' : 'rotate(0deg)' }} />
-                </button>
-
-                {/* Dropdown */}
-                {showUserMenu && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -8, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: -8, scale: 0.95 }}
-                    style={{ position: 'absolute', top: '110%', right: 0, background: '#fff', border: '1.5px solid #f0f2f5', borderRadius: 14, boxShadow: '0 8px 24px rgba(0,0,0,0.1)', minWidth: 180, zIndex: 100, overflow: 'hidden' }}
-                  >
-                    {/* User info */}
-                    <div style={{ padding: '14px 16px', borderBottom: '1px solid #f8f9fb', background: '#fafbfc' }}>
-                      <p style={{ fontSize: 12, fontWeight: 700, color: '#1a1a2e', margin: 0 }}>{authUser.name}</p>
-                      <p style={{ fontSize: 10, color: '#9ba8b5', margin: '2px 0 0' }}>{authUser.role}</p>
-                    </div>
-
-                   
-                   
-                   
-                    {/* Divider */}
-                    <div style={{ height: 1, background: '#f0f2f5', margin: '4px 0' }} />
-
-                    {/* Logout */}
-                    <button
-                      onClick={handleLogout}
-                      style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '11px 16px', marginBottom: 4, background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#ef4444', fontFamily: 'inherit', transition: 'background 0.1s', textAlign: 'left' }}
-                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#fff1f2'}
-                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'none'}
-                    >
-                      <LogOut size={14} color="#ef4444" /> Logout
-                    </button>
-                  </motion.div>
-                )}
+              {/* Avatar */}
+              <div style={{ width: 34, height: 34, borderRadius: 9, background: '#f97316', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: '#fff', cursor: 'pointer', boxShadow: '0 2px 6px rgba(249,115,22,0.25)' }}>
+                AD
               </div>
             </div>
           </header>

@@ -25,6 +25,7 @@ import { useForm } from 'react-hook-form';
 import { type Company } from '../src/types';
 import { cn } from '@/lib/utils';
 import axios from 'axios';
+import { useResponsive } from '../src/hooks/useResponsive';
 
 export default function CompanyList() {
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -37,7 +38,7 @@ export default function CompanyList() {
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
-  const [sealPreview, setSealPreview] = useState<string | null>(null);
+  const [sealPreview, setSealPreview]   = useState<string | null>(null);
 
   const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm<Partial<Company>>();
 
@@ -78,7 +79,7 @@ export default function CompanyList() {
   const openEditModal = (company: Company) => {
     setSelectedCompany(company);
     setLogoPreview(company.logoUrl || null);
-    setSealPreview(company.sealUrl || null);
+    setSealPreview((company as any).sealUrl || null);
     reset({
       ...company
     });
@@ -94,7 +95,7 @@ export default function CompanyList() {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = () => { setSealPreview(reader.result as string); };
+      reader.onload = () => setSealPreview(reader.result as string);
       reader.readAsDataURL(file);
     }
   };
@@ -169,7 +170,7 @@ export default function CompanyList() {
   const states = Array.isArray(companies) ? Array.from(new Set(companies.map(c => c.state).filter(Boolean))) : [];
 
   return (
-    <div className="max-w-7xl mx-auto p-4 md:p-6 lg:p-8 w-full space-y-8 pb-12">
+    <div className="w-full p-4 md:p-6 space-y-8 pb-12">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -541,49 +542,38 @@ export default function CompanyList() {
                     </div>
                   </section>
 
-                  {/* ── Company Seal Section ── */}
+                  {/* ── Company Seal ── */}
                   <section>
                     <h3 className="text-xs font-bold text-orange-500 uppercase tracking-widest mb-6 flex items-center gap-2">
-                      <span className="w-4 h-px bg-orange-200"></span>
+                      <span className="w-4 h-px bg-orange-200 inline-block"></span>
                       Company Seal
                     </h3>
-                    <div className="flex flex-col md:flex-row items-center gap-10">
-                      {/* Seal Preview — circular */}
-                      <div className="w-32 h-32 rounded-full bg-slate-50 border-2 border-slate-200 flex-shrink-0 flex items-center justify-center overflow-hidden p-2">
+                    <div className="flex flex-col md:flex-row items-center gap-8">
+                      {/* Circular seal preview */}
+                      <div className="w-28 h-28 rounded-full border-2 border-dashed border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden flex-shrink-0">
                         {sealPreview ? (
-                          <img src={sealPreview} alt="Seal Preview" className="w-full h-full object-contain rounded-full" referrerPolicy="no-referrer"/>
+                          <img src={sealPreview} alt="Seal" className="w-full h-full object-contain rounded-full"/>
                         ) : (
-                          <div className="flex flex-col items-center gap-1">
-                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
-                            <span className="text-[9px] text-slate-300 font-bold">SEAL</span>
+                          <div className="flex flex-col items-center gap-1 text-slate-300">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
+                            <span className="text-[9px] font-bold">SEAL</span>
                           </div>
                         )}
                       </div>
-                      <div className="flex-1">
-                        <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2 ml-1">
-                          Upload Company Seal (Scanned PNG/JPG with transparent background)
-                        </label>
-                        <p className="text-[10px] text-slate-400 mb-4 ml-1">
-                          💡 Tip: Scan your company seal on white paper, then remove background using remove.bg or similar tool for best results.
-                        </p>
-                        <label className="flex items-center justify-center bg-white border-2 border-dashed border-slate-200 hover:border-orange-500 hover:bg-orange-50/30 px-6 py-6 rounded-3xl cursor-pointer transition-all group">
-                          <input
-                            type="file"
-                            id="sealFile"
-                            accept="image/*"
-                            onChange={handleSealChange}
-                            className="hidden"
-                          />
+                      <div className="flex-1 w-full">
+                        <p className="text-xs text-slate-500 mb-3">Upload your company seal (scanned PNG with transparent background recommended)</p>
+                        <label className="flex items-center justify-center bg-white border-2 border-dashed border-slate-200 hover:border-orange-400 hover:bg-orange-50/30 px-6 py-5 rounded-2xl cursor-pointer transition-all">
+                          <input type="file" id="sealFile" accept="image/*" onChange={handleSealChange} className="hidden"/>
                           <div className="text-center">
-                            <Upload className="mx-auto mb-2 text-slate-400 group-hover:text-orange-500 transition-colors" size={24}/>
-                            <span className="text-xs font-bold text-slate-500 block">Click to upload company seal</span>
-                            <span className="text-[10px] text-slate-400 mt-1 block">PNG with transparent background recommended</span>
+                            <svg className="mx-auto mb-2 text-slate-400" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                            <span className="text-xs font-semibold text-slate-500 block">Click to upload seal</span>
+                            <span className="text-[10px] text-slate-400 mt-1 block">PNG, JPG up to 5MB</span>
                           </div>
                         </label>
                         {sealPreview && (
                           <button type="button"
                             onClick={() => { setSealPreview(null); const i = document.getElementById('sealFile') as HTMLInputElement; if(i) i.value=''; }}
-                            className="mt-3 text-[10px] font-bold text-red-400 hover:text-red-600 transition-colors">
+                            className="mt-2 text-xs font-bold text-red-400 hover:text-red-600">
                             ✕ Remove Seal
                           </button>
                         )}

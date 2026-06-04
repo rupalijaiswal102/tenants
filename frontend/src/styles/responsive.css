@@ -1,0 +1,163 @@
+/* ── Responsive Utilities ───────────────────────────────────────────────── */
+
+/* Scrollable tables on mobile */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Hide on mobile */
+@media (max-width: 640px) {
+  .hide-mobile  { display: none !important; }
+  .hide-tablet  { display: none !important; }
+}
+@media (min-width: 641px) and (max-width: 1024px) {
+  .hide-tablet  { display: none !important; }
+}
+@media (min-width: 1025px) {
+  .hide-desktop { display: none !important; }
+}
+
+/* ── Grid responsive helpers ─────────────────────────────────────────────── */
+.grid-responsive-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 640px) {
+  .grid-responsive-2 { grid-template-columns: 1fr; gap: 12px; }
+}
+
+.grid-responsive-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+@media (max-width: 1024px) { .grid-responsive-3 { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 640px)  { .grid-responsive-3 { grid-template-columns: 1fr; gap: 10px; } }
+
+.grid-responsive-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+@media (max-width: 1024px) { .grid-responsive-4 { grid-template-columns: 1fr 1fr; gap: 12px; } }
+@media (max-width: 640px)  { .grid-responsive-4 { grid-template-columns: 1fr 1fr; gap: 10px; } }
+
+.grid-responsive-6 {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px;
+}
+@media (max-width: 1024px) { .grid-responsive-6 { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 640px)  { .grid-responsive-6 { grid-template-columns: repeat(2, 1fr); gap: 10px; } }
+
+/* ── Modal responsive ────────────────────────────────────────────────────── */
+.modal-responsive {
+  width: 100%;
+  max-width: 680px;
+  margin: 0 auto;
+}
+@media (max-width: 640px) {
+  .modal-responsive {
+    max-width: 100%;
+    min-height: 100vh;
+    border-radius: 0 !important;
+    margin: 0;
+  }
+  /* Full screen modals on mobile */
+  .modal-fullscreen-mobile {
+    position: fixed !important;
+    inset: 0 !important;
+    border-radius: 0 !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    overflow-y: auto;
+  }
+}
+
+/* ── Card padding responsive ─────────────────────────────────────────────── */
+.card-padding {
+  padding: 24px;
+}
+@media (max-width: 640px) { .card-padding { padding: 14px; } }
+
+/* ── Font size responsive ────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .text-responsive-title { font-size: 13px !important; }
+  .text-responsive-body  { font-size: 11px !important; }
+  .text-responsive-small { font-size: 10px !important; }
+}
+
+/* ── Page container ──────────────────────────────────────────────────────── */
+.page-container {
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+@media (max-width: 1024px) { .page-container { padding: 16px; } }
+@media (max-width: 640px)  { .page-container { padding: 12px; } }
+
+/* ── Invoice table responsive ────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .invoice-table th:nth-child(3),
+  .invoice-table td:nth-child(3),
+  .invoice-table th:nth-child(4),
+  .invoice-table td:nth-child(4) {
+    display: none;
+  }
+}
+
+/* ── Sidebar overlay on mobile ───────────────────────────────────────────── */
+.sidebar-overlay {
+  display: none;
+}
+@media (max-width: 1024px) {
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 99;
+    backdrop-filter: blur(2px);
+  }
+}
+
+/* ── Touch-friendly buttons ──────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .btn-touch {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* ── Stats cards ─────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .stat-card-value { font-size: 16px !important; }
+  .stat-card-label { font-size: 9px !important; }
+}
+
+/* ── Tenant/Invoice filter bar ───────────────────────────────────────────── */
+.filter-bar {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+@media (max-width: 640px) {
+  .filter-bar { gap: 8px; }
+  .filter-bar > * { flex: 1; min-width: calc(50% - 4px); }
+  .filter-bar .search-input { width: 100%; min-width: 100%; }
+}
+
+/* ── Form grid ───────────────────────────────────────────────────────────── */
+.form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+@media (max-width: 640px) {
+  .form-grid-2 { grid-template-columns: 1fr; gap: 12px; }
+  .form-grid-3 { grid-template-columns: 1fr; gap: 12px; }
+}
+@media (min-width: 641px) and (max-width: 1024px) {
+  .form-grid-3 { grid-template-columns: 1fr 1fr; }
+}

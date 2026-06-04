@@ -43,7 +43,8 @@ export default function Sidebar({ open, onClose, isMobile }: SidebarProps) {
       ? location.pathname === '/'
       : location.pathname.startsWith(path);
 
-  const sidebarWidth = isMobile ? 260 : (open ? 240 : 68);
+  const sidebarWidth = isMobile ? 260 : (open ? 240 : 64);
+  const isCollapsed = !isMobile && !open;
 
   return (
     <>

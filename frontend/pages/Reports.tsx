@@ -21,7 +21,6 @@ import { motion } from 'motion/react';
 import { cn } from '@/lib/utils';
 import { exportToExcel } from '../src/lib/exportUtils';
 import { toast } from 'react-hot-toast';
-import {formatCurrency} from '../src/utils/formatCurrency';
 
 export default function Reports() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -101,7 +100,7 @@ export default function Reports() {
   if (loading) return <div className="p-20 text-center text-slate-400">Genertaing Intelligence Reports...</div>;
 
   return (
-    <div className="max-w-7xl mx-auto p-4 md:p-6 lg:p-8 w-full space-y-8 pb-12">
+    <div className="w-full p-4 md:p-6 space-y-8 pb-12">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <h1 className="text-3xl font-black text-slate-800 tracking-tight">Financial Intelligence</h1>
@@ -116,7 +115,12 @@ export default function Reports() {
             {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download size={16} />}
             <span>Export Excel</span>
           </button>
-         
+          <button 
+            onClick={handlePrint}
+            className="flex items-center gap-2 px-6 py-3 bg-slate-800 text-white rounded-2xl font-bold text-xs hover:bg-slate-900 transition-all shadow-xl"
+          >
+            <Printer size={16} /> Print Report
+          </button>
         </div>
       </div>
 
@@ -205,11 +209,11 @@ export default function Reports() {
                     <td className="px-8 py-5">
                        <p className="text-sm font-bold text-slate-700 truncate max-w-[200px]">{inv.partyName}</p>
                     </td>
-                    <td className="px-8 py-5 text-sm font-bold text-slate-700 text-right">{formatCurrency(inv.totalInvoice)}</td>
-                    {reportType === 'collection' && <td className="px-8 py-5 text-sm font-bold text-emerald-600 text-right">{formatCurrency(inv.receivedAmount || inv.received || 0)}</td>}
-                    {reportType === 'gst' && <td className="px-8 py-5 text-sm font-bold text-indigo-600 text-right">{formatCurrency(inv.cgst + inv.sgst)}</td>}
-                    {reportType === 'tds' && <td className="px-8 py-5 text-sm font-bold text-purple-600 text-right">{formatCurrency(inv.tdsAmount || 0)}</td>}
-                    {(reportType === 'collection' || reportType === 'pending') && <td className="px-8 py-5 text-sm font-bold text-rose-500 text-right">{formatCurrency(inv.balanceAmount || inv.balance || 0)}</td>}
+                    <td className="px-8 py-5 text-sm font-bold text-slate-700 text-right">₹{inv.totalInvoice.toLocaleString()}</td>
+                    {reportType === 'collection' && <td className="px-8 py-5 text-sm font-bold text-emerald-600 text-right">₹{(inv.receivedAmount || inv.received || 0).toLocaleString()}</td>}
+                    {reportType === 'gst' && <td className="px-8 py-5 text-sm font-bold text-indigo-600 text-right">₹{(inv.cgst + inv.sgst).toLocaleString()}</td>}
+                    {reportType === 'tds' && <td className="px-8 py-5 text-sm font-bold text-purple-600 text-right">₹{(inv.tdsAmount || 0).toLocaleString()}</td>}
+                    {(reportType === 'collection' || reportType === 'pending') && <td className="px-8 py-5 text-sm font-bold text-rose-500 text-right">₹{(inv.balanceAmount || inv.balance || 0).toLocaleString()}</td>}
                     <td className="px-8 py-5 text-center">
                        <StatusBadge status={inv.paymentStatus} />
                     </td>
