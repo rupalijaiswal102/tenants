@@ -33,8 +33,8 @@ const TABS = [
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-export function TenantDetailsView({ tenant, onClose, companies, allTenants }: {
-  tenant: Tenant; onClose: () => void; companies: Company[]; allTenants: Tenant[];
+export function TenantDetailsView({ tenant, onClose, companies, allTenants, apiBase = '/api/tenants' }: {
+  tenant: Tenant; onClose: () => void; companies: Company[]; allTenants: Tenant[]; apiBase?: string;
 }) {
   const {isMobile} =useResponsive();
   const [details,            setDetails]            = useState<any>(null);
@@ -61,7 +61,7 @@ export function TenantDetailsView({ tenant, onClose, companies, allTenants }: {
 
   const fetchDetails = () => {
     setLoading(true);
-    axios.get(`/api/tenants/${tenant.id}/details`)
+    axios.get(`${apiBase}/${tenant.id}/details`)
       .then(r => { setDetails(r.data); setLoading(false); })
       .catch(() => setLoading(false));
   };
@@ -518,7 +518,7 @@ export function TenantDetailsView({ tenant, onClose, companies, allTenants }: {
       <AnimatePresence>
         {payingInvoice    && <PaymentEntryModal invoice={payingInvoice} onClose={()=>setPayingInvoice(null)} onSuccess={()=>{setPayingInvoice(null);fetchDetails();}}/>}
         {selectedInvoice  && <ViewInvoiceModal invoice={selectedInvoice} tenant={tenant} company={companies.find(c=>c.id===selectedInvoice.companyId||c.companyName===selectedInvoice.company)} onClose={()=>setSelectedInvoice(null)}/>}
-        {editingInvoice   && <InvoiceFormModal initialData={editingInvoice} tenants={allTenants} companies={companies} onClose={()=>setEditingInvoice(null)} onSuccess={()=>{setEditingInvoice(null);fetchDetails();}}/>}
+        {editingInvoice   && <InvoiceFormModal initialData={editingInvoice} tenants={allTenants} otherParties={[]} companies={companies} onClose={()=>setEditingInvoice(null)} onSuccess={()=>{setEditingInvoice(null);fetchDetails();}}/>}
         {showOpeningAdj   && <OpeningAdjustmentModal tenant={tenant} onClose={()=>setShowOpeningAdj(false)} onSuccess={()=>{setShowOpeningAdj(false);fetchLedger();fetchDetails();}}/>}
         {deletingInvoice  && (
           <div style={{ position:'fixed', inset:0, zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', padding:16, background:'rgba(0,0,0,0.5)', backdropFilter:'blur(4px)' }}>

@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
-import { Routes, Route, useLocation } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
-import { Menu, Bell, ChevronRight, Settings } from 'lucide-react';
-import { motion } from 'motion/react';
+import { Menu, Bell, ChevronRight, Settings, LogOut, User, ChevronDown } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 
 // ── Sidebar Component ─────────────────────────────────────────────────────────
 import Sidebar from '../components/Sidebar';
@@ -17,19 +17,46 @@ import Reports      from '../pages/Reports';
 
 // ── Page title map ────────────────────────────────────────────────────────────
 const PAGE_TITLES: Record<string, string> = {
-  '/':          'Overview',
-  '/tenants':   'Tenants',
-  '/invoices':  'Invoices',
-  '/reports':   'Reports',
-  '/companies': 'Companies',
-  '/settings':  'Settings',
+  '/':               'Overview',
+  '/tenants':        'Tenants',
+  '/other-parties':  'Other Parties',
+  '/invoices':       'Invoices',
+  '/reports':        'Reports',
+  '/companies':      'Companies',
+  '/settings':       'Settings',
 };
 
-export default function App() {
+export default function App({ onLogout }: { onLogout?: () => void }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isMobile,    setIsMobile]    = useState(window.innerWidth <= 768);
   const [dbStatus,    setDbStatus]    = useState<{ isDemo: boolean } | null>(null);
-  const location = useLocation();
+  const [userMenuOpen,setUserMenuOpen]= useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+  const location  = useLocation();
+  const navigate  = useNavigate();
+
+  // ── Read user from localStorage ──────────────────────────────────────────
+  const authData = JSON.parse(localStorage.getItem('neoteric_auth') || 'null');
+  const user = authData || { name: 'Admin', role: 'Super Admin', initials: 'AD' };
+
+  // ── Logout ────────────────────────────────────────────────────────────────
+  const handleLogout = () => {
+    localStorage.removeItem('neoteric_auth');
+    setUserMenuOpen(false);
+    if (onLogout) onLogout();
+    else window.location.href = '/';
+  };
+
+  // ── Close user menu on outside click ─────────────────────────────────────
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   useEffect(() => {
     const onResize = () => {
@@ -48,7 +75,9 @@ export default function App() {
   }, [location.pathname]);
 
   const pageTitle = PAGE_TITLES[location.pathname]
-    || (location.pathname.startsWith('/tenants') ? 'Tenants' : location.pathname.replace('/', '').replace(/-/g, ' ') || 'Overview');
+    || (location.pathname.startsWith('/tenants')       ? 'Tenants'
+    :   location.pathname.startsWith('/other-parties') ? 'Other Parties'
+    :   location.pathname.replace('/', '').replace(/-/g, ' ') || 'Overview');
 
   return (
     <div style={{ display: 'flex', height: '100vh', background: '#F5F7FA', overflow: 'hidden', flexDirection: 'column' }}>
@@ -120,9 +149,65 @@ export default function App() {
                 <div style={{ position: 'absolute', top: 7, right: 7, width: 7, height: 7, background: '#ef4444', borderRadius: '50%', border: '2px solid #fff' }} />
               </div>
 
-              {/* Avatar */}
-              <div style={{ width: 34, height: 34, borderRadius: 9, background: '#f97316', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: '#fff', cursor: 'pointer', boxShadow: '0 2px 6px rgba(249,115,22,0.25)' }}>
-                AD
+              {/* User Avatar + Dropdown */}
+              <div ref={userMenuRef} style={{ position: 'relative' }}>
+                <button
+                  onClick={() => setUserMenuOpen(v => !v)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 10px 4px 4px', borderRadius: 10, border: '1px solid #f0f2f5', background: userMenuOpen ? '#f8fafc' : '#fff', cursor: 'pointer', transition: 'all 0.15s' }}
+                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#f8fafc'}
+                  onMouseLeave={e => { if (!userMenuOpen) (e.currentTarget as HTMLElement).style.background = '#fff'; }}
+                >
+                  <div style={{ width: 30, height: 30, borderRadius: 8, background: '#f97316', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: '#fff', boxShadow: '0 2px 6px rgba(249,115,22,0.25)' }}>
+                    {user.initials || 'AD'}
+                  </div>
+                  <div style={{ display: isMobile ? 'none' : 'block', textAlign: 'left' }}>
+                    <p style={{ fontSize: 12, fontWeight: 700, color: '#1a1a2e', margin: 0, lineHeight: 1.2 }}>{user.name || 'Admin'}</p>
+                    <p style={{ fontSize: 10, color: '#94a3b8', margin: 0 }}>{user.role || 'Super Admin'}</p>
+                  </div>
+                  <ChevronDown size={13} color="#94a3b8" style={{ transform: userMenuOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+                </button>
+
+                {/* Dropdown Menu */}
+                <AnimatePresence>
+                  {userMenuOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.94, y: -6 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.94, y: -6 }}
+                      transition={{ duration: 0.12 }}
+                      style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, background: '#fff', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', border: '1px solid #f0f2f5', minWidth: 180, zIndex: 100, overflow: 'hidden' }}
+                    >
+                      {/* User info header */}
+                      <div style={{ padding: '12px 16px', borderBottom: '1px solid #f8fafc' }}>
+                        <p style={{ fontSize: 12, fontWeight: 700, color: '#1a1a2e', margin: 0 }}>{user.name || 'Admin'}</p>
+                        <p style={{ fontSize: 10, color: '#94a3b8', margin: '2px 0 0' }}>{user.role || 'Super Admin'}</p>
+                      </div>
+
+                      {/* Profile option */}
+                      <button
+                        onClick={() => { setUserMenuOpen(false); navigate('/settings'); }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#475569', transition: 'background 0.1s' }}
+                        onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#f8fafc'}
+                        onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'none'}
+                      >
+                        <User size={14} color="#94a3b8" /> Profile Settings
+                      </button>
+
+                      {/* Divider */}
+                      <div style={{ height: 1, background: '#f8fafc', margin: '2px 0' }} />
+
+                      {/* Logout */}
+                      <button
+                        onClick={handleLogout}
+                        style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#ef4444', transition: 'background 0.1s' }}
+                        onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#fff1f2'}
+                        onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'none'}
+                      >
+                        <LogOut size={14} color="#ef4444" /> Logout
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
           </header>
@@ -138,6 +223,11 @@ export default function App() {
               <Route path="/tenants/:id"      element={<TenantList />} />
               <Route path="/invoices"         element={<InvoiceList />} />
               <Route path="/reports"          element={<Reports />} />
+              {/* ── Other Parties — reuse same components with mode prop ── */}
+              <Route path="/other-parties"            element={<TenantList mode="otherParty" />} />
+              <Route path="/other-parties/create"     element={<TenantFormPage mode="otherParty" />} />
+              <Route path="/other-parties/edit/:id"   element={<TenantFormPage mode="otherParty" />} />
+              <Route path="/other-parties/:id"        element={<TenantList mode="otherParty" />} />
               <Route path="*" element={
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: 12, color: '#9ba8b5' }}>
                   <Settings size={40} strokeWidth={1} />

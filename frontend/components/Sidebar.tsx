@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Users, ReceiptIndianRupee, FileText,
   Building2, Settings, ChevronDown, ChevronRight,
-  Home, BarChart2, FileCheck, Bell
+  Home, BarChart2, FileCheck, Bell, Users2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -12,17 +12,17 @@ const NAV = [
   {
     group: 'Main',
     items: [
-      { title: 'Dashboard',  icon: LayoutDashboard, path: '/'         },
-      { title: 'Tenants',    icon: Users,           path: '/tenants'  },
-      { title: 'Invoices',   icon: ReceiptIndianRupee, path: '/invoices'},
-      { title: 'Reports',    icon: FileText,        path: '/reports'  },
+      { title: 'Dashboard',     icon: LayoutDashboard,    path: '/'              },
+      { title: 'Tenants',       icon: Users,              path: '/tenants'       },
+      { title: 'Other Parties', icon: Users2,             path: '/other-parties' },
+      { title: 'Invoices',      icon: ReceiptIndianRupee, path: '/invoices'      },
+      { title: 'Reports',       icon: FileText,           path: '/reports'       },
     ]
   },
   {
     group: 'Configuration',
     items: [
       { title: 'Companies',  icon: Building2,  path: '/companies' },
-      { title: 'Settings',   icon: Settings,   path: '/settings'  },
     ]
   }
 ];

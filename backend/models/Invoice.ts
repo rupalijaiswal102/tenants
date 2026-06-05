@@ -1,10 +1,12 @@
 import mongoose from 'mongoose';
 
 const invoiceSchema = new mongoose.Schema({
-  invoiceNo:   { type: String },
-  billDate:    String,
-  tenantId:    { type: mongoose.Schema.Types.ObjectId, ref: 'Tenant' },
-  companyId:   { type: mongoose.Schema.Types.ObjectId, ref: 'Company' },
+  invoiceNo:    { type: String },
+  billDate:     String,
+  partyType:    { type: String, enum: ['Tenant', 'OtherParty'], default: 'Tenant' },
+  tenantId:     { type: mongoose.Schema.Types.ObjectId, ref: 'Tenant' },
+  otherPartyId: { type: mongoose.Schema.Types.ObjectId, ref: 'OtherParty' },
+  companyId:    { type: mongoose.Schema.Types.ObjectId, ref: 'Company' },
   partyName:   String,
   company:     String,
   property:    String,

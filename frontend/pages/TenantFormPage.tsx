@@ -32,7 +32,8 @@ function Field({ label, required, children, error, hint }: any) {
 }
 
 // ── Steps config ──────────────────────────────────────────────────────────────
-const STEPS = [
+// Note: STEPS_BASE is used inside the component where `mode` is available
+const STEPS_BASE = [
   { id: 1, title: 'Tenant Info',     sub: 'Legal & Contact Details' },
   { id: 2, title: 'Lease & Property', sub: 'Agreement Setup'       },
   { id: 3, title: 'Financials',      sub: 'Rent & Deposits'        },
@@ -46,7 +47,9 @@ const SELECT_STYLES = {
   option: (b: any, s: any) => ({ ...b, background: s.isSelected ? '#f97316' : s.isFocused ? '#fff7ed' : '#fff', color: s.isSelected ? '#fff' : '#475569', fontWeight: s.isSelected ? 700 : 500, fontSize: 13 }),
 };
 
-export default function TenantFormPage() {
+export default function TenantFormPage({ mode = 'tenant' }: { mode?: 'tenant' | 'otherParty' }) {
+  const STEPS = STEPS_BASE.map((s, i) => i === 0 ? { ...s, title: mode === 'otherParty' ? 'Party Info' : s.title } : s);
+  const basePath = mode === 'otherParty' ? '/other-parties' : '/tenants';
   const { id }   = useParams();
   const navigate = useNavigate();
 
@@ -79,7 +82,7 @@ export default function TenantFormPage() {
     }
   });
 
-  useEffect(() => { fetchCompanies(); if (id) fetchTenant(); else fetchNextCode(); }, [id]);
+  useEffect(() => { fetchCompanies(); if (id) fetchTenant(); else fetchNextCode(); }, [id, mode]);
 
   const fetchCompanies = async () => {
     try { const r = await axios.get('/api/companies'); setCompanies(r.data); } catch {}
@@ -87,16 +90,21 @@ export default function TenantFormPage() {
 
   const fetchNextCode = async () => {
     try {
-      const r = await axios.get('/api/tenants/next-code');
+      const apiBase = mode === 'otherParty' ? '/api/other-parties' : '/api/tenants';
+      const r = await axios.get(`${apiBase}/next-code`);
       setValue('code', r.data.code);
     } catch {
-      setValue('code', `TN${String(Math.floor(Math.random()*900)+100)}`);
+      // Fallback: generate a code locally so it never stays "Loading..."
+      const prefix = mode === 'otherParty' ? 'OP' : 'TN';
+      const num = String(Math.floor(Math.random() * 900) + 100);
+      setValue('code', `${prefix}${num}`);
     }
   };
 
   const fetchTenant = async () => {
     try {
-      const r = await axios.get(`/api/tenants/${id}`);
+      const apiBase = mode === 'otherParty' ? '/api/other-parties' : '/api/tenants';
+      const r = await axios.get(`${apiBase}/${id}`);
       const t = r.data;
       // Map ALL fields explicitly so nothing is missed during edit
       reset({
@@ -136,7 +144,7 @@ export default function TenantFormPage() {
         openingBalanceNotes:   t.openingBalanceNotes  || '',
       });
     }
-    catch { toast.error('Failed to load tenant'); navigate('/tenants'); }
+    catch { toast.error('Failed to load'); navigate(mode === 'otherParty' ? '/other-parties' : '/tenants'); }
     finally { setInitialLoading(false); }
   };
 
@@ -172,9 +180,11 @@ export default function TenantFormPage() {
       Object.keys(data).forEach(k => { if (data[k] !== null && data[k] !== undefined) formData.append(k, data[k]); });
       if (agreementFile) formData.append('agreementFile', agreementFile);
       const config = { timeout: 300000, onUploadProgress: (e: any) => { const pct = Math.round((e.loaded * 100) / (e.total || 1)); setUploadProgress(pct); const bps = e.loaded / ((Date.now() - startTime) / 1000); setUploadSpeed(bps > 1048576 ? `${(bps/1048576).toFixed(1)} MB/s` : `${(bps/1024).toFixed(0)} KB/s`); } };
-      if (id) { await axios.put(`/api/tenants/${id}`, formData, config); toast.success('Tenant updated'); }
-      else     { await axios.post('/api/tenants', formData, config);    toast.success('Tenant created'); }
-      navigate('/tenants');
+      const apiBase = mode === 'otherParty' ? '/api/other-parties' : '/api/tenants';
+      const basePath = mode === 'otherParty' ? '/other-parties' : '/tenants';
+      if (id) { await axios.put(`${apiBase}/${id}`, formData, config); toast.success(mode === 'otherParty' ? 'Other party updated' : 'Tenant updated'); }
+      else     { await axios.post(apiBase, formData, config); toast.success(mode === 'otherParty' ? 'Other party created' : 'Tenant created'); }
+      navigate(basePath);
     } catch (e: any) { toast.error(e.response?.data?.error || 'Failed to save tenant'); }
     finally { setLoading(false); }
   };
@@ -199,23 +209,23 @@ export default function TenantFormPage() {
       <div style={{ background:'#fff', borderBottom:'1px solid #e8edf4', position:'sticky', top:0, zIndex:50, boxShadow:'0 1px 3px rgba(0,0,0,0.06)' }}>
         <div style={{ maxWidth:900, margin:'0 auto', padding:'0 24px', height:58, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
           <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-            <button onClick={() => navigate('/tenants')} style={{ background:'none', border:'none', cursor:'pointer', color:'#94a3b8', padding:6, borderRadius:8, display:'flex' }}>
+            <button onClick={() => navigate(basePath)} style={{ background:'none', border:'none', cursor:'pointer', color:'#94a3b8', padding:6, borderRadius:8, display:'flex' }}>
               <ArrowLeft size={18}/>
             </button>
             <div>
-              <p style={{ fontSize:15, fontWeight:800, color:'#0f172a', margin:0, letterSpacing:'-0.2px' }}>{id ? 'Update Tenant Record' : 'Create New Tenant'}</p>
+              <p style={{ fontSize:15, fontWeight:800, color:'#0f172a', margin:0, letterSpacing:'-0.2px' }}>{id ? (mode === 'otherParty' ? 'Update Other Party' : 'Update Tenant Record') : (mode === 'otherParty' ? 'Create Other Party' : 'Create New Tenant')}</p>
               <p style={{ fontSize:10, color:'#94a3b8', margin:0, fontWeight:500 }}>Step {step} of {totalSteps} — {STEPS[step-1].sub}</p>
             </div>
           </div>
           <div style={{ display:'flex', gap:8 }}>
-            <button type="button" onClick={() => navigate('/tenants')} style={{ padding:'7px 16px', background:'#fff', border:'1.5px solid #e2e8f0', borderRadius:10, fontSize:12, fontWeight:600, color:'#64748b', cursor:'pointer', fontFamily:'inherit' }}>
+            <button type="button" onClick={() => navigate(basePath)} style={{ padding:'7px 16px', background:'#fff', border:'1.5px solid #e2e8f0', borderRadius:10, fontSize:12, fontWeight:600, color:'#64748b', cursor:'pointer', fontFamily:'inherit' }}>
               Cancel
             </button>
             {step === totalSteps && (
               <button onClick={handleSubmit(onFormSubmit)} disabled={loading || compressing}
                 style={{ padding:'7px 18px', background:'#f97316', color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:7, boxShadow:'0 2px 8px rgba(249,115,22,0.3)', fontFamily:'inherit', opacity: loading ? 0.6 : 1 }}>
                 {loading ? <Loader2 size={14} style={{ animation:'spin 1s linear infinite' }}/> : <Save size={14}/>}
-                {id ? 'Save Changes' : 'Create Tenant'}
+                {id ? 'Save Changes' : (mode === 'otherParty' ? 'Create Other Party' : 'Create Tenant')}
               </button>
             )}
           </div>
@@ -377,7 +387,7 @@ export default function TenantFormPage() {
                       </select>
                     </Field>
                     <div style={{ gridColumn:'1/-1' }}>
-                      <Field label="System Tenant Code">
+                      <Field label={mode === 'otherParty' ? 'System Party Code' : 'System Tenant Code'}>
                         <input {...register('code')} readOnly className={inp} style={{ background:'#f8fafc', color:'#94a3b8', cursor:'not-allowed', fontFamily:'monospace', fontSize:13 }}/>
                       </Field>
                     </div>
@@ -532,9 +542,9 @@ export default function TenantFormPage() {
                         <p style={{ fontSize:12, fontWeight:800, color:'#0f172a', textTransform:'uppercase', letterSpacing:'0.08em', margin:0 }}>Summary</p>
                       </div>
                       {[
-                        ['Tenant Name',    watch('name')],
+                        [mode === 'otherParty' ? 'Party Name' : 'Tenant Name', watch('name')],
                         ['Company',        watch('company')],
-                        ['Property',       watch('property')],
+                        [mode === 'otherParty' ? 'Address' : 'Property', watch('property')],
                         ['Monthly Rent',   watch('currentRent') ? formatCurrency(watch('currentRent')) : '—'],
                         ['Lease Period',   watch('leaseStart') ? `${watch('leaseStart')} → ${watch('leaseEnd')}` : '—'],
                         ['Status',         watch('agreementStatus')],
@@ -569,7 +579,7 @@ export default function TenantFormPage() {
                   <button type="button" onClick={handleSubmit(onFormSubmit)} disabled={loading || compressing}
                     style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 20px', background:'#f97316', color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:700, cursor:'pointer', boxShadow:'0 2px 8px rgba(249,115,22,0.3)', fontFamily:'inherit', opacity: loading ? 0.7 : 1 }}>
                     {loading ? <Loader2 size={14} style={{ animation:'spin 1s linear infinite' }}/> : <Save size={14}/>}
-                    {id ? 'Save Changes' : 'Create Tenant'}
+                    {id ? 'Save Changes' : (mode === 'otherParty' ? 'Create Other Party' : 'Create Tenant')}
                   </button>
                 )}
               </div>

@@ -163,26 +163,34 @@ export const createInvoice = async (req: Request, res: Response) => {
 
       return res.status(201).json(invoice);
     }
-    // Auto-generate invoiceNo if not set or using old format
-    if (!data.invoiceNo || data.invoiceNo.startsWith('INV-') || data.invoiceNo === 'Loading...' || data.invoiceNo === '') {
-      data.invoiceNo = await generateInvoiceNo(data.companyId, data.taxOption);
-    }
-
     // Ensure companyId is set
     if (!data.companyId) {
       return res.status(400).json({ error: 'Company is required. Please select a company.' });
     }
 
-    // Cast companyId to ObjectId if it's a string
+    // Cast IDs to ObjectId FIRST
     try {
       if (data.companyId && typeof data.companyId === 'string') {
         data.companyId = new mongoose.Types.ObjectId(data.companyId);
       }
-      if (data.tenantId && typeof data.tenantId === 'string') {
+      if (data.tenantId && typeof data.tenantId === 'string' && data.tenantId.trim() !== '') {
         data.tenantId = new mongoose.Types.ObjectId(data.tenantId);
+      } else {
+        delete data.tenantId;
+      }
+      if (data.otherPartyId && typeof data.otherPartyId === 'string' && data.otherPartyId.trim() !== '') {
+        data.otherPartyId = new mongoose.Types.ObjectId(data.otherPartyId);
+      } else {
+        delete data.otherPartyId;
       }
     } catch (castErr: any) {
       console.error('ObjectId cast error:', castErr.message);
+      return res.status(400).json({ error: `Invalid ID format: ${castErr.message}` });
+    }
+
+    // Auto-generate invoiceNo AFTER companyId is cast
+    if (!data.invoiceNo || data.invoiceNo.startsWith('INV-') || data.invoiceNo === 'Loading...' || data.invoiceNo === '') {
+      data.invoiceNo = await generateInvoiceNo(String(data.companyId), data.taxOption);
     }
 
     // Remove undefined/null fields that could cause validation issues
@@ -214,59 +222,70 @@ export const createInvoice = async (req: Request, res: Response) => {
       });
     }
 
-    // Create Ledger Entries for the new Invoice
-    const ledgerEntries = [];
-    
-    // 1. Invoice Debit Entry
-    ledgerEntries.push({
-      tenantId: invoice.tenantId,
-      date: invoice.billDate || new Date(),
-      type: 'INVOICE',
-      particular: `Invoice #${invoice.invoiceNo}`,
-      refId: invoice._id,
-      refNo: invoice.invoiceNo,
-      debit: invoice.totalInvoice || 0,
-      credit: 0,
-      tds: 0
-    });
+    // Create Ledger Entries — wrapped in try-catch so invoice saves even if ledger fails
+    try {
+      const partyRef = invoice.tenantId
+        ? { tenantId: invoice.tenantId }
+        : (invoice as any).otherPartyId
+          ? { tenantId: (invoice as any).otherPartyId } // store otherPartyId in tenantId field for ledger compatibility
+          : null;
 
-    // 2. Receipt Entry (if payment was received at creation)
-    if (invoice.receivedAmount > 0) {
-      ledgerEntries.push({
-        tenantId: invoice.tenantId,
-        date: invoice.paymentDate || invoice.billDate || new Date(),
-        type: 'PAYMENT',
-        particular: `Payment Received - #${invoice.invoiceNo}`,
-        refId: invoice._id,
-        refNo: invoice.invoiceNo,
-        debit: 0,
-        credit: invoice.receivedAmount,
-        tds: 0
-      });
-    }
+      if (partyRef) {
+        const ledgerEntries: any[] = [];
 
-    // 3. TDS Entry
-    if (invoice.tdsAmount > 0) {
-      ledgerEntries.push({
-        tenantId: invoice.tenantId,
-        date: invoice.paymentDate || invoice.billDate || new Date(),
-        type: 'TDS',
-        particular: `TDS Deduction - #${invoice.invoiceNo}`,
-        refId: invoice._id,
-        refNo: invoice.invoiceNo,
-        debit: 0,
-        credit: 0,
-        tds: invoice.tdsAmount
-      });
-    }
+        ledgerEntries.push({
+          ...partyRef,
+          date:       invoice.billDate || new Date(),
+          type:       'INVOICE',
+          particular: `Invoice #${invoice.invoiceNo}`,
+          refId:      invoice._id,
+          refNo:      invoice.invoiceNo,
+          debit:      invoice.totalInvoice || 0,
+          credit:     0,
+          tds:        0
+        });
 
-    if (ledgerEntries.length > 0) {
-      await Ledger.insertMany(ledgerEntries);
+        if ((invoice as any).receivedAmount > 0) {
+          ledgerEntries.push({
+            ...partyRef,
+            date:       (invoice as any).paymentDate || invoice.billDate || new Date(),
+            type:       'PAYMENT',
+            particular: `Payment Received - #${invoice.invoiceNo}`,
+            refId:      invoice._id,
+            refNo:      invoice.invoiceNo,
+            debit:      0,
+            credit:     (invoice as any).receivedAmount,
+            tds:        0
+          });
+        }
+
+        if ((invoice as any).tdsAmount > 0) {
+          ledgerEntries.push({
+            ...partyRef,
+            date:       (invoice as any).paymentDate || invoice.billDate || new Date(),
+            type:       'TDS',
+            particular: `TDS Deduction - #${invoice.invoiceNo}`,
+            refId:      invoice._id,
+            refNo:      invoice.invoiceNo,
+            debit:      0,
+            credit:     0,
+            tds:        (invoice as any).tdsAmount
+          });
+        }
+
+        if (ledgerEntries.length > 0) {
+          await Ledger.insertMany(ledgerEntries);
+        }
+      }
+    } catch (ledgerErr: any) {
+      // Log ledger error but don't fail the invoice save
+      console.error('Ledger creation error (non-fatal):', ledgerErr.message);
     }
 
     res.status(201).json({ ...invoice.toObject(), id: invoice._id });
   } catch (err: any) {
-    res.status(400).json({ error: err.message });
+    console.error('createInvoice outer error:', err.message, err.code);
+    res.status(400).json({ error: err.message, details: err.errors });
   }
 };
 

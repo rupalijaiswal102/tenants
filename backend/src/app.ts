@@ -9,6 +9,7 @@ import invoiceRoutes from '../routes/invoice.routes';
 import statsRoutes from '../routes/stats.routes';
 import gstRoutes from '../routes/gst.routes';
 import ledgerRoutes from '../routes/ledger.routes';
+import otherPartyRoutes from '../routes/otherParty.routes';
 import { isUsingMockData } from './mockData';
 
 export async function createApp() {
@@ -50,6 +51,7 @@ export async function createApp() {
   app.use('/api/stats', statsRoutes);
   app.use('/api/gst', gstRoutes);
   app.use('/api/ledger', ledgerRoutes);
+  app.use('/api/other-parties', otherPartyRoutes);
 
   // Global Error Handler
   app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
