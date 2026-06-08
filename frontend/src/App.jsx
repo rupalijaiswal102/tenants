@@ -70,7 +70,8 @@ export default function App({ onLogout }) {
   }, []);
 
   useEffect(() => {
-    fetch('/api/status').then(r => r.json()).then(setDbStatus).catch(() => setDbStatus({ isDemo: true }));
+    const apiUrl = import.meta.env.VITE_API_URL || '';
+    fetch(`${apiUrl}/api/status`).then(r => r.json()).then(setDbStatus).catch(() => setDbStatus({ isDemo: true }));
     if (isMobile) setSidebarOpen(false);
   }, [location.pathname]);
 

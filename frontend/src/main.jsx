@@ -1,4 +1,17 @@
 import React, { useState } from 'react';
+import axios from 'axios';
+
+// Set global axios baseURL from env — works in both dev and production
+axios.defaults.baseURL = import.meta.env.VITE_API_URL || '';
+
+// Attach auth token to every request automatically
+axios.interceptors.request.use(config => {
+  try {
+    const auth = JSON.parse(localStorage.getItem('neoteric_auth') || 'null');
+    if (auth?.token) config.headers.Authorization = `Bearer ${auth.token}`;
+  } catch {}
+  return config;
+});
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, useNavigate } from 'react-router-dom';
 import App from './App.jsx';
