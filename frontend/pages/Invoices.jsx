@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import {
   Plus, Search, ReceiptIndianRupee, Edit2, Trash2,
   Eye, X, Download, AlertCircle, ChevronDown, Loader2,
-  TrendingUp, TrendingDown, Wallet, Filter
+  TrendingUp, TrendingDown, Wallet, Filter,
+  IndianRupee, CheckCircle2, Clock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'react-hot-toast';
@@ -25,6 +26,8 @@ const STATUS = {
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 const DEFAULT_PARTICULARS = ['Rental Charges','Common Area Maintenance','Electricity Charges','Water Charges','Parking Charges','Generator Charges','Housekeeping Charges'];
+
+const API_URL = import.meta.env.VITE_API_URL || '';
 
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function InvoiceList() {
@@ -49,10 +52,10 @@ export default function InvoiceList() {
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/invoices').then(r => r.json()).catch(() => []),
-      fetch('/api/tenants').then(r => r.json()).catch(() => []),
-      fetch('/api/companies').then(r => r.json()).catch(() => []),
-      fetch('/api/other-parties').then(r => r.json()).catch(() => []),
+      fetch(`${API_URL}/api/invoices`).then(r => r.json()).catch(() => []),
+      fetch(`${API_URL}/api/tenants`).then(r => r.json()).catch(() => []),
+      fetch(`${API_URL}/api/companies`).then(r => r.json()).catch(() => []),
+      fetch(`${API_URL}/api/other-parties`).then(r => r.json()).catch(() => []),
     ]).then(([inv, ten, com, op]) => {
       setInvoices(Array.isArray(inv) ? inv : []);
       setTenants(Array.isArray(ten) ? ten : []);
@@ -63,7 +66,7 @@ export default function InvoiceList() {
 
   const refetch = () => {
     setLoading(true);
-    fetch('/api/invoices').then(r => r.json()).then(d => setInvoices(Array.isArray(d) ? d : [])).finally(() => setLoading(false));
+    fetch(`${API_URL}/api/invoices`).then(r => r.json()).then(d => setInvoices(Array.isArray(d) ? d : [])).finally(() => setLoading(false));
   };
 
   // ── Derived data ──────────────────────────────────────────────────────────
@@ -92,7 +95,7 @@ export default function InvoiceList() {
 
   const handleDelete = async (id) => {
     try {
-      await fetch(`/api/invoices/${id}`, { method: 'DELETE' });
+      await fetch(`${API_URL}/api/invoices/${id}`, { method: 'DELETE' });
       setDeletingInvoice(null);
       refetch();
       toast.success('Invoice deleted');
@@ -143,11 +146,11 @@ export default function InvoiceList() {
       {/* ── Stat Cards ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 20 }}>
         {[
-          { label: 'Total Invoiced',   value: fmt(totalInvoiced),    color: '#3b82f6', bg: '#eff6ff', icon: Wallet },
-          { label: 'Total Received',   value: fmt(totalReceived),    color: '#10b981', bg: '#f0fdf4', icon: TrendingUp },
-          { label: 'Outstanding',      value: fmt(totalOutstanding), color: '#ef4444', bg: '#fff1f2', icon: TrendingDown },
-          { label: 'Paid',             value: `${paidCount}`,        color: '#10b981', bg: '#f0fdf4', icon: ReceiptIndianRupee },
-          { label: 'Pending',          value: `${pendingCount}`,     color: '#ef4444', bg: '#fff1f2', icon: AlertCircle },
+          { label: 'Total Invoiced',   value: fmt(totalInvoiced),    color: '#3b82f6', bg: '#eff6ff', icon: IndianRupee },
+          { label: 'Total Received',   value: fmt(totalReceived),    color: '#10b981', bg: '#f0fdf4', icon: CheckCircle2 },
+          { label: 'Outstanding',      value: fmt(totalOutstanding), color: '#ef4444', bg: '#fff1f2', icon: AlertCircle  },
+          { label: 'Paid',             value: `${paidCount}`,        color: '#10b981', bg: '#f0fdf4', icon: CheckCircle2 },
+          { label: 'Pending',          value: `${pendingCount}`,     color: '#ef4444', bg: '#fff1f2', icon: Clock        },
         ].map(s => {
           const Icon = s.icon;
           return (
