@@ -107,7 +107,7 @@ export async function generateInvoicePDF(invoice, tenant, company) {
 
   y+=3;
   hl(MG,y,MG+CW,...BDR);
-  y+=5;
+  y+=3;
 
   // ════════════════════════════════════════════════════════════════
   // 2. INVOICE TITLE
@@ -170,9 +170,9 @@ export async function generateInvoicePDF(invoice, tenant, company) {
   // Invoice No — format: FY26-27/15
   const fy1=String(billDate.getFullYear()).slice(-2);
   const fy2=String(billDate.getFullYear()+1).slice(-2);
-  pdf.text(`Invoice No. : FY${fy1}-${fy2}/${invoice.invoiceNo||'-'}`,  C3X, yInv); yInv+=5;
-  pdf.text(`Date : ${fd(invoice.billDate)}`,                            C3X, yInv); yInv+=4.5;
-  pdf.text(`Due Date : ${fd(dueDate)}`,                                 C3X, yInv); yInv+=4.5;
+  pdf.text(`Invoice No. : ${invoice.invoiceNo||'-'}`,  C3X, yInv); yInv+=5;
+  pdf.text(`Date : ${fd(invoice.billDate)}`, C3X, yInv); yInv+=4.5;
+  pdf.text(`Due Date : ${fd(dueDate)}`, C3X, yInv); yInv+=4.5;
 
   // CRM details (from invoice)
   if (invoice.crmName)  { pdf.text(`CRM : ${invoice.crmName}`,         C3X, yInv); yInv+=4.5; }
@@ -251,7 +251,7 @@ export async function generateInvoicePDF(invoice, tenant, company) {
   pdf.line(MG, y, MG+CW, y);           // top border
   pdf.line(MG, y+RH, MG+CW, y+RH);    // bottom border
   fnt(8.5,true,...BLK);
-  pdf.text('Total', MG+2, y+RH-1.8);
+  pdf.text('Total', MG+8+2, y+RH-1.8);  // Item name column
   const totLbl=`Rs ${Math.round(invoice.totalInvoice||subtotal).toLocaleString('en-IN')}.00`;
   pdf.text(totLbl, MG+CW-pdf.getTextWidth(totLbl)-2, y+RH-1.8);
   y+=RH+8;
@@ -290,7 +290,7 @@ export async function generateInvoicePDF(invoice, tenant, company) {
   let yR=y;
   const sumRow=(lbl,val,dark=false)=>{
     if(dark){
-      box(rightX-2,yR-1,rightW+2,7,...TH_BG);
+      box(rightX-2,yR-1,rightW+2,9,...TH_BG);
       fnt(9,true,...WH);
     } else {
       fnt(9,false,...GR);
@@ -306,7 +306,7 @@ export async function generateInvoicePDF(invoice, tenant, company) {
   sumRow('Total',     `Rs ${total.toLocaleString('en-IN')}.00`, true);
 
   y=Math.max(yL,yR+4)+4;
-   y+=7.5;
+  y+=7;
 
   // ════════════════════════════════════════════════════════════════
   // 6. PAY TO (left) | FOR COMPANY + SEAL + SIGNATORY (right)
@@ -341,18 +341,14 @@ export async function generateInvoicePDF(invoice, tenant, company) {
     }
     yS = stampY + (sealB64||signB64 ? 26 : 4);
   } else {
-    yS += 2;
+    yS += 12;
   }
 
   // Authorized Signatory
   fnt(9,true,...BLK);
   pdf.text('Authorized Signatory', PW-MG-pdf.getTextWidth('Authorized Signatory'), yS);
 
-  if(invoice.approved){
-    fnt(7,false,16,185,129);
-    const apStr=`Approved${invoice.approvedBy?` by: ${invoice.approvedBy}`:''}`;
-    pdf.text(apStr, PW-MG-pdf.getTextWidth(apStr), yS+5);
-  }
+  // Approved green text removed
 
   y=Math.max(yP,yS)+8;
 
@@ -360,6 +356,8 @@ export async function generateInvoicePDF(invoice, tenant, company) {
   // Footer line
   // ════════════════════════════════════════════════════════════════
   
+
+  pdf.save(`Invoice_${invoice.invoiceNo||'download'}.pdf`);
 }
 
 // ── LEDGER PDF ────────────────────────────────────────────────────────────────

@@ -16,7 +16,7 @@ export function ViewInvoiceModal({ invoice, tenant, company, onClose }) {
     setDownloading(true);
     try {
       const { generateInvoicePDF } = await import('../tenants/invoicePdf');
-      generateInvoicePDF(currentInvoice, tenant, company);
+      await generateInvoicePDF(currentInvoice, tenant, company);
       toast.success('PDF downloaded!');
     } catch {
       toast.error('PDF failed');
