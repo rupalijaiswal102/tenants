@@ -44,10 +44,10 @@ export default function BillingTab({ invoices = [], onPay, onView, onEdit, onDel
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                   <td style={{ padding:'11px 16px', fontSize:11, fontWeight:700, color:'#9ba8b5' }}>#{inv.invoiceNo}</td>
                   <td style={{ padding:'11px 16px', fontSize:12, fontWeight:600, color:'#1a1a2e' }}>{inv.billDate}</td>
-                  <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#1a1a2e', textAlign:'right' }}>₹{inv.totalInvoice?.toLocaleString()}</td>
-                  <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#10b981', textAlign:'right' }}>₹{(inv.receivedAmount || inv.received || 0).toLocaleString()}</td>
-                  <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#8b5cf6', textAlign:'right' }}>₹{(inv.tdsAmount || 0).toLocaleString()}</td>
-                  <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#ef4444', textAlign:'right' }}>₹{(inv.balanceAmount || inv.balance || 0).toLocaleString()}</td>
+                  <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#1a1a2e', textAlign:'right' }}>₹{Math.round(inv.totalInvoice || 0).toLocaleString()}</td>
+                  <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#10b981', textAlign:'right' }}>₹{Math.round(inv.receivedAmount || inv.received || 0).toLocaleString()}</td>
+                  <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#8b5cf6', textAlign:'right' }}>₹{Math.round(inv.tdsAmount || 0).toLocaleString()}</td>
+                  <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#ef4444', textAlign:'right' }}>₹{Math.round(inv.balanceAmount || inv.balance || 0).toLocaleString()}</td>
                   <td style={{ padding:'11px 16px' }}><InvoiceStatusBadge status={inv.paymentStatus}/></td>
                   <td style={{ padding:'11px 16px' }}>
                     <div style={{ display:'flex', gap:4, justifyContent:'flex-end' }}>
