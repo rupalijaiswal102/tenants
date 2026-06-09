@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 ;
 import { Invoice } from '../models/Invoice.js';
+import { InvoiceWorkflow, WORKFLOW_STEPS } from '../models/InvoiceWorkflow.js';
 import { Ledger } from '../models/Ledger.js';
 import { mockStorage, isUsingMockData } from '../src/mockData.js';
 
@@ -282,6 +283,28 @@ export const createInvoice = async (req, res) => {
       console.error('Ledger creation error (non-fatal):', ledgerErr.message);
     }
 
+    // ── Auto-create Workflow (GENERATED step) ──────────────────────────────
+    try {
+      const wfAuditEntry = {
+        step:        'GENERATED',
+        stepLabel:   WORKFLOW_STEPS.GENERATED.label,
+        userName:    req.user?.name || 'System',
+        userRole:    req.user?.role || 'Admin',
+        notes:       `Invoice #${invoice.invoiceNo} created`,
+        completedAt: new Date(),
+      };
+      if (req.user?._id) wfAuditEntry.completedBy = req.user._id;
+
+      await new InvoiceWorkflow({
+        invoiceId:      invoice._id,
+        completedSteps: ['GENERATED'],
+        currentStatus:  'Pending Approval',
+        auditLog:       [wfAuditEntry],
+      }).save();
+    } catch (wfErr) {
+      console.error('Workflow auto-create error (non-fatal):', wfErr.message);
+    }
+
     res.status(201).json({ ...invoice.toObject(), id: invoice._id });
   } catch (err) {
     console.error('createInvoice outer error:', err.message, err.code);
@@ -426,75 +449,67 @@ export const updateInvoice = async (req, res) => {
     // Sync Ledger Entries
     await Ledger.deleteMany({ refId: invoice._id });
     
-    const partyRef = invoice.tenantId
-      ? { tenantId: invoice.tenantId }
-      : invoice.otherPartyId
-        ? { tenantId: invoice.otherPartyId }
-        : null;
+    const ledgerEntries = [];
+    // 1. Invoice Debit
+    ledgerEntries.push({
+      tenantId: invoice.tenantId,
+      date: invoice.billDate || new Date(),
+      type: 'INVOICE',
+      particular: `Invoice #${invoice.invoiceNo}`,
+      refId: invoice._id,
+      refNo: invoice.invoiceNo,
+      debit: invoice.totalInvoice || 0,
+      credit: 0,
+      tds: 0
+    });
 
-    if (partyRef) {
-      const ledgerEntries = [];
-      // 1. Invoice Debit
+    // 1.5 Late Penalty Entry (New)
+    if (invoice.latePenaltyAmount > 0) {
       ledgerEntries.push({
-        ...partyRef,
-        date: invoice.billDate || new Date(),
-        type: 'INVOICE',
-        particular: `Invoice #${invoice.invoiceNo}`,
+        tenantId: invoice.tenantId,
+        date: invoice.paymentDate || invoice.billDate || new Date(),
+        type: 'ADJUSTMENT',
+        particular: `Late Payment Penalty (${invoice.latePenaltyPercentage}%) - #${invoice.invoiceNo}`,
         refId: invoice._id,
         refNo: invoice.invoiceNo,
-        debit: invoice.totalInvoice || 0,
+        debit: invoice.latePenaltyAmount,
         credit: 0,
         tds: 0
       });
+    }
 
-      // 1.5 Late Penalty Entry (New)
-      if (invoice.latePenaltyAmount > 0) {
-        ledgerEntries.push({
-          ...partyRef,
-          date: invoice.paymentDate || invoice.billDate || new Date(),
-          type: 'ADJUSTMENT',
-          particular: `Late Payment Penalty (${invoice.latePenaltyPercentage}%) - #${invoice.invoiceNo}`,
-          refId: invoice._id,
-          refNo: invoice.invoiceNo,
-          debit: invoice.latePenaltyAmount,
-          credit: 0,
-          tds: 0
-        });
-      }
+    // 2. Receipt
+    if (invoice.receivedAmount > 0) {
+      ledgerEntries.push({
+        tenantId: invoice.tenantId,
+        date: invoice.paymentDate || invoice.billDate || new Date(),
+        type: 'PAYMENT',
+        particular: `Payment Received - #${invoice.invoiceNo}`,
+        refId: invoice._id,
+        refNo: invoice.invoiceNo,
+        debit: 0,
+        credit: invoice.receivedAmount,
+        tds: 0
+      });
+    }
 
-      // 2. Receipt
-      if (invoice.receivedAmount > 0) {
-        ledgerEntries.push({
-          ...partyRef,
-          date: invoice.paymentDate || invoice.billDate || new Date(),
-          type: 'PAYMENT',
-          particular: `Payment Received - #${invoice.invoiceNo}`,
-          refId: invoice._id,
-          refNo: invoice.invoiceNo,
-          debit: 0,
-          credit: invoice.receivedAmount,
-          tds: 0
-        });
-      }
+    // 3. TDS
+    if (invoice.tdsAmount > 0) {
+      ledgerEntries.push({
+        tenantId: invoice.tenantId,
+        date: invoice.paymentDate || invoice.billDate || new Date(),
+        type: 'TDS',
+        particular: `TDS Deduction - #${invoice.invoiceNo}`,
+        refId: invoice._id,
+        refNo: invoice.invoiceNo,
+        debit: 0,
+        credit: 0,
+        tds: invoice.tdsAmount
+      });
+    }
 
-      // 3. TDS
-      if (invoice.tdsAmount > 0) {
-        ledgerEntries.push({
-          ...partyRef,
-          date: invoice.paymentDate || invoice.billDate || new Date(),
-          type: 'TDS',
-          particular: `TDS Deduction - #${invoice.invoiceNo}`,
-          refId: invoice._id,
-          refNo: invoice.invoiceNo,
-          debit: 0,
-          credit: 0,
-          tds: invoice.tdsAmount
-        });
-      }
-
-      if (ledgerEntries.length > 0) {
-        await Ledger.insertMany(ledgerEntries);
-      }
+    if (ledgerEntries.length > 0) {
+      await Ledger.insertMany(ledgerEntries);
     }
 
     res.json({ ...invoice.toObject(), id: invoice._id });
@@ -555,10 +570,7 @@ export const approveInvoice = async (req, res) => {
   try {
     const { id } = req.params;
     const { approvedBy, signatureImage } = req.body;
-
-    if (!signatureImage) {
-      return res.status(400).json({ error: 'Signature is required' });
-    }
+    // signatureImage is optional — seal comes from company
 
     const invoice = await Invoice.findByIdAndUpdate(
       id,

@@ -16,10 +16,12 @@ import LedgerTab           from './tenantDetails/LedgerTab.jsx';
 import BillingTab          from './tenantDetails/BillingTab.jsx';
 import { LeaseTab, DocumentsTab } from './tenantDetails/LeaseDocsTab.jsx';
 import DeleteInvoiceModal  from './tenantDetails/DeleteInvoiceModal.jsx';
+import InvoiceWorkflowTab  from '../invoices/InvoiceWorkflowTab.jsx';
 
 export function TenantDetailsView({ tenant, onClose, companies, allTenants, apiBase = '/api/tenants' }) {
   const isOtherParty = apiBase.includes('other-parties');
   const { isMobile } = useResponsive();
+  const authData = JSON.parse(localStorage.getItem('neoteric_auth') || 'null');
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [details,         setDetails]         = useState(null);
@@ -28,7 +30,8 @@ export function TenantDetailsView({ tenant, onClose, companies, allTenants, apiB
   const [ledgerLoading,   setLedgerLoading]   = useState(true);
   const [activeTab,       setActiveTab]       = useState('overview');
   const [showOpeningAdj,  setShowOpeningAdj]  = useState(false);
-  const [selectedInvoice, setSelectedInvoice] = useState(null);
+  const [selectedInvoice,  setSelectedInvoice]  = useState(null);
+  const [workflowInvoice,  setWorkflowInvoice]  = useState(null); // invoice for workflow tab
   const [editingInvoice,  setEditingInvoice]  = useState(null);
   const [deletingInvoice, setDeletingInvoice] = useState(null);
   const [payingInvoice,   setPayingInvoice]   = useState(null);
@@ -168,6 +171,7 @@ export function TenantDetailsView({ tenant, onClose, companies, allTenants, apiB
               onView={setSelectedInvoice}
               onEdit={setEditingInvoice}
               onDelete={setDeletingInvoice}
+              onWorkflow={(inv) => { setWorkflowInvoice(inv); setActiveTab('workflow'); }}
             />
           )}
 
@@ -177,6 +181,23 @@ export function TenantDetailsView({ tenant, onClose, companies, allTenants, apiB
 
           {activeTab === 'documents' && (
             <DocumentsTab tenant={tenant}/>
+          )}
+
+          {activeTab === 'workflow' && workflowInvoice && (
+            <InvoiceWorkflowTab
+              invoice={workflowInvoice}
+              userRole={authData?.role || 'MDO'}
+              userName={authData?.name || 'User'}
+            />
+          )}
+          {activeTab === 'workflow' && !workflowInvoice && (
+            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minHeight:300, gap:12, color:'#9ba8b5' }}>
+              <div style={{ width:48, height:48, borderRadius:14, background:'#f8f9fb', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <span style={{ fontSize:24 }}>🔀</span>
+              </div>
+              <p style={{ fontSize:13, fontWeight:600, margin:0 }}>No invoice selected</p>
+              <p style={{ fontSize:11, margin:0 }}>Go to <strong>Billing</strong> tab → click <strong>Flow</strong> button on any invoice</p>
+            </div>
           )}
 
         </AnimatePresence>

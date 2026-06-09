@@ -64,7 +64,7 @@ export async function generateInvoicePDF(invoice, tenant, company) {
   // ── Color tokens ──
   const BLK=[0,0,0], DK=[26,26,46], GR=[90,90,90], LGR=[160,160,160];
   const OR=[220,130,0], WH=[255,255,255], BDR=[210,210,210];
-  const TH_BG=[30,30,50], ROW_ALT=[247,247,247];
+  const TH_BG=[85,85,90], ROW_ALT=[247,247,247];  // gray header
 
   // ── Drawing helpers ──
   const fnt = (sz,bold,...rgb) => {
@@ -131,25 +131,37 @@ export async function generateInvoicePDF(invoice, tenant, company) {
 
   let yBill=y, yShip=y, yInv=y;
 
+  // -- Normalize: works for Tenant, OtherParty, or invoice-only data --
+  const party           = tenant || {};
+  const partyName       = party.name       || invoice.partyName    || '';
+  const billingAddr     = party.billingAddress || party.address    || invoice.billingAddress || '';
+  const shippingAddr    = party.property   || party.billingAddress || party.address || invoice.property || '';
+  const partyMobile     = party.mobile     || party.phone          || '';
+  const partyGst        = party.gstNo      || party.gstNumber      || invoice.gstNo || '';
+  const partyState      = party.state      || '';
+  const partyDeposit    = Number(party.securityDeposit || 0);
+  const partyLeaseStart = party.leaseStart || '';
+  const partyLeaseEnd   = party.leaseEnd   || '';
+  const partyEscalation = party.nextEscalationDate || '';
+
   // -- Bill To --
   fnt(8.5,true,...BLK);
-  pdf.text((tenant?.name||invoice.partyName||'-').slice(0,32), C1X, yBill); yBill+=5;
+  if (partyName)      { pdf.text(partyName.slice(0,32), C1X, yBill); yBill+=5; }
   fnt(7.5,false,...GR);
-  const bAddr = pdf.splitTextToSize(tenant?.billingAddress||'-', C1W-3);
-  bAddr.slice(0,4).forEach(l=>{ pdf.text(l,C1X,yBill); yBill+=4.5; });
-  if (tenant?.mobile)           { pdf.text(`Contact No. : ${tenant.mobile}`,                                      C1X,yBill); yBill+=4.5; }
-  if (tenant?.gstNo)            { pdf.text(`State: 23-Madhya Pradesh`,                                            C1X,yBill); yBill+=4.5; }
-  if (tenant?.securityDeposit)  { pdf.text(`Security Deposit : ${Number(tenant.securityDeposit).toLocaleString('en-IN')}`, C1X,yBill); yBill+=4.5; }
-  if (tenant?.leaseStart)       { pdf.text(`Agreement Start : ${fdDot(tenant.leaseStart)}`,                       C1X,yBill); yBill+=4.5; }
-  if (tenant?.leaseEnd)         { pdf.text(`Agreement End : ${fdDot(tenant.leaseEnd)}`,                           C1X,yBill); yBill+=4.5; }
-  if (tenant?.nextEscalationDate){ pdf.text(`Rent Escalation : ${fdDot(tenant.nextEscalationDate)}`,              C1X,yBill); yBill+=4.5; }
+  if (billingAddr)    { const bAddr = pdf.splitTextToSize(billingAddr, C1W-3); bAddr.slice(0,4).forEach(l=>{ pdf.text(l,C1X,yBill); yBill+=4.5; }); }
+  if (partyMobile)    { pdf.text(`Contact No. : ${partyMobile}`,                                           C1X,yBill); yBill+=4.5; }
+  if (partyGst)       { pdf.text(`GSTIN : ${partyGst}`,                                                    C1X,yBill); yBill+=4.5; }
+  if (partyState)     { pdf.text(`State: ${partyState}`,                                                   C1X,yBill); yBill+=4.5; }
+  if (partyDeposit>0) { pdf.text(`Security Deposit : ${partyDeposit.toLocaleString('en-IN')}`,             C1X,yBill); yBill+=4.5; }
+  if (partyLeaseStart){ pdf.text(`Agreement Start : ${fdDot(partyLeaseStart)}`,                            C1X,yBill); yBill+=4.5; }
+  if (partyLeaseEnd)  { pdf.text(`Agreement End : ${fdDot(partyLeaseEnd)}`,                                C1X,yBill); yBill+=4.5; }
+  if (partyEscalation){ pdf.text(`Rent Escalation : ${fdDot(partyEscalation)}`,                            C1X,yBill); yBill+=4.5; }
 
   // -- Ship To --
   fnt(8.5,true,...BLK);
-  pdf.text((tenant?.name||invoice.partyName||'-').slice(0,28), C2X, yShip); yShip+=5;
+  if (partyName)      { pdf.text(partyName.slice(0,28), C2X, yShip); yShip+=5; }
   fnt(7.5,false,...GR);
-  const sAddr = pdf.splitTextToSize(tenant?.property||'-', C2W-3);
-  sAddr.slice(0,6).forEach(l=>{ pdf.text(l,C2X,yShip); yShip+=4.5; });
+  if (shippingAddr)   { const sAddr = pdf.splitTextToSize(shippingAddr, C2W-3); sAddr.slice(0,6).forEach(l=>{ pdf.text(l,C2X,yShip); yShip+=4.5; }); }
 
   // -- Invoice Details --
   const billDate = new Date(invoice.billDate||Date.now());
@@ -172,7 +184,7 @@ export async function generateInvoicePDF(invoice, tenant, company) {
   // ════════════════════════════════════════════════════════════════
   // 4. LINE ITEMS TABLE
   // ════════════════════════════════════════════════════════════════
-  const RH=7.5;
+  const RH=9;
   const COLS=[
     { lbl:'#',        w:8,          r:false },
     { lbl:'Item name',w:CW*0.33,    r:false },
@@ -294,7 +306,7 @@ export async function generateInvoicePDF(invoice, tenant, company) {
   sumRow('Total',     `Rs ${total.toLocaleString('en-IN')}.00`, true);
 
   y=Math.max(yL,yR+4)+4;
-   y+=7;
+   y+=7.5;
 
   // ════════════════════════════════════════════════════════════════
   // 6. PAY TO (left) | FOR COMPANY + SEAL + SIGNATORY (right)
@@ -333,7 +345,7 @@ export async function generateInvoicePDF(invoice, tenant, company) {
   }
 
   // Authorized Signatory
-  fnt(9,true,...OR);
+  fnt(9,true,...BLK);
   pdf.text('Authorized Signatory', PW-MG-pdf.getTextWidth('Authorized Signatory'), yS);
 
   if(invoice.approved){
@@ -343,7 +355,11 @@ export async function generateInvoicePDF(invoice, tenant, company) {
   }
 
   y=Math.max(yP,yS)+8;
-  pdf.save(`Invoice_${invoice.invoiceNo||'download'}.pdf`);
+
+  // ════════════════════════════════════════════════════════════════
+  // Footer line
+  // ════════════════════════════════════════════════════════════════
+  
 }
 
 // ── LEDGER PDF ────────────────────────────────────────────────────────────────

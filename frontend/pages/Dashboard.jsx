@@ -8,6 +8,7 @@ import { useResponsive } from '../src/hooks/useResponsive.js';
 import { useNavigate } from 'react-router-dom';
 
 import axios from 'axios';
+import WorkflowPendingCards from '../components/invoices/WorkflowPendingCards.jsx';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell
@@ -104,6 +105,9 @@ export default function Dashboard() {
   );
 
   // ── Main render ──────────────────────────────────────────────────────────
+  const authData = JSON.parse(localStorage.getItem('neoteric_auth') || 'null');
+  const userRole = authData?.role || 'MDO';
+
   return (
     <div style={{ padding: isMobile ? 12 : 24, width: '100%' }}>
 
@@ -121,6 +125,7 @@ export default function Dashboard() {
       </div>
 
       {/* ── Stat Cards ── */}
+      <WorkflowPendingCards userRole={userRole}/>
       <div className="grid-responsive-6" style={{ marginBottom: 22 }}>
         {stats.map((st, i) => (
           <div key={i} style={{ ...S.card, borderLeft: `3px solid ${st.color}`, borderRadius: '0 14px 14px 0', padding: '14px 16px', transition: 'all 0.2s', cursor: 'default' }}

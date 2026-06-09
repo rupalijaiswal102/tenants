@@ -1,5 +1,5 @@
 import { X, Download, Clock, Building, FileText, Loader2,
-         PieChart, Receipt, Calendar, FileCheck } from 'lucide-react';
+         PieChart, Receipt, Calendar, FileCheck, GitBranch } from 'lucide-react';
 import { StatusBadge } from '../TenantPrimitives.jsx';
 
 const TABS = [
@@ -8,6 +8,7 @@ const TABS = [
   { id:'invoices',  label:'Billing',    icon: Receipt   },
   { id:'lease',     label:'Lease',      icon: Calendar  },
   { id:'documents', label:'Documents',  icon: FileCheck },
+  { id:'workflow',  label:'Workflow',   icon: GitBranch },
 ];
 
 export default function TenantDetailHeader({ tenant, activeTab, setActiveTab, onClose, exportingPDF, onExportPDF }) {

@@ -7,7 +7,9 @@ import invoiceRoutes    from '../routes/invoice.routes.js';
 import statsRoutes      from '../routes/stats.routes.js';
 import gstRoutes        from '../routes/gst.routes.js';
 import ledgerRoutes     from '../routes/ledger.routes.js';
-import otherPartyRoutes from '../routes/otherParty.routes.js';
+import otherPartyRoutes  from '../routes/otherParty.routes.js';
+import workflowRoutes    from '../routes/workflow.routes.js';
+import userRoutes        from '../routes/user.routes.js';
 import { isUsingMockData } from './mockData.js';
 
 export async function createApp() {
@@ -47,6 +49,8 @@ export async function createApp() {
   app.use('/api/gst',           gstRoutes);
   app.use('/api/ledger',        ledgerRoutes);
   app.use('/api/other-parties', otherPartyRoutes);
+  app.use('/api/workflow',      workflowRoutes);
+  app.use('/api/users',         userRoutes);
 
   app.use((err, req, res, next) => {
     console.error('SERVER ERROR:', err);

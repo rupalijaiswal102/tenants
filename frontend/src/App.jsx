@@ -14,6 +14,8 @@ import TenantFormPage from '../pages/TenantFormPage.jsx';
 import InvoiceList  from '../pages/Invoices.jsx';
 import CompanyList  from '../pages/Companies.jsx';
 import Reports      from '../pages/Reports.jsx';
+import UsersPage           from '../pages/Users.jsx';
+import InvoiceWorkflowPage from '../pages/InvoiceWorkflow.jsx';
 
 // ── Page title map ────────────────────────────────────────────────────────────
 const PAGE_TITLES = {
@@ -229,6 +231,8 @@ export default function App({ onLogout }) {
               <Route path="/other-parties/create"     element={<TenantFormPage mode="otherParty" />} />
               <Route path="/other-parties/edit/:id"   element={<TenantFormPage mode="otherParty" />} />
               <Route path="/other-parties/:id"        element={<TenantList mode="otherParty" />} />
+              <Route path="/users" element={<UsersPage/>}/>
+              <Route path="/invoices/:invoiceId/workflow" element={<InvoiceWorkflowPage/>}/>
               <Route path="*" element={
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: 12, color: '#9ba8b5' }}>
                   <Settings size={40} strokeWidth={1} />

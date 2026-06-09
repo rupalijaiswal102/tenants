@@ -34,7 +34,11 @@ export const getLedgerByTenant = async (req, res) => {
 
     // 1. Calculate Opening Balance (all entries before startDate)
     // If no startDate, opening balance is 0 or based on first entry
-    let query= { tenantId };
+    // Support both string and ObjectId comparison
+    const mongoose = (await import('mongoose')).default;
+    let queryId;
+    try { queryId = new mongoose.Types.ObjectId(tenantId); } catch { queryId = tenantId; }
+    let query = { tenantId: queryId };
     if (startDate) {
       query.date = { $lt: new Date(startDate) };
     } else {
@@ -48,7 +52,7 @@ export const getLedgerByTenant = async (req, res) => {
     }, 0);
 
     // 2. Fetch entries for the current period
-    let periodQuery= { tenantId };
+    let periodQuery = { tenantId: queryId };
     if (startDate || endDate) {
       periodQuery.date = {};
       if (startDate) periodQuery.date.$gte = new Date(startDate);

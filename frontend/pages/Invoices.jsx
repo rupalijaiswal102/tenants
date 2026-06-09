@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Plus, Search, ReceiptIndianRupee, Edit2, Trash2,
   Eye, X, Download, AlertCircle, ChevronDown, Loader2,
   TrendingUp, TrendingDown, Wallet, Filter,
-  IndianRupee, CheckCircle2, Clock
+  IndianRupee, CheckCircle2, Clock, GitBranch
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'react-hot-toast';
@@ -46,6 +47,7 @@ export default function InvoiceList() {
   const [showFilters,    setShowFilters]    = useState(false);
 
   const [showForm,       setShowForm]       = useState(false);
+  const navigate = useNavigate();
   const [selectedInvoice,setSelectedInvoice]= useState(null);
   const [editingInvoice, setEditingInvoice] = useState(null);
   const [deletingInvoice,setDeletingInvoice]= useState(null);
@@ -250,7 +252,7 @@ export default function InvoiceList() {
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 600 }}>
             <thead>
               <tr style={{ background: '#f8fafc', borderBottom: '1px solid #f0f2f5' }}>
-                {['Invoice No', 'Party Name', 'Bill Date', 'Amount', 'Received', 'Balance', 'Status', 'Actions'].map((h, i) => (
+                {['Invoice No', 'Party Name', 'Bill Date', 'Amount', 'Received', 'Balance', 'Status', 'Workflow', 'Actions'].map((h, i) => (
                   <th key={h} style={{ padding: '11px 14px', fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', textAlign: i >= 3 && i <= 5 ? 'right' : i === 7 ? 'center' : 'left', whiteSpace: 'nowrap', borderBottom: '1px solid #f0f2f5' }}>{h}</th>
                 ))}
               </tr>
@@ -319,6 +321,17 @@ export default function InvoiceList() {
                       </span>
                     </td>
 
+                    {/* Workflow */}
+                    <td style={{ padding: '12px 14px', textAlign:'center' }}>
+                      <button
+                        onClick={() => navigate(`/invoices/${inv.id || inv._id}/workflow`)}
+                        style={{ padding:'5px 12px', borderRadius:8, border:'1px solid #bbf7d0', background:'#f0fdf4', cursor:'pointer', fontSize:11, fontWeight:700, color:'#15803d', display:'inline-flex', alignItems:'center', gap:5, transition:'all 0.1s' }}
+                        onMouseEnter={e => { e.currentTarget.style.background='#15803d'; e.currentTarget.style.color='#fff'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background='#f0fdf4'; e.currentTarget.style.color='#15803d'; }}>
+                        <GitBranch size={12}/> Workflow
+                      </button>
+                    </td>
+
                     {/* Actions */}
                     <td style={{ padding: '12px 14px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
@@ -375,8 +388,11 @@ export default function InvoiceList() {
         )}
         {selectedInvoice && (
           <ViewInvoiceModal invoice={selectedInvoice}
-            tenant={tenants.find(t => t.id === selectedInvoice.tenantId)}
-            company={companies.find(c => c.id === selectedInvoice.companyId || c.companyName === selectedInvoice.company)}
+            tenant={
+              tenants.find(t => String(t.id||t._id) === String(selectedInvoice.tenantId)) ||
+              otherParties.find(p => String(p.id||p._id) === String(selectedInvoice.otherPartyId))
+            }
+            company={companies.find(c => String(c.id||c._id) === String(selectedInvoice.companyId) || c.companyName === selectedInvoice.company)}
             onClose={() => setSelectedInvoice(null)}/>
         )}
         {deletingInvoice && (

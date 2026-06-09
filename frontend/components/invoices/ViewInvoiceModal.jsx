@@ -89,6 +89,7 @@ export function ViewInvoiceModal({ invoice, tenant, company, onClose }) {
           {showApprove && (
             <ApproveSignatureModal
               invoice={currentInvoice}
+              company={company}
               onClose={() => setShowApprove(false)}
               onSuccess={(updated) => {
                 setCurrentInvoice(updated);
@@ -101,7 +102,7 @@ export function ViewInvoiceModal({ invoice, tenant, company, onClose }) {
         {/* ── Printable invoice document ── */}
         <motion.div
           initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
-          className="invoice-print-area bg-white w-full max-w-[850px] shadow-2xl p-6 md:p-16 font-sans text-[#1a1a1a] rounded-sm my-8"
+          className="bg-white w-full max-w-[850px] shadow-2xl p-6 md:p-16 font-sans text-[#1a1a1a] rounded-sm my-8"
         >
           <InvoicePreviewDocument
             invoice={currentInvoice}
