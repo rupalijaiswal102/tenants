@@ -230,7 +230,8 @@ export const getWorkflowStats = async (req, res) => {
     const pendingTallyEntry   = all.filter(w => w.completedSteps.includes('APPROVED')         && !w.completedSteps.includes('TALLY_ENTRY')).length;
     const pendingEmail        = all.filter(w => w.completedSteps.includes('TALLY_ENTRY')      && !w.completedSteps.includes('EMAIL_SENT')).length;
     const pendingDispatch     = all.filter(w => w.completedSteps.includes('EMAIL_SENT')       && !w.completedSteps.includes('DISPATCHED')).length;
-    const pendingPayment      = all.filter(w => w.completedSteps.includes('DISPATCHED')       && !w.completedSteps.includes('PAYMENT_RECEIVED')).length;
+    const pendingFiling       = all.filter(w => w.completedSteps.includes('DISPATCHED')       && !w.completedSteps.includes('FILING')).length;
+    const pendingPayment      = all.filter(w => w.completedSteps.includes('FILING')           && !w.completedSteps.includes('PAYMENT_RECEIVED')).length;
     const pendingTallyReceipt = all.filter(w => w.completedSteps.includes('PAYMENT_RECEIVED') && !w.completedSteps.includes('TALLY_RECEIPT')).length;
 
     res.json({
@@ -238,6 +239,7 @@ export const getWorkflowStats = async (req, res) => {
       pendingTallyEntry,
       pendingEmail,
       pendingDispatch,
+      pendingFiling,
       pendingPayment,
       pendingTallyReceipt,
       total: all.length,

@@ -47,8 +47,14 @@ export default function BillingTab({ invoices = [], onPay, onView, onEdit, onDel
                   <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#1a1a2e', textAlign:'right' }}>₹{Math.round(inv.totalInvoice || 0).toLocaleString()}</td>
                   <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#10b981', textAlign:'right' }}>₹{Math.round(inv.receivedAmount || inv.received || 0).toLocaleString()}</td>
                   <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#8b5cf6', textAlign:'right' }}>₹{Math.round(inv.tdsAmount || 0).toLocaleString()}</td>
-                  <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#ef4444', textAlign:'right' }}>₹{Math.round(inv.balanceAmount || inv.balance || 0).toLocaleString()}</td>
-                  <td style={{ padding:'11px 16px' }}><InvoiceStatusBadge status={inv.paymentStatus}/></td>
+                  {(() => { const bal = Math.max(0, Math.round(inv.balanceAmount || inv.balance || 0)); return (
+                  <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color: bal === 0 ? '#10b981' : '#ef4444', textAlign:'right' }}>₹{bal.toLocaleString()}</td>
+                  ); })()}
+                  {(() => {
+                    const bal = Math.max(0, Math.round(inv.balanceAmount || inv.balance || 0));
+                    const status = bal === 0 && (inv.totalInvoice || 0) > 0 ? 'Paid' : inv.paymentStatus;
+                    return <td style={{ padding:'11px 16px' }}><InvoiceStatusBadge status={status}/></td>;
+                  })()}
                   <td style={{ padding:'11px 16px' }}>
                     <div style={{ display:'flex', gap:4, justifyContent:'flex-end' }}>
                       <button onClick={() => onPay(inv)} style={{ padding:'4px 10px', background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:6, cursor:'pointer', fontSize:10, fontWeight:700, color:'#15803d', display:'flex', alignItems:'center', gap:3, fontFamily:'inherit' }}>

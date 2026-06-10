@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { CheckCircle2, BookOpen, Truck, IndianRupee, Mail, AlertCircle } from 'lucide-react';
+import { CheckCircle2, BookOpen, Truck, IndianRupee, Mail, AlertCircle, Archive } from 'lucide-react';
 
 const PENDING_CARDS = [
   { key:'pendingApprovals',    label:'Pending Approvals',      icon: CheckCircle2, color:'#ef4444', bg:'#fff1f2', border:'#fecdd3', role:'Accounts' },
   { key:'pendingTallyEntry',   label:'Pending Tally Entry',    icon: BookOpen,     color:'#8b5cf6', bg:'#f5f3ff', border:'#ddd6fe', role:'Accounts' },
   { key:'pendingEmail',        label:'Pending Email',          icon: Mail,         color:'#f59e0b', bg:'#fffbeb', border:'#fde68a', role:'MDO'      },
   { key:'pendingDispatch',     label:'Pending Dispatch',       icon: Truck,        color:'#0ea5e9', bg:'#eff6ff', border:'#bfdbfe', role:'CRM'      },
+  { key:'pendingFiling',       label:'Pending Filing',         icon: Archive,      color:'#14b8a6', bg:'#f0fdfa', border:'#99f6e4', role:'MDO'      },
   { key:'pendingPayment',      label:'Pending Payment',        icon: IndianRupee,  color:'#10b981', bg:'#f0fdf4', border:'#bbf7d0', role:'MDO'      },
   { key:'pendingTallyReceipt', label:'Tally Receipt Pending',  icon: BookOpen,     color:'#8b5cf6', bg:'#f5f3ff', border:'#ddd6fe', role:'Accounts' },
 ];
@@ -64,7 +65,7 @@ export default function WorkflowPendingCards({ userRole }) {
 }
 
 const ROLE_FILTER = {
-  MDO:      ['pendingApprovals','pendingEmail','pendingPayment'],
+  MDO:      ['pendingApprovals','pendingEmail','pendingFiling','pendingPayment'],
   Accounts: ['pendingApprovals','pendingTallyEntry','pendingTallyReceipt'],
   CRM:      ['pendingDispatch'],
   Admin:    null, // show all

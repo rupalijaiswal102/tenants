@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'react-hot-toast';
 import {
   CheckCircle2, Clock, Lock, ChevronRight, User,
-  FileText, Mail, Truck, IndianRupee, BookOpen,
+  FileText, Mail, Truck, IndianRupee, BookOpen, Archive,
   RotateCcw, AlertCircle, Loader2, Plus
 } from 'lucide-react';
 
@@ -15,12 +15,13 @@ const STEPS = [
   { key:'TALLY_ENTRY',      label:'Tally Entry Completed',  icon: BookOpen,    role:'Accounts', color:'#8b5cf6' },
   { key:'EMAIL_SENT',       label:'Email Sent',             icon: Mail,        role:'MDO',      color:'#f59e0b' },
   { key:'DISPATCHED',       label:'Hard Copy Dispatched',   icon: Truck,       role:'CRM',      color:'#0ea5e9' },
+  { key:'FILING',           label:'Filing Done',            icon: Archive,     role:'MDO',      color:'#14b8a6' },
   { key:'PAYMENT_RECEIVED', label:'Payment Received',       icon: IndianRupee, role:'MDO',      color:'#10b981' },
   { key:'TALLY_RECEIPT',    label:'Tally Receipt Posted',   icon: BookOpen,    role:'Accounts', color:'#8b5cf6' },
 ];
 
 const ROLE_PERMISSIONS = {
-  MDO:      ['GENERATED','EMAIL_SENT','PAYMENT_RECEIVED'],
+  MDO:      ['GENERATED','EMAIL_SENT','FILING','PAYMENT_RECEIVED'],
   Accounts: ['APPROVED','TALLY_ENTRY','TALLY_RECEIPT'],
   CRM:      ['DISPATCHED'],
   Admin:       STEPS.map(s => s.key),
@@ -34,6 +35,7 @@ const STATUS_COLORS = {
   'Tally Pending':    { bg:'#f5f3ff', color:'#7c3aed', border:'#ddd6fe' },
   'Email Sent':       { bg:'#fff7ed', color:'#c2410c', border:'#fed7aa' },
   'Dispatched':       { bg:'#eff6ff', color:'#1d4ed8', border:'#bfdbfe' },
+  'Filed':            { bg:'#f0fdfa', color:'#0f766e', border:'#99f6e4' },
   'Partially Paid':   { bg:'#fef9c3', color:'#854d0e', border:'#fef08a' },
   'Paid':             { bg:'#f0fdf4', color:'#15803d', border:'#86efac' },
 };

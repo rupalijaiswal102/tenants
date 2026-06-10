@@ -7,13 +7,14 @@ export const WORKFLOW_STEPS = {
   TALLY_ENTRY:      { order: 3, label: 'Tally Entry Completed',     role: 'Accounts' },
   EMAIL_SENT:       { order: 4, label: 'Email Sent',                role: 'MDO'      },
   DISPATCHED:       { order: 5, label: 'Hard Copy Dispatched',      role: 'CRM'      },
-  PAYMENT_RECEIVED: { order: 6, label: 'Payment Received',          role: 'MDO'      },
-  TALLY_RECEIPT:    { order: 7, label: 'Tally Receipt Posted',      role: 'Accounts' },
+  FILING:           { order: 6, label: 'Filing Done',               role: 'MDO'      },
+  PAYMENT_RECEIVED: { order: 7, label: 'Payment Received',          role: 'MDO'      },
+  TALLY_RECEIPT:    { order: 8, label: 'Tally Receipt Posted',      role: 'Accounts' },
 };
 
 // ── Role Permissions ─────────────────────────────────────────────────────────
 export const ROLE_PERMISSIONS = {
-  MDO:      ['GENERATED', 'EMAIL_SENT', 'PAYMENT_RECEIVED'],
+  MDO:      ['GENERATED', 'EMAIL_SENT', 'FILING', 'PAYMENT_RECEIVED'],
   Accounts: ['APPROVED',  'TALLY_ENTRY', 'TALLY_RECEIPT'],
   CRM:      ['DISPATCHED'],
   Admin:    Object.keys(WORKFLOW_STEPS), // Admin can do everything
@@ -24,6 +25,7 @@ export const getInvoiceStatus = (completedSteps = []) => {
   if (!completedSteps.length)                           return 'Draft';
   if (completedSteps.includes('TALLY_RECEIPT'))         return 'Paid';
   if (completedSteps.includes('PAYMENT_RECEIVED'))      return 'Partially Paid';
+  if (completedSteps.includes('FILING'))                return 'Filed';
   if (completedSteps.includes('DISPATCHED'))            return 'Dispatched';
   if (completedSteps.includes('EMAIL_SENT'))            return 'Email Sent';
   if (completedSteps.includes('TALLY_ENTRY'))           return 'Tally Pending';

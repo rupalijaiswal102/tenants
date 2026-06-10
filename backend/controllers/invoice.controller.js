@@ -106,7 +106,7 @@ export const createInvoice = async (req, res) => {
     data.balance = balance; // Sync legacy field
     data.received = (data.receivedAmount || 0); // Sync legacy field
 
-    if (received >= total && total > 0) {
+    if (Math.round(received) >= Math.round(total) && total > 0) {
       data.paymentStatus = 'Paid';
     } else if (data.receivedAmount > 0) {
       data.paymentStatus = 'Partial';
@@ -360,7 +360,7 @@ export const updateInvoice = async (req, res) => {
       updateData.balance = balance;
       updateData.received = currentReceivedAmt;
 
-      if (totalReceived >= totalReceivable && totalReceivable > 0) {
+      if (Math.round(totalReceived) >= Math.round(totalReceivable) && totalReceivable > 0) {
         updateData.paymentStatus = 'Paid';
       } else if (currentReceivedAmt > 0) {
         updateData.paymentStatus = 'Partial';

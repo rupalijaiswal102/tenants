@@ -223,7 +223,7 @@ export function PaymentEntryModal({ invoice, onClose, onSuccess }) {
           </div>
           <div className={cn('p-3 rounded-xl border shadow-sm', remainingBalance<=0?'bg-emerald-50 border-emerald-100':'bg-rose-50 border-rose-100')}>
             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Final Balance Due</p>
-            <p className={cn('text-base font-black', remainingBalance<=0?'text-emerald-600':'text-rose-600')}>{formatCurrency(remainingBalance)}</p>
+            <p className={cn('text-base font-black', remainingBalance<=0?'text-emerald-600':'text-rose-600')}>{formatCurrency(Math.max(0, Math.round(remainingBalance)))}</p>
           </div>
         </div>
 
