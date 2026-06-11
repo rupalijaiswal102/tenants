@@ -58,7 +58,7 @@ export async function generateInvoicePDF(invoice, tenant, company) {
   const PW=210, PH=297, MG=14, CW=PW-MG*2;
 
   // Color tokens
-  const BLK=[0,0,0], DK=[26,26,46], GR=[90,90,90];
+  const BLK=[0,0,0], DK=[26,26,46], GR=[40,40,40];
   const WH=[255,255,255], BDR=[210,210,210];
   const TH_BG=[40,40,50];       // dark header — matches PDF
   const ROW_ALT=[247,247,247];
@@ -72,7 +72,8 @@ export async function generateInvoicePDF(invoice, tenant, company) {
   const hl  = (x1,y,x2,...rgb) => { pdf.setDrawColor(...rgb); pdf.setLineWidth(0.25); pdf.line(x1,y,x2,y); };
 
   // Amount format — jsPDF standard fonts do not support ₹ Unicode glyph
-  const fmtI = (n) => `Rs. ${Math.round(n).toLocaleString('en-IN')}.00`;
+  const fmtI = (n) => `Rs. ${Math.round(n || 0).toLocaleString('en-IN')}.00`;
+  const fmtD = (n) => `Rs. ${Math.abs(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   let y = MG;
 
@@ -90,7 +91,7 @@ export async function generateInvoicePDF(invoice, tenant, company) {
   }
 
   y+=10;
-  fnt(7.5,false,...GR);
+  fnt(9,false,...GR);
   const addrLines = pdf.splitTextToSize(company?.address||'', CW-LOGO_W-6);
   addrLines.slice(0,3).forEach((l,i)=>{ pdf.text(l,MG,y+i*4.5); });
   y += Math.min(addrLines.length,3)*4.5+1;
@@ -118,11 +119,11 @@ export async function generateInvoicePDF(invoice, tenant, company) {
   const C1X=MG, C2X=MG+C1W, C3X=MG+C1W+C2W;
 
   // Column headings — no underline below them
-  fnt(11,true,...BLK);
+  fnt(12,true,...BLK);
   pdf.text('Bill To',  C1X, y+1);
   pdf.text('Ship To',  C2X, y+1);
   pdf.text('Invoice Details', MG+CW, y+1, { align:'right' });
-  y+=8;
+  y+=9;
 
   let yBill=y, yShip=y, yInv=y;
 
@@ -138,9 +139,12 @@ export async function generateInvoicePDF(invoice, tenant, company) {
   const partyEscalation = party.nextEscalationDate || '';
 
   // Bill To
-  fnt(8.5,true,...BLK);
-  if (partyName)      { pdf.text(partyName.slice(0,32), C1X, yBill); yBill+=5; }
-  fnt(7.5,false,...GR);
+  fnt(10,true,...BLK);
+  if (partyName) {
+    const nameLines = pdf.splitTextToSize(partyName, C1W - 3);
+    nameLines.forEach(l => { pdf.text(l, C1X, yBill); yBill += 5; });
+  }
+  fnt(9,false,...GR);
   if (billingAddr)    { const bAddr = pdf.splitTextToSize(billingAddr, C1W-3); bAddr.slice(0,4).forEach(l=>{ pdf.text(l,C1X,yBill); yBill+=4.5; }); }
   if (partyMobile)    { pdf.text(`Contact No. : ${partyMobile}`, C1X,yBill); yBill+=4.5; }
   if (partyGst)       { pdf.text(`GSTIN : ${partyGst}`,          C1X,yBill); yBill+=4.5; }
@@ -150,7 +154,7 @@ export async function generateInvoicePDF(invoice, tenant, company) {
   if (partyEscalation){ pdf.text(`Rent Escalation : ${fdDot(partyEscalation)}`, C1X,yBill); yBill+=4.5; }
 
   // Ship To — only address
-  fnt(7.5,false,...GR);
+  fnt(9,false,...GR);
   if (shippingAddr) {
     const sAddr = pdf.splitTextToSize(shippingAddr, C2W-3);
     sAddr.slice(0,6).forEach(l=>{ pdf.text(l,C2X,yShip); yShip+=4.5; });
@@ -160,7 +164,7 @@ export async function generateInvoicePDF(invoice, tenant, company) {
   const billDate = new Date(invoice.billDate||Date.now());
   const dueDate  = new Date(billDate); dueDate.setDate(dueDate.getDate()+7);
   const RX = MG+CW; // right margin x
-  fnt(7.5,false,...GR);
+  fnt(9,false,...GR);
   pdf.text(`Invoice No. : ${invoice.invoiceNo||'-'}`, RX, yInv, { align:'right' }); yInv+=5;
   pdf.text(`Date : ${fd(invoice.billDate)}`,          RX, yInv, { align:'right' }); yInv+=4.5;
   pdf.text(`Due Date : ${fd(dueDate)}`,               RX, yInv, { align:'right' }); yInv+=4.5;
@@ -168,7 +172,7 @@ export async function generateInvoicePDF(invoice, tenant, company) {
   if (invoice.crmPhone) { pdf.text(`Phone : ${invoice.crmPhone}`, RX, yInv, { align:'right' }); yInv+=4.5; }
   if (invoice.crmEmail) { pdf.text(`Email : ${(invoice.crmEmail||'').slice(0,32)}`, RX, yInv, { align:'right' }); yInv+=4.5; }
 
-  y = Math.max(yBill, yShip, yInv) + 8;
+  y = Math.max(yBill, yShip, yInv) + 6;
 
   // ════════════════════════════════════════════════════════════════
   // 4. LINE ITEMS TABLE
@@ -190,12 +194,12 @@ export async function generateInvoicePDF(invoice, tenant, company) {
     let cx=MG;
     cells.forEach((val,i)=>{
       const col=COLS[i];
-      if(hdr)        fnt(8.5,true,...WH);
-      else if(i===1) fnt(7.5,true,...BLK);
-      else if(i===6) fnt(7.5,true,...BLK);
-      else           fnt(7.5,false,...GR);
+      if(hdr)        fnt(9.5,true,...WH);
+      else if(i===1) fnt(9,true,...BLK);
+      else if(i===6) fnt(9,true,...BLK);
+      else           fnt(9,false,...GR);
       const tw=pdf.getTextWidth(val);
-      pdf.text(val, col.r ? cx+col.w-tw-2 : cx+2, y+RH-1.8);
+      pdf.text(val, col.r ? cx+col.w-tw-2 : cx+2, y+RH-2);
       cx+=col.w;
     });
     y+=RH;
@@ -233,47 +237,57 @@ export async function generateInvoicePDF(invoice, tenant, company) {
   pdf.setDrawColor(...BDR); pdf.setLineWidth(0.4);
   pdf.line(MG,y,MG+CW,y);
   pdf.line(MG,y+RH,MG+CW,y+RH);
-  fnt(8.5,true,...BLK);
-  pdf.text('Total', MG+8+2, y+RH-1.8);
+  fnt(10,true,...BLK);
+  pdf.text('Total', MG+8+2, y+RH-2);
   const totLbl=fmtI(totalAmt);
-  pdf.text(totLbl, MG+CW-pdf.getTextWidth(totLbl)-2, y+RH-1.8);
+  pdf.text(totLbl, MG+CW-pdf.getTextWidth(totLbl)-2, y+RH-2);
   y+=RH+8;
 
   // ════════════════════════════════════════════════════════════════
   // 5. DESCRIPTION (left) | SUB-TOTAL / TOTAL BOX (right)
   // ════════════════════════════════════════════════════════════════
-  if(y>PH-70){ pdf.addPage(); y=MG; }
+  if(y>PH-90){ pdf.addPage(); y=MG; }
 
   const rightX=PW/2+5, rightW=PW-MG-rightX;
   const leftEndX=PW/2-5;
 
   let yL=y;
-  fnt(9,true,...BLK); pdf.text('Description', MG,yL); yL+=5;
-  fnt(8,false,...GR);
-  pdf.text(`Period - ${fmDef.replace(/\//g,'.')} to ${toDef.replace(/\//g,'.')}`, MG,yL); yL+=8;
+  fnt(10,true,...BLK); pdf.text('Description', MG,yL); yL+=5;
+  fnt(9,false,...GR);
+  pdf.text(`Period - ${fmDef.replace(/\//g,'.')} to ${toDef.replace(/\//g,'.')}`, MG,yL); yL+=7;
 
-  fnt(9,true,...BLK); pdf.text('Invoice Amount In Words', MG,yL); yL+=5;
-  fnt(8,false,...GR);
+  fnt(10,true,...BLK); pdf.text('Invoice Amount In Words', MG,yL); yL+=5;
+  fnt(9,false,...GR);
   const wLines = pdf.splitTextToSize(n2w(totalAmt)+' Rupees only', leftEndX-MG);
   wLines.forEach(l=>{ pdf.text(l,MG,yL); yL+=4.5; });
-  yL+=3;
+  yL+=2;
 
-  fnt(9,true,...BLK); pdf.text('Terms and Conditions', MG,yL); yL+=5;
-  fnt(7.5,false,...GR);
+  fnt(10,true,...BLK); pdf.text('Terms and Conditions', MG,yL); yL+=5;
+  fnt(9,false,...GR);
   pdf.text('Please pay before due date.',                    MG,yL); yL+=4.5;
   pdf.text('Late payment penalty charges # 1.5% Per Month', MG,yL); yL+=4.5;
 
-  // Right — Sub Total + Total (no Round Off row)
+  // Right — Sub Total + CGST + SGST + Round Off + Total
   let yR=y;
   const sumRow=(lbl,val,dark=false)=>{
-    if(dark){ box(rightX-2,yR-1,rightW+2,9,...TH_BG); fnt(9,true,...WH); }
-    else     { fnt(9,false,...GR); }
-    pdf.text(lbl, rightX, yR+4);
-    if(dark) fnt(9,true,...WH); else fnt(9,true,...BLK);
-    pdf.text(val, rightX+rightW-pdf.getTextWidth(val), yR+4);
-    yR+=8;
+    const rowH = dark ? 10 : 8;
+    if(dark){ box(rightX-2, yR-1, rightW+2, rowH+1, ...TH_BG); fnt(10,true,...WH); }
+    else     { fnt(9.5,false,...GR); }
+    pdf.text(lbl, rightX, yR+5.5);
+    if(dark) fnt(10.5,true,...WH); else fnt(9.5,true,...BLK);
+    pdf.text(val, rightX+rightW-pdf.getTextWidth(val), yR+5.5);
+    yR += rowH;
   };
+
+  const cgstAmt  = invoice.cgst  || 0;
+  const sgstAmt  = invoice.sgst  || 0;
+  const rawTotal = subtotal + cgstAmt + sgstAmt;
+  const roundOff = Math.round(rawTotal) - rawTotal;
+
   sumRow('Sub Total', fmtI(subtotal));
+  if (cgstAmt > 0) sumRow('CGST@9%',   fmtD(cgstAmt));
+  if (sgstAmt > 0) sumRow('SGST@9%',   fmtD(sgstAmt));
+  if (Math.abs(roundOff) >= 0.001) sumRow('Round off', fmtD(Math.abs(roundOff)));
   sumRow('Total',     fmtI(totalAmt), true);
 
   y=Math.max(yL,yR+4)+4+7;
@@ -284,8 +298,8 @@ export async function generateInvoicePDF(invoice, tenant, company) {
   if(y>PH-50){ pdf.addPage(); y=MG; }
 
   let yP=y;
-  fnt(9,true,...BLK); pdf.text('Pay To:', MG,yP); yP+=5;
-  fnt(7.5,false,...GR);
+  fnt(10,true,...BLK); pdf.text('Pay To:', MG,yP); yP+=5;
+  fnt(9,false,...GR);
   if(company?.bankName)          { pdf.text(`Bank Name : ${company.bankName}`,                         MG,yP); yP+=4.5; }
   if(company?.accountNumber)     { pdf.text(`Bank Account No. : ${company.accountNumber}`,             MG,yP); yP+=4.5; }
   if(company?.ifscCode)          { pdf.text(`Bank IFSC code : ${company.ifscCode}`,                    MG,yP); yP+=4.5; }
@@ -302,10 +316,10 @@ export async function generateInvoicePDF(invoice, tenant, company) {
     if(sealB64){ try{ pdf.addImage(sealB64,imgFmt(sealB64),PW-MG-32,stampY-2,26,26,undefined,'FAST'); }catch{} }
     yS=stampY+(sealB64||signB64?26:4);
   } else {
-    yS+=15;
+    yS+=9;
   }
 
-  fnt(9,true,...BLK);
+  fnt(10,true,...BLK);
   pdf.text('Authorized Signatory', PW-MG-pdf.getTextWidth('Authorized Signatory'), yS+=10);
 
   pdf.save(`Invoice_${invoice.invoiceNo||'download'}.pdf`);

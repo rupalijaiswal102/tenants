@@ -9,7 +9,7 @@ export const getLedgerByTenant = async (req, res) => {
     const { startDate, endDate } = req.query;
 
     if (isUsingMockData.value) {
-      const mockLedgers = mockStorage.ledgers.filter((l) => String(l.tenantId) === tenantId);
+      const mockLedgers = mockStorage.ledger.filter((l) => String(l.tenantId) === tenantId);
       
       let currentBalance = 0;
       const ledger = mockLedgers.map((entry) => {
@@ -87,6 +87,64 @@ export const getLedgerByTenant = async (req, res) => {
   }
 };
 
+export const getLedgerByOtherParty = async (req, res) => {
+  try {
+    const { otherPartyId } = req.params;
+    const { startDate, endDate } = req.query;
+
+    if (isUsingMockData.value) {
+      const mockLedgers = mockStorage.ledger.filter((l) => String(l.otherPartyId) === otherPartyId);
+      let currentBalance = 0;
+      const ledger = mockLedgers.map((entry) => {
+        currentBalance = currentBalance + (entry.debit || 0) - (entry.credit || 0) - (entry.tds || 0);
+        return { ...entry, runningBalance: currentBalance };
+      });
+      const summary = {
+        openingBalance:   mockLedgers.filter(e => e.type === 'OPENING_BALANCE').reduce((s,e) => s + (e.debit||0) - (e.credit||0), 0),
+        totalInvoiced:    mockLedgers.filter(e => e.type === 'INVOICE').reduce((s,e) => s + (e.debit||0), 0),
+        totalAdjustments: mockLedgers.filter(e => e.type === 'ADJUSTMENT').reduce((s,e) => s + (e.debit||0) - (e.credit||0), 0),
+        totalReceived:    mockLedgers.filter(e => e.type === 'PAYMENT').reduce((s,e) => s + (e.credit||0), 0),
+        totalTds:         mockLedgers.reduce((s,e) => s + (e.tds||0), 0),
+        closingBalance:   currentBalance,
+      };
+      return res.json({ ledger, summary });
+    }
+
+    const mongoose = (await import('mongoose')).default;
+    let queryId;
+    try { queryId = new mongoose.Types.ObjectId(otherPartyId); } catch { queryId = otherPartyId; }
+
+    const previousEntries = startDate ? await Ledger.find({ otherPartyId: queryId, date: { $lt: new Date(startDate) } }) : [];
+    const openingBalance  = previousEntries.reduce((acc, e) => acc + (e.debit||0) - (e.credit||0) - (e.tds||0), 0);
+
+    let periodQuery = { otherPartyId: queryId };
+    if (startDate || endDate) {
+      periodQuery.date = {};
+      if (startDate) periodQuery.date.$gte = new Date(startDate);
+      if (endDate)   periodQuery.date.$lte = new Date(endDate);
+    }
+    const periodEntries = await Ledger.find(periodQuery).sort({ date: 1, createdAt: 1 });
+
+    let currentBalance = openingBalance;
+    const ledger = periodEntries.map(entry => {
+      currentBalance = currentBalance + (entry.debit||0) - (entry.credit||0) - (entry.tds||0);
+      return { ...entry.toObject(), id: entry._id, runningBalance: currentBalance };
+    });
+
+    const summary = {
+      openingBalance,
+      totalInvoiced:    periodEntries.filter(e => e.type === 'INVOICE').reduce((s,e) => s + (e.debit||0), 0),
+      totalAdjustments: periodEntries.filter(e => e.type === 'ADJUSTMENT').reduce((s,e) => s + (e.debit||0) - (e.credit||0), 0),
+      totalReceived:    periodEntries.filter(e => e.type === 'PAYMENT').reduce((s,e) => s + (e.credit||0), 0),
+      totalTds:         periodEntries.reduce((s,e) => s + (e.tds||0), 0),
+      closingBalance:   currentBalance,
+    };
+    res.json({ ledger, summary });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 export const createLedgerEntry = async (req, res) => {
   try {
     const { tenantId, date, type, particular, debit, credit, tds, notes, refNo } = req.body;
@@ -115,7 +173,7 @@ export const createLedgerEntry = async (req, res) => {
         createdAt: new Date(),
         updatedAt: new Date()
       };
-      mockStorage.ledgers.push(newEntry);
+      mockStorage.ledger.push(newEntry);
       return res.status(201).json(newEntry);
     }
 
@@ -148,6 +206,37 @@ export const updateLedgerEntry = async (req, res) => {
 
     await entry.save();
     res.json({ message: 'Entry updated', entry });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// ── All Tenants Outstanding Dues (Closing Balance) ───────────────────────────
+export const getAllTenantsOutstandingDues = async (req, res) => {
+  try {
+    if (isUsingMockData.value) {
+      const tenantIds = [...new Set(mockStorage.ledger.map(l => String(l.tenantId)))];
+      const results = tenantIds.map(tenantId => {
+        const tenant = (mockStorage.tenants || []).find(t => String(t._id || t.id) === tenantId);
+        const entries = mockStorage.ledger.filter(l => String(l.tenantId) === tenantId);
+        const closingBalance = entries.reduce((acc, e) => acc + (e.debit || 0) - (e.credit || 0) - (e.tds || 0), 0);
+        return { tenantId, tenantName: tenant?.name || tenant?.company || 'Unknown', closingBalance };
+      });
+      return res.json(results.sort((a, b) => b.closingBalance - a.closingBalance));
+    }
+
+    const tenants = await Tenant.find({}, '_id name company').lean();
+    const results = await Promise.all(tenants.map(async (tenant) => {
+      const entries = await Ledger.find({ tenantId: tenant._id }).lean();
+      const closingBalance = entries.reduce((acc, e) => acc + (e.debit || 0) - (e.credit || 0) - (e.tds || 0), 0);
+      return {
+        tenantId: tenant._id,
+        tenantName: tenant.name || tenant.company || 'Unknown',
+        closingBalance,
+      };
+    }));
+
+    res.json(results.sort((a, b) => b.closingBalance - a.closingBalance));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

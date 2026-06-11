@@ -60,7 +60,10 @@ export function TenantDetailsView({ tenant, onClose, companies, allTenants, apiB
 
   const fetchLedger = () => {
     setLedgerLoading(true);
-    axios.get(`/api/ledger/tenant/${tenantId}`)
+    const ledgerUrl = isOtherParty
+      ? `/api/ledger/other-party/${tenantId}`
+      : `/api/ledger/tenant/${tenantId}`;
+    axios.get(ledgerUrl)
       .then(r => { setLedgerData(r.data); setLedgerLoading(false); })
       .catch(() => setLedgerLoading(false));
   };

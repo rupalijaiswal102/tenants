@@ -3,7 +3,7 @@ import {
   Search, Download, TrendingUp, Clock,
   ReceiptIndianRupee, ShieldCheck, FileDown,
   CalendarDays, ChevronDown, Building2, X,
-  CheckCircle2, AlertCircle, Loader2
+  CheckCircle2, AlertCircle, Loader2, IndianRupee
 } from 'lucide-react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'motion/react';
@@ -19,10 +19,11 @@ const MONTHS = [
 ];
 
 const REPORT_TYPES = [
-  { key: 'collection', label: 'Rent Collection', sub: 'Billing vs Recovery',    icon: TrendingUp,         color: '#10b981', bg: '#f0fdf4', border: '#bbf7d0' },
-  { key: 'pending',    label: 'Pending Dues',    sub: 'Aging Receivables',       icon: Clock,              color: '#ef4444', bg: '#fff1f2', border: '#fecdd3' },
-  { key: 'gst',        label: 'GST Audit',       sub: 'Tax Filing Summary',      icon: ReceiptIndianRupee, color: '#6366f1', bg: '#eef2ff', border: '#c7d2fe' },
-  { key: 'tds',        label: 'TDS Compliance',  sub: 'Withholding Summary',     icon: ShieldCheck,        color: '#f59e0b', bg: '#fffbeb', border: '#fde68a' },
+  { key: 'collection',  label: 'Rent Collection',   sub: 'Billing vs Recovery',    icon: TrendingUp,         color: '#10b981', bg: '#f0fdf4', border: '#bbf7d0' },
+  { key: 'pending',     label: 'Pending Dues',       sub: 'Aging Receivables',       icon: Clock,              color: '#ef4444', bg: '#fff1f2', border: '#fecdd3' },
+  { key: 'outstanding', label: 'Outstanding Dues',   sub: 'Tenant Wise Balance',     icon: IndianRupee,        color: '#dc2626', bg: '#fef2f2', border: '#fca5a5' },
+  { key: 'gst',         label: 'GST Audit',          sub: 'Tax Filing Summary',      icon: ReceiptIndianRupee, color: '#6366f1', bg: '#eef2ff', border: '#c7d2fe' },
+  { key: 'tds',         label: 'TDS Compliance',     sub: 'Withholding Summary',     icon: ShieldCheck,        color: '#f59e0b', bg: '#fffbeb', border: '#fde68a' },
 ];
 
 const STATUS_STYLE = {
@@ -30,6 +31,9 @@ const STATUS_STYLE = {
   Partial: { color: '#d97706', bg: '#fef3c7' },
   Pending: { color: '#dc2626', bg: '#fee2e2' },
 };
+
+// ── Round & format amount ─────────────────────────────────────────────────────
+const fmt = n => Math.round(n || 0).toLocaleString('en-IN');
 
 // ── Summary compute ───────────────────────────────────────────────────────────
 function computeSummary(invoices, type) {
@@ -63,16 +67,16 @@ function generatePDF(invoices, reportType, month, year) {
   // right side
   doc.setFontSize(8);
   doc.text(`Total Records: ${invoices.length}`, 220, 11, { align: 'right' });
-  doc.text(`Total Invoiced ${sum.totalInvoiced.toLocaleString('en-IN')}`, 220, 18, { align: 'right' });
-  doc.text(`Total Received ${sum.totalReceived.toLocaleString('en-IN')}`, 220, 24, { align: 'right' });
+  doc.text(`Total Invoiced ${fmt(sum.totalInvoiced)}`, 220, 18, { align: 'right' });
+  doc.text(`Total Received ${fmt(sum.totalReceived)}`, 220, 24, { align: 'right' });
 
   // ── Summary cards ──
   const cards = [
-    { label: 'Total Invoiced',  value: `Rs ${sum.totalInvoiced.toLocaleString('en-IN')}`,  color: [59,130,246]  },
-    { label: 'Total Received',  value: `Rs ${sum.totalReceived.toLocaleString('en-IN')}`,  color: [16,185,129]  },
-    { label: 'Outstanding',     value: `Rs ${sum.totalBalance.toLocaleString('en-IN')}`,   color: [239,68,68]   },
-    ...(reportType === 'gst' ? [{ label: 'Total GST', value: `Rs ${sum.totalGst.toLocaleString('en-IN')}`, color: [99,102,241] }] : []),
-    ...(reportType === 'tds' ? [{ label: 'Total TDS', value: `Rs ${sum.totalTds.toLocaleString('en-IN')}`, color: [245,158,11] }] : []),
+    { label: 'Total Invoiced',  value: `Rs ${fmt(sum.totalInvoiced)}`,  color: [59,130,246]  },
+    { label: 'Total Received',  value: `Rs ${fmt(sum.totalReceived)}`,  color: [16,185,129]  },
+    { label: 'Outstanding',     value: `Rs ${fmt(sum.totalBalance)}`,   color: [239,68,68]   },
+    ...(reportType === 'gst' ? [{ label: 'Total GST', value: `Rs ${fmt(sum.totalGst)}`, color: [99,102,241] }] : []),
+    ...(reportType === 'tds' ? [{ label: 'Total TDS', value: `Rs ${fmt(sum.totalTds)}`, color: [245,158,11] }] : []),
   ];
 
   let cx = 14;
@@ -107,14 +111,14 @@ function generatePDF(invoices, reportType, month, year) {
     date:     new Date(inv.billDate).toLocaleDateString('en-GB'),
     invNo:    `#${inv.invoiceNo}`,
     party:    inv.partyName,
-    invoiced: `Rs ${(inv.totalInvoice || 0).toLocaleString('en-IN')}`,
-    received: `Rs ${(inv.receivedAmount || (inv).received || 0).toLocaleString('en-IN')}`,
-    balance:  `Rs ${(inv.balanceAmount || (inv).balance || 0).toLocaleString('en-IN')}`,
-    cgst:     `Rs ${(inv.cgst || 0).toLocaleString('en-IN')}`,
-    sgst:     `Rs ${(inv.sgst || 0).toLocaleString('en-IN')}`,
-    gst:      `Rs ${((inv.cgst || 0) + (inv.sgst || 0)).toLocaleString('en-IN')}`,
-    tds:      `Rs ${(inv.tdsAmount || 0).toLocaleString('en-IN')}`,
-    net:      `Rs ${(inv.receivedAmount || (inv).received || 0).toLocaleString('en-IN')}`,
+    invoiced: `Rs ${fmt(inv.totalInvoice)}`,
+    received: `Rs ${fmt(inv.receivedAmount || inv.received)}`,
+    balance:  `Rs ${fmt(inv.balanceAmount || inv.balance)}`,
+    cgst:     `Rs ${fmt(inv.cgst)}`,
+    sgst:     `Rs ${fmt(inv.sgst)}`,
+    gst:      `Rs ${fmt((inv.cgst || 0) + (inv.sgst || 0))}`,
+    tds:      `Rs ${fmt(inv.tdsAmount)}`,
+    net:      `Rs ${fmt(inv.receivedAmount || inv.received)}`,
     status:   inv.paymentStatus,
   }));
 
@@ -158,7 +162,7 @@ function generatePDF(invoices, reportType, month, year) {
   doc.setFont('helvetica', 'bold');
   doc.text('TOTAL', startX + 2, ty + 7.5);
   let fx = startX + colW[0] + colW[1] + colW[2] + colW[3];
-  doc.text(`Rs ${sum.totalInvoiced.toLocaleString('en-IN')}`, fx + 2, ty + 7.5);
+  doc.text(`Rs ${fmt(sum.totalInvoiced)}`, fx + 2, ty + 7.5);
 
   const label = month !== 'All' ? `${month}_${year}` : 'All';
   doc.save(`${rt.label.replace(/ /g,'_')}_Report_${label}.pdf`);
@@ -166,19 +170,25 @@ function generatePDF(invoices, reportType, month, year) {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function Reports() {
-  const [invoices,    setInvoices]    = useState([]);
-  const [loading,     setLoading]     = useState(true);
-  const [reportType,  setReportType]  = useState('collection');
-  const [searchTerm,  setSearchTerm]  = useState('');
-  const [selMonth,    setSelMonth]    = useState('All');
-  const [selYear,     setSelYear]     = useState('All');
-  const [exporting,   setExporting]   = useState(false);
-  const [pdfLoading,  setPdfLoading]  = useState(false);
+  const [invoices,       setInvoices]       = useState([]);
+  const [outstandingDues, setOutstandingDues] = useState([]);
+  const [loading,        setLoading]        = useState(true);
+  const [reportType,     setReportType]     = useState('collection');
+  const [searchTerm,     setSearchTerm]     = useState('');
+  const [selMonth,       setSelMonth]       = useState('All');
+  const [selYear,        setSelYear]        = useState('All');
+  const [exporting,      setExporting]      = useState(false);
+  const [pdfLoading,     setPdfLoading]     = useState(false);
 
   useEffect(() => {
-    Promise.all([axios.get('/api/invoices'), axios.get('/api/tenants')])
-      .then(([inv]) => setInvoices(inv.data))
-      .catch(console.error)
+    Promise.allSettled([
+      axios.get('/api/invoices'),
+      axios.get('/api/ledger/outstanding-dues'),
+    ])
+      .then(([invResult, duesResult]) => {
+        if (invResult.status === 'fulfilled')  setInvoices(invResult.value.data);
+        if (duesResult.status === 'fulfilled') setOutstandingDues(duesResult.value.data);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -200,6 +210,24 @@ export default function Reports() {
 
   const sum = computeSummary(filtered, reportType);
   const rt  = REPORT_TYPES.find(r => r.key === reportType);
+
+  // If backend ledger API returned data use it; otherwise compute from invoices
+  const outstandingSource = outstandingDues.length > 0
+    ? outstandingDues
+    : (() => {
+        const map = {};
+        invoices.forEach(inv => {
+          const name = inv.partyName || 'Unknown';
+          if (!map[name]) map[name] = { tenantName: name, closingBalance: 0 };
+          map[name].closingBalance += (inv.balanceAmount || inv.balance || 0);
+        });
+        return Object.values(map).sort((a, b) => b.closingBalance - a.closingBalance);
+      })();
+
+  const filteredOutstanding = outstandingSource.filter(d =>
+    !searchTerm || d.tenantName?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+  const totalOutstandingBalance = filteredOutstanding.reduce((s, d) => s + (d.closingBalance || 0), 0);
 
   const handleExcel = () => {
     setExporting(true);
@@ -279,14 +307,19 @@ export default function Reports() {
 
       {/* ── Summary Cards ── */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))', gap:10, marginBottom:20 }}>
-        {[
-          { label:'Total Invoiced', value:`₹${sum.totalInvoiced.toLocaleString('en-IN')}`, color:'#3b82f6', bg:'#eff6ff' },
-          { label:'Total Received', value:`₹${sum.totalReceived.toLocaleString('en-IN')}`, color:'#10b981', bg:'#f0fdf4' },
-          { label:'Outstanding',    value:`₹${sum.totalBalance.toLocaleString('en-IN')}`,  color:'#ef4444', bg:'#fff1f2' },
-          ...(reportType==='gst' ? [{ label:'Total GST', value:`₹${sum.totalGst.toLocaleString('en-IN')}`, color:'#6366f1', bg:'#eef2ff' }] : []),
-          ...(reportType==='tds' ? [{ label:'Total TDS', value:`₹${sum.totalTds.toLocaleString('en-IN')}`, color:'#f59e0b', bg:'#fffbeb' }] : []),
+        {(reportType === 'outstanding' ? [
+          { label:'Total Tenants',      value:`${filteredOutstanding.length}`,                                   color:'#dc2626', bg:'#fef2f2' },
+          { label:'Total Outstanding',  value:`₹${fmt(totalOutstandingBalance)}`,            color:'#dc2626', bg:'#fef2f2' },
+          { label:'With Dues',          value:`${filteredOutstanding.filter(d => d.closingBalance > 0).length}`, color:'#ef4444', bg:'#fff1f2' },
+          { label:'Clear (Nil/Credit)', value:`${filteredOutstanding.filter(d => d.closingBalance <= 0).length}`,color:'#10b981', bg:'#f0fdf4' },
+        ] : [
+          { label:'Total Invoiced', value:`₹${fmt(sum.totalInvoiced)}`, color:'#3b82f6', bg:'#eff6ff' },
+          { label:'Total Received', value:`₹${fmt(sum.totalReceived)}`, color:'#10b981', bg:'#f0fdf4' },
+          { label:'Outstanding',    value:`₹${fmt(sum.totalBalance)}`,  color:'#ef4444', bg:'#fff1f2' },
+          ...(reportType==='gst' ? [{ label:'Total GST', value:`₹${fmt(sum.totalGst)}`, color:'#6366f1', bg:'#eef2ff' }] : []),
+          ...(reportType==='tds' ? [{ label:'Total TDS', value:`₹${fmt(sum.totalTds)}`, color:'#f59e0b', bg:'#fffbeb' }] : []),
           { label:'Records', value:`${filtered.length}`, color:'#64748b', bg:'#f8fafc' },
-        ].map(s => (
+        ]).map(s => (
           <div key={s.label} style={{ background:s.bg, borderRadius:12, padding:'14px 16px', border:`1px solid ${s.color}22` }}>
             <p style={{ fontSize:10, fontWeight:700, color:'#94a3b8', margin:'0 0 4px', textTransform:'uppercase', letterSpacing:'0.06em' }}>{s.label}</p>
             <p style={{ fontSize:18, fontWeight:900, color:s.color, margin:0 }}>{s.value}</p>
@@ -341,6 +374,63 @@ export default function Reports() {
       {/* ── Table ── */}
       <div style={{ background:'#fff', borderRadius:14, border:'1px solid #f0f2f5', boxShadow:'0 1px 3px rgba(0,0,0,0.06)', overflow:'hidden' }}>
         <div style={{ overflowX:'auto' }}>
+
+          {/* Outstanding Dues table */}
+          {reportType === 'outstanding' ? (
+            <table style={{ width:'100%', borderCollapse:'collapse' }}>
+              <thead>
+                <tr style={{ background:'#f8fafc', borderBottom:'1px solid #f0f2f5' }}>
+                  {['#', 'Tenant Name', 'Closing Balance', 'Status'].map((h, i) => (
+                    <th key={h} style={{ padding:'11px 16px', fontSize:10, fontWeight:700, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.06em', textAlign: i >= 2 ? 'right' : 'left', whiteSpace:'nowrap', borderBottom:'1px solid #f0f2f5' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                <AnimatePresence>
+                  {filteredOutstanding.map((d, idx) => {
+                    const isDue    = d.closingBalance > 0;
+                    const isCredit = d.closingBalance < 0;
+                    const balColor = isDue ? '#dc2626' : isCredit ? '#10b981' : '#64748b';
+                    const statusLabel = isDue ? 'Due' : isCredit ? 'Credit' : 'Nil';
+                    const statusBg    = isDue ? '#fee2e2' : isCredit ? '#d1fae5' : '#f1f5f9';
+                    const statusColor = isDue ? '#dc2626' : isCredit ? '#059669' : '#64748b';
+                    return (
+                      <motion.tr key={String(d.tenantId)} initial={{ opacity:0, y:4 }} animate={{ opacity:1, y:0 }} transition={{ delay:idx*0.02 }}
+                        style={{ borderBottom:'1px solid #f8fafc', transition:'background 0.1s' }}
+                        onMouseEnter={e => e.currentTarget.style.background='#fafbff'}
+                        onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                        <td style={{ padding:'12px 16px', fontSize:11, color:'#cbd5e1', fontWeight:600 }}>{idx+1}</td>
+                        <td style={{ padding:'12px 16px', fontSize:13, fontWeight:700, color:'#0f172a' }}>{d.tenantName}</td>
+                        <td style={{ padding:'12px 16px', fontSize:14, fontWeight:900, color:balColor, textAlign:'right', whiteSpace:'nowrap' }}>
+                          ₹{fmt(Math.abs(d.closingBalance))}
+                        </td>
+                        <td style={{ padding:'12px 16px', textAlign:'right' }}>
+                          <span style={{ display:'inline-block', padding:'3px 10px', borderRadius:20, background:statusBg, color:statusColor, fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em' }}>{statusLabel}</span>
+                        </td>
+                      </motion.tr>
+                    );
+                  })}
+                </AnimatePresence>
+                {filteredOutstanding.length === 0 && (
+                  <tr><td colSpan={4} style={{ textAlign:'center', padding:'48px 0', color:'#cbd5e1' }}>
+                    <AlertCircle size={28} strokeWidth={1.5} style={{ display:'block', margin:'0 auto 8px' }}/>
+                    <p style={{ fontSize:13, fontWeight:600, margin:0 }}>No tenants found</p>
+                  </td></tr>
+                )}
+              </tbody>
+              {filteredOutstanding.length > 0 && (
+                <tfoot>
+                  <tr style={{ background:'#0f172a', borderTop:'2px solid #0f172a' }}>
+                    <td colSpan={2} style={{ padding:'12px 16px', fontSize:11, fontWeight:800, color:'#fff', textTransform:'uppercase', letterSpacing:'0.08em' }}>TOTAL ({filteredOutstanding.length} tenants)</td>
+                    <td style={{ padding:'12px 16px', fontSize:12, fontWeight:800, color:'#fca5a5', textAlign:'right' }}>₹{fmt(totalOutstandingBalance)}</td>
+                    <td/>
+                  </tr>
+                </tfoot>
+              )}
+            </table>
+          ) : (
+
+          /* Invoice-based tables */
           <table style={{ width:'100%', borderCollapse:'collapse' }}>
             <thead>
               <tr style={{ background:'#f8fafc', borderBottom:'1px solid #f0f2f5' }}>
@@ -372,20 +462,20 @@ export default function Reports() {
                         <span style={{ fontSize:11, fontWeight:800, color:'#0f172a', background:'#f8fafc', padding:'3px 8px', borderRadius:6 }}>#{inv.invoiceNo}</span>
                       </td>
                       <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#0f172a', maxWidth:180, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{inv.partyName}</td>
-                      <td style={{ padding:'11px 16px', fontSize:12, fontWeight:800, color:'#0f172a', textAlign:'right', whiteSpace:'nowrap' }}>₹{(inv.totalInvoice||0).toLocaleString('en-IN')}</td>
+                      <td style={{ padding:'11px 16px', fontSize:12, fontWeight:800, color:'#0f172a', textAlign:'right', whiteSpace:'nowrap' }}>₹{fmt(inv.totalInvoice)}</td>
                       {reportType==='collection' && <>
-                        <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#10b981', textAlign:'right', whiteSpace:'nowrap' }}>₹{(inv.receivedAmount||(inv).received||0).toLocaleString('en-IN')}</td>
-                        <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#ef4444', textAlign:'right', whiteSpace:'nowrap' }}>₹{(inv.balanceAmount||(inv).balance||0).toLocaleString('en-IN')}</td>
+                        <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#10b981', textAlign:'right', whiteSpace:'nowrap' }}>₹{fmt(inv.receivedAmount || inv.received)}</td>
+                        <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#ef4444', textAlign:'right', whiteSpace:'nowrap' }}>₹{fmt(inv.balanceAmount || inv.balance)}</td>
                       </>}
-                      {reportType==='pending' && <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#ef4444', textAlign:'right', whiteSpace:'nowrap' }}>₹{(inv.balanceAmount||(inv).balance||0).toLocaleString('en-IN')}</td>}
+                      {reportType==='pending' && <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#ef4444', textAlign:'right', whiteSpace:'nowrap' }}>₹{fmt(inv.balanceAmount || inv.balance)}</td>}
                       {reportType==='gst' && <>
-                        <td style={{ padding:'11px 16px', fontSize:12, fontWeight:600, color:'#6366f1', textAlign:'right', whiteSpace:'nowrap' }}>₹{(inv.cgst||0).toLocaleString('en-IN')}</td>
-                        <td style={{ padding:'11px 16px', fontSize:12, fontWeight:600, color:'#6366f1', textAlign:'right', whiteSpace:'nowrap' }}>₹{(inv.sgst||0).toLocaleString('en-IN')}</td>
-                        <td style={{ padding:'11px 16px', fontSize:12, fontWeight:800, color:'#6366f1', textAlign:'right', whiteSpace:'nowrap' }}>₹{((inv.cgst||0)+(inv.sgst||0)).toLocaleString('en-IN')}</td>
+                        <td style={{ padding:'11px 16px', fontSize:12, fontWeight:600, color:'#6366f1', textAlign:'right', whiteSpace:'nowrap' }}>₹{fmt(inv.cgst)}</td>
+                        <td style={{ padding:'11px 16px', fontSize:12, fontWeight:600, color:'#6366f1', textAlign:'right', whiteSpace:'nowrap' }}>₹{fmt(inv.sgst)}</td>
+                        <td style={{ padding:'11px 16px', fontSize:12, fontWeight:800, color:'#6366f1', textAlign:'right', whiteSpace:'nowrap' }}>₹{fmt((inv.cgst||0)+(inv.sgst||0))}</td>
                       </>}
                       {reportType==='tds' && <>
-                        <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#f59e0b', textAlign:'right', whiteSpace:'nowrap' }}>₹{(inv.tdsAmount||0).toLocaleString('en-IN')}</td>
-                        <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#10b981', textAlign:'right', whiteSpace:'nowrap' }}>₹{(inv.receivedAmount||(inv).received||0).toLocaleString('en-IN')}</td>
+                        <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#f59e0b', textAlign:'right', whiteSpace:'nowrap' }}>₹{fmt(inv.tdsAmount)}</td>
+                        <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#10b981', textAlign:'right', whiteSpace:'nowrap' }}>₹{fmt(inv.receivedAmount || inv.received)}</td>
                       </>}
                       <td style={{ padding:'11px 16px', textAlign:'right' }}>
                         <span style={{ display:'inline-block', padding:'3px 9px', borderRadius:20, background:st.bg, color:st.color, fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em' }}>{inv.paymentStatus}</span>
@@ -406,19 +496,20 @@ export default function Reports() {
               <tfoot>
                 <tr style={{ background:'#0f172a', borderTop:'2px solid #0f172a' }}>
                   <td colSpan={4} style={{ padding:'12px 16px', fontSize:11, fontWeight:800, color:'#fff', textTransform:'uppercase', letterSpacing:'0.08em' }}>TOTAL ({filtered.length} records)</td>
-                  <td style={{ padding:'12px 16px', fontSize:12, fontWeight:800, color:'#fff', textAlign:'right' }}>₹{sum.totalInvoiced.toLocaleString('en-IN')}</td>
+                  <td style={{ padding:'12px 16px', fontSize:12, fontWeight:800, color:'#fff', textAlign:'right' }}>₹{fmt(sum.totalInvoiced)}</td>
                   {reportType==='collection' && <>
-                    <td style={{ padding:'12px 16px', fontSize:12, fontWeight:800, color:'#6ee7b7', textAlign:'right' }}>₹{sum.totalReceived.toLocaleString('en-IN')}</td>
-                    <td style={{ padding:'12px 16px', fontSize:12, fontWeight:800, color:'#fca5a5', textAlign:'right' }}>₹{sum.totalBalance.toLocaleString('en-IN')}</td>
+                    <td style={{ padding:'12px 16px', fontSize:12, fontWeight:800, color:'#6ee7b7', textAlign:'right' }}>₹{fmt(sum.totalReceived)}</td>
+                    <td style={{ padding:'12px 16px', fontSize:12, fontWeight:800, color:'#fca5a5', textAlign:'right' }}>₹{fmt(sum.totalBalance)}</td>
                   </>}
-                  {reportType==='pending'    && <td style={{ padding:'12px 16px', fontSize:12, fontWeight:800, color:'#fca5a5', textAlign:'right' }}>₹{sum.totalBalance.toLocaleString('en-IN')}</td>}
-                  {reportType==='gst'        && <><td/><td/><td style={{ padding:'12px 16px', fontSize:12, fontWeight:800, color:'#c7d2fe', textAlign:'right' }}>₹{sum.totalGst.toLocaleString('en-IN')}</td></>}
-                  {reportType==='tds'        && <><td style={{ padding:'12px 16px', fontSize:12, fontWeight:800, color:'#fde68a', textAlign:'right' }}>₹{sum.totalTds.toLocaleString('en-IN')}</td><td/></>}
+                  {reportType==='pending'    && <td style={{ padding:'12px 16px', fontSize:12, fontWeight:800, color:'#fca5a5', textAlign:'right' }}>₹{fmt(sum.totalBalance)}</td>}
+                  {reportType==='gst'        && <><td/><td/><td style={{ padding:'12px 16px', fontSize:12, fontWeight:800, color:'#c7d2fe', textAlign:'right' }}>₹{fmt(sum.totalGst)}</td></>}
+                  {reportType==='tds'        && <><td style={{ padding:'12px 16px', fontSize:12, fontWeight:800, color:'#fde68a', textAlign:'right' }}>₹{fmt(sum.totalTds)}</td><td/></>}
                   <td/>
                 </tr>
               </tfoot>
             )}
           </table>
+          )}
         </div>
       </div>
     </div>
