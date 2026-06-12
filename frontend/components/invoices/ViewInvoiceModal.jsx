@@ -5,7 +5,7 @@ import { toast } from 'react-hot-toast';
 import { ApproveSignatureModal } from '../tenants/ApproveSignatureModal.jsx';
 import { InvoicePreviewDocument } from '../invoices/InvoicePreviewDocument.jsx';
 
-export function ViewInvoiceModal({ invoice, tenant, company, onClose }) {
+export function ViewInvoiceModal({ invoice, tenant, company, onClose, onApprove }) {
   const [downloading,    setDownloading]    = useState(false);
   const [showApprove,    setShowApprove]    = useState(false);
   const [currentInvoice, setCurrentInvoice] = useState(invoice);
@@ -94,6 +94,7 @@ export function ViewInvoiceModal({ invoice, tenant, company, onClose }) {
               onSuccess={(updated) => {
                 setCurrentInvoice(updated);
                 setShowApprove(false);
+                onApprove?.(updated);
               }}
             />
           )}

@@ -4,7 +4,8 @@ import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Plus, Edit2, Trash2, X, Eye, EyeOff,
-  CheckCircle2, XCircle, Search, Loader2, Key, Shield
+  CheckCircle2, XCircle, Search, Loader2, Key, Shield,
+  Users, CheckCircle, UserX, Layers
 } from 'lucide-react';
 
 // ── Shared input style ────────────────────────────────────────────────────────
@@ -291,16 +292,27 @@ export default function UsersPage() {
       </div>
 
       {/* Stats */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginBottom:20 }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:12, marginBottom:20 }}>
         {[
-          { label:'Total Users',  val: users.length,                        color:'#6366f1' },
-          { label:'Active',       val: users.filter(u=>u.isActive).length,  color:'#10b981' },
-          { label:'Inactive',     val: users.filter(u=>!u.isActive).length, color:'#ef4444' },
-          { label:'Roles',        val: new Set(users.map(u=>u.role)).size,   color:'#f59e0b' },
+          { label:'Total Users',  val: users.length,                        sub:'All members',  Icon: Users,     icoColor:'#6366f1' },
+          { label:'Active',       val: users.filter(u=>u.isActive).length,  sub:'In operation', Icon: CheckCircle, icoColor:'#10b981' },
+          { label:'Inactive',     val: users.filter(u=>!u.isActive).length, sub:'Suspended',    Icon: UserX,     icoColor:'#ef4444' },
+          { label:'Roles',        val: new Set(users.map(u=>u.role)).size,  sub:'Distinct',     Icon: Layers,    icoColor:'#f59e0b' },
         ].map((s,i) => (
-          <div key={i} style={{ ...SC, padding:'16px 20px' }}>
-            <div style={{ fontSize:26, fontWeight:900, color:s.color }}>{s.val}</div>
-            <div style={{ fontSize:10, fontWeight:700, color:'#9ba8b5', textTransform:'uppercase', letterSpacing:'0.08em', marginTop:4 }}>{s.label}</div>
+          <div key={i} style={{
+            background:'#fff', borderRadius:14, padding:'20px 20px 16px', position:'relative', minHeight:108,
+            border: i===0 ? '1.5px solid #3b82f6' : '1px solid #e8edf2',
+            boxShadow: i===0 ? '0 0 0 4px rgba(59,130,246,0.06),0 2px 6px rgba(0,0,0,0.05)' : '0 1px 4px rgba(0,0,0,0.04)',
+            transition:'all 0.2s',
+          }}
+            onMouseEnter={e => { e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.boxShadow='0 8px 24px rgba(0,0,0,0.09)'; }}
+            onMouseLeave={e => { e.currentTarget.style.transform='none'; e.currentTarget.style.boxShadow= i===0 ? '0 0 0 4px rgba(59,130,246,0.06),0 2px 6px rgba(0,0,0,0.05)' : '0 1px 4px rgba(0,0,0,0.04)'; }}>
+            <p style={{ fontSize:11, fontWeight:600, color:'#9ba8b5', margin:'0 0 10px', letterSpacing:'0.02em' }}>{s.label}</p>
+            <p style={{ fontSize:30, fontWeight:900, color:'#1a1a2e', margin:0, letterSpacing:'-0.6px', lineHeight:1.1 }}>{s.val}</p>
+            <p style={{ fontSize:11, color:'#b0b8c4', margin:'6px 0 0' }}>{s.sub}</p>
+            <div style={{ position:'absolute', bottom:16, right:16 }}>
+              <s.Icon size={28} color={s.icoColor} strokeWidth={1.5}/>
+            </div>
           </div>
         ))}
       </div>
@@ -369,21 +381,19 @@ export default function UsersPage() {
                   {/* Actions */}
                   <td style={{ padding:'14px 16px' }}>
                     {isAdmin && (
-                      <div style={{ display:'flex', gap:6 }}>
-                        <button onClick={() => setModal(u)} title="Edit"
-                          style={{ padding:'6px', background:'#fff7ed', border:'1px solid #fed7aa', borderRadius:8, cursor:'pointer', color:'#f97316', display:'flex', alignItems:'center' }}>
-                          <Edit2 size={13}/>
-                        </button>
-                        <button onClick={() => setResetting(u)} title="Reset Password"
-                          style={{ padding:'6px', background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:8, cursor:'pointer', color:'#3b82f6', display:'flex', alignItems:'center' }}>
-                          <Key size={13}/>
-                        </button>
-                        {String(u.id || u._id) !== String(authData?.id) && (
-                          <button onClick={() => handleDeactivate(u)} title="Deactivate"
-                            style={{ padding:'6px', background:'#fff1f2', border:'1px solid #fecdd3', borderRadius:8, cursor:'pointer', color:'#ef4444', display:'flex', alignItems:'center' }}>
-                            <Trash2 size={13}/>
+                      <div style={{ display:'flex', gap:2 }}>
+                        {[
+                          { icon: Edit2,  title:'Edit',           onClick: () => setModal(u),       color:'#f97316', hbg:'#fff7ed', show: true },
+                          { icon: Key,    title:'Reset Password', onClick: () => setResetting(u),   color:'#3b82f6', hbg:'#eff6ff', show: true },
+                          { icon: Trash2, title:'Deactivate',     onClick: () => handleDeactivate(u), color:'#ef4444', hbg:'#fff1f2', show: String(u.id || u._id) !== String(authData?.id) },
+                        ].filter(b => b.show).map(({ icon: Ic, title, onClick, color, hbg }) => (
+                          <button key={title} onClick={onClick} title={title}
+                            style={{ width:30, height:30, borderRadius:7, border:'none', background:'transparent', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'#94a3b8', transition:'all 0.15s' }}
+                            onMouseEnter={e => { e.currentTarget.style.background=hbg; e.currentTarget.style.color=color; }}
+                            onMouseLeave={e => { e.currentTarget.style.background='transparent'; e.currentTarget.style.color='#94a3b8'; }}>
+                            <Ic size={15}/>
                           </button>
-                        )}
+                        ))}
                       </div>
                     )}
                   </td>

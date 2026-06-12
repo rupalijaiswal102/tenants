@@ -1,7 +1,9 @@
 import { Building2, MapPin, CreditCard, CheckCircle2, Edit, Eye, Trash2, ChevronRight } from 'lucide-react';
 import { motion } from 'motion/react';
+import { usePermission } from '../../src/hooks/usePermission.js';
 
 export default function CompanyCard({ company, onEdit, onView, onDelete }) {
+  const { canEdit, canDelete } = usePermission();
   return (
     <motion.div
       layout
@@ -18,16 +20,29 @@ export default function CompanyCard({ company, onEdit, onView, onDelete }) {
               <Building2 className="text-slate-300" size={24} />
             )}
           </div>
-          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button onClick={() => onEdit(company)} className="p-2 hover:bg-orange-50 text-slate-400 hover:text-orange-500 rounded-lg transition-colors">
-              <Edit size={16} />
+          <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button onClick={() => onView(company)} title="View"
+              style={{ width:30, height:30, borderRadius:7, border:'none', background:'transparent', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'#94a3b8', transition:'all 0.15s' }}
+              onMouseEnter={e => { e.currentTarget.style.background='#eff6ff'; e.currentTarget.style.color='#3b82f6'; }}
+              onMouseLeave={e => { e.currentTarget.style.background='transparent'; e.currentTarget.style.color='#94a3b8'; }}>
+              <Eye size={15}/>
             </button>
-            <button onClick={() => onView(company)} className="p-2 hover:bg-blue-50 text-slate-400 hover:text-blue-500 rounded-lg transition-colors">
-              <Eye size={16} />
-            </button>
-            <button onClick={() => onDelete(company.id)} className="p-2 hover:bg-rose-50 text-slate-400 hover:text-rose-500 rounded-lg transition-colors">
-              <Trash2 size={16} />
-            </button>
+            {canEdit && (
+              <button onClick={() => onEdit(company)} title="Edit"
+                style={{ width:30, height:30, borderRadius:7, border:'none', background:'transparent', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'#94a3b8', transition:'all 0.15s' }}
+                onMouseEnter={e => { e.currentTarget.style.background='#fff7ed'; e.currentTarget.style.color='#f97316'; }}
+                onMouseLeave={e => { e.currentTarget.style.background='transparent'; e.currentTarget.style.color='#94a3b8'; }}>
+                <Edit size={15}/>
+              </button>
+            )}
+            {canDelete && (
+              <button onClick={() => onDelete(company.id)} title="Delete"
+                style={{ width:30, height:30, borderRadius:7, border:'none', background:'transparent', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'#94a3b8', transition:'all 0.15s' }}
+                onMouseEnter={e => { e.currentTarget.style.background='#fff1f2'; e.currentTarget.style.color='#ef4444'; }}
+                onMouseLeave={e => { e.currentTarget.style.background='transparent'; e.currentTarget.style.color='#94a3b8'; }}>
+                <Trash2 size={15}/>
+              </button>
+            )}
           </div>
         </div>
 

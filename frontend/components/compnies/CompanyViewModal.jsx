@@ -1,7 +1,9 @@
 import { Building2, MapPin, Mail, Phone, FileText, Edit, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { usePermission } from '../../src/hooks/usePermission.js';
 
 export default function CompanyViewModal({ company, onClose, onEdit }) {
+  const { canEdit } = usePermission();
   if (!company) return null;
 
   const DetailRow = ({ label, value }) => (
@@ -85,12 +87,14 @@ export default function CompanyViewModal({ company, onClose, onEdit }) {
               </div>
 
               {/* Edit button */}
-              <div className="pt-6 flex items-center justify-center">
-                <button onClick={() => { onClose(); onEdit(company); }}
-                  className="w-full md:w-auto px-10 py-4 bg-[#1A1A2E] text-white rounded-2xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-slate-800 transition-all shadow-xl">
-                  <Edit size={16} /> Full Edit Profile
-                </button>
-              </div>
+              {canEdit && (
+                <div className="pt-6 flex items-center justify-center">
+                  <button onClick={() => { onClose(); onEdit(company); }}
+                    className="w-full md:w-auto px-10 py-4 bg-[#1A1A2E] text-white rounded-2xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-slate-800 transition-all shadow-xl">
+                    <Edit size={16} /> Full Edit Profile
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </motion.div>

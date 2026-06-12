@@ -1,6 +1,7 @@
 import { Download, Plus, FileText, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { TypeBadge } from '../TenantPrimitives.jsx';
+import { usePermission } from '../../../src/hooks/usePermission.js';
 
 const SC = { background:'#fff', borderRadius:16, border:'1px solid #f0f2f5', boxShadow:'0 1px 3px rgba(0,0,0,0.04)' };
 
@@ -9,6 +10,7 @@ export default function LedgerTab({
   onAdjustment, onExportExcel, onExportPDF,
   exportingExcel, exportingPDF, ledgerRef,
 }) {
+  const { canEdit } = usePermission();
   const summary = ledgerData?.summary || {};
   const fmt = (v) => `₹${Math.round(v || 0).toLocaleString('en-IN')}`;
 
@@ -107,10 +109,12 @@ export default function LedgerTab({
           ))}
         </div>
         <div style={{ display:'flex', gap:8 }}>
-          <button onClick={onAdjustment}
-            style={{ display:'flex', alignItems:'center', gap:5, padding:'7px 14px', background:'#fffbeb', border:'1px solid #fde68a', borderRadius:9, fontSize:11, fontWeight:700, color:'#b45309', cursor:'pointer', fontFamily:'inherit' }}>
-            <Plus size={12}/> Adjustment
-          </button>
+          {canEdit && (
+            <button onClick={onAdjustment}
+              style={{ display:'flex', alignItems:'center', gap:5, padding:'7px 14px', background:'#fffbeb', border:'1px solid #fde68a', borderRadius:9, fontSize:11, fontWeight:700, color:'#b45309', cursor:'pointer', fontFamily:'inherit' }}>
+              <Plus size={12}/> Adjustment
+            </button>
+          )}
           <button onClick={onExportExcel} disabled={exportingExcel}
             style={{ display:'flex', alignItems:'center', gap:5, padding:'7px 14px', background:'#fff', border:'1.5px solid #f0f2f5', borderRadius:9, fontSize:11, fontWeight:600, color:'#5a6474', cursor:'pointer', fontFamily:'inherit' }}>
             {exportingExcel ? <Loader2 size={12} style={{ animation:'spin 1s linear infinite' }}/> : <Download size={12}/>} Excel

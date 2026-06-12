@@ -5,6 +5,7 @@ import {
   getNextTenantCode
 } from '../controllers/tenant.controller.js';
 import { upload } from '../middleware/multer.js';
+import { denyViewer } from './auth.routes.js';
 
 const router = express.Router();
 
@@ -19,10 +20,10 @@ const tenantUpload = (req, res, next) => {
 router.get('/next-code', getNextTenantCode);  // ← GET /api/tenants/next-code
 
 router.get('/',              getTenants);
-router.post('/',             tenantUpload, createTenant);
+router.post('/',             denyViewer, tenantUpload, createTenant);
 router.get('/:id',           getTenantById);
 router.get('/:id/details',   getTenantDetails);
-router.put('/:id',           tenantUpload, updateTenant);
-router.delete('/:id',        deleteTenant);
+router.put('/:id',           denyViewer, tenantUpload, updateTenant);
+router.delete('/:id',        denyViewer, deleteTenant);
 
 export default router;

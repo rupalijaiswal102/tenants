@@ -1,10 +1,15 @@
-import { Field, inp } from './formUtils.jsx';
+import { useState } from 'react';
+import { Field, inp } from './OtherParties_formUtils.jsx';
 
 const PURPOSES = ['Office','Bank','Nescafe','ATM','Retail Shop','Restaurant','Warehouse','Clinic','Salon','Showroom'];
 
 export default function Step2_LeaseProperty({ register, watch, setValue, errors, mode }) {
+  const [otherMode, setOtherMode] = useState(false);
   const currentPurpose = watch('rentalPurpose');
-  const isCustomPurpose = currentPurpose && !PURPOSES.includes(currentPurpose);
+
+  // Show text input if user clicked "Other" OR if existing record has a custom purpose
+  const showCustomInput = otherMode || (currentPurpose && !PURPOSES.includes(currentPurpose));
+  const selectValue = showCustomInput ? 'Other' : (currentPurpose || '');
 
   return (
     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
@@ -42,18 +47,23 @@ export default function Step2_LeaseProperty({ register, watch, setValue, errors,
       {/* Rental Purpose */}
       <div style={{ gridColumn:'1/-1' }}>
         <Field label="Rental Purpose">
-          <div style={{ display:'grid', gridTemplateColumns: isCustomPurpose ? '1fr 1fr' : '1fr', gap:10 }}>
+          <div style={{ display:'grid', gridTemplateColumns: showCustomInput ? '1fr 1fr' : '1fr', gap:10 }}>
             <select className={inp} style={{ cursor:'pointer' }}
-              value={isCustomPurpose ? 'Other' : (currentPurpose || '')}
+              value={selectValue}
               onChange={e => {
-                if (e.target.value !== 'Other') setValue('rentalPurpose', e.target.value);
-                else setValue('rentalPurpose', '');
+                if (e.target.value === 'Other') {
+                  setOtherMode(true);
+                  setValue('rentalPurpose', '');
+                } else {
+                  setOtherMode(false);
+                  setValue('rentalPurpose', e.target.value);
+                }
               }}>
               <option value="">Select purpose...</option>
               {PURPOSES.map(o => <option key={o}>{o}</option>)}
               <option value="Other">Other</option>
             </select>
-            {isCustomPurpose && (
+            {showCustomInput && (
               <input {...register('rentalPurpose')} className={inp} placeholder="Specify purpose..."/>
             )}
           </div>

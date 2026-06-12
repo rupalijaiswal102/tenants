@@ -1,11 +1,10 @@
-import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Users, ReceiptIndianRupee, FileText,
-  Building2, Settings, ChevronDown, ChevronRight,
-  Home, BarChart2, FileCheck, Bell, Users2, UserCog
+  Building2, Users2, UserCog
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { usePermission } from '../src/hooks/usePermission.js';
 
 // ── Nav Structure ─────────────────────────────────────────────────────────────
 const NAV = [
@@ -31,8 +30,27 @@ const NAV = [
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 // ── Component ─────────────────────────────────────────────────────────────────
+const ROLE_COLORS = {
+  'Super Admin': '#ef4444', 'Admin': '#f97316', 'MDO': '#6366f1',
+  'Accounts': '#10b981', 'CRM': '#0ea5e9', 'Viewer': '#94a3b8',
+};
+
 export default function Sidebar({ open, onClose, isMobile }) {
   const location = useLocation();
+  const { isViewer } = usePermission();
+  const authData = JSON.parse(localStorage.getItem('neoteric_auth') || '{}');
+  const sidebarUser = {
+    name:     authData.name     || 'Admin',
+    role:     authData.role     || 'Super Admin',
+    initials: authData.initials || (authData.name ? authData.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase() : 'AD'),
+  };
+
+  const visibleNav = NAV.map(group => ({
+    ...group,
+    items: group.items.filter(item =>
+      !isViewer || !(['/companies', '/users'].includes(item.path))
+    ),
+  })).filter(group => group.items.length > 0);
 
   const isActive = (path) =>
     path === '/'
@@ -40,7 +58,6 @@ export default function Sidebar({ open, onClose, isMobile }) {
       : location.pathname.startsWith(path);
 
   const sidebarWidth = isMobile ? 260 : (open ? 240 : 64);
-  const isCollapsed = !isMobile && !open;
 
   return (
     <>
@@ -113,7 +130,7 @@ export default function Sidebar({ open, onClose, isMobile }) {
 
         {/* ── Nav ── */}
         <nav style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '10px 0' }}>
-          {NAV.map(group => (
+          {visibleNav.map(group => (
             <div key={group.group}>
               {/* Group Label */}
               {(open || isMobile) && (
@@ -208,16 +225,16 @@ export default function Sidebar({ open, onClose, isMobile }) {
               border:      '1px solid #f0f2f5',
             }}>
               <div style={{
-                width: 30, height: 30, borderRadius: 8,
-                background: '#f97316',
+                width: 30, height: 30, borderRadius: '50%',
+                background: ROLE_COLORS[sidebarUser.role] || '#f97316',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 11, fontWeight: 800, color: '#fff', flexShrink: 0,
               }}>
-                AD
+                {sidebarUser.initials}
               </div>
               <div style={{ overflow: 'hidden' }}>
-                <p style={{ fontSize: 12, fontWeight: 700, color: '#1a1a2e', margin: 0, whiteSpace: 'nowrap' }}>Admin</p>
-                <p style={{ fontSize: 10, color: '#94a3b8', margin: 0 }}>Super Admin</p>
+                <p style={{ fontSize: 12, fontWeight: 700, color: '#1a1a2e', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sidebarUser.name}</p>
+                <p style={{ fontSize: 10, color: '#94a3b8', margin: 0 }}>{sidebarUser.role}</p>
               </div>
             </div>
             <p style={{ fontSize: 9, color: '#d1d5db', textAlign: 'center', marginTop: 10, fontWeight: 600, letterSpacing: '0.1em' }}>
@@ -229,8 +246,8 @@ export default function Sidebar({ open, onClose, isMobile }) {
         {/* Collapsed footer avatar */}
         {!open && !isMobile && (
           <div style={{ padding: '12px 0', display: 'flex', justifyContent: 'center', borderTop: '1px solid #f5f6f8', flexShrink: 0 }}>
-            <div style={{ width: 30, height: 30, borderRadius: 8, background: '#f97316', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, color: '#fff' }}>
-              AD
+            <div title={`${sidebarUser.name} — ${sidebarUser.role}`} style={{ width: 30, height: 30, borderRadius: '50%', background: ROLE_COLORS[sidebarUser.role] || '#f97316', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, color: '#fff', cursor: 'default' }}>
+              {sidebarUser.initials}
             </div>
           </div>
         )}

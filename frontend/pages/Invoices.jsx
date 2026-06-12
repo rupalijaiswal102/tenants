@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'react-hot-toast';
 import { exportToExcel } from '../src/lib/exportUtils.js';
 import { InvoiceFormModal, ViewInvoiceModal } from '../components/tenants/InvoiceModals.jsx';
+import { usePermission } from '../src/hooks/usePermission.js';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const fmt = (n) => `₹${Math.round(n || 0).toLocaleString('en-IN')}`;
@@ -44,10 +45,12 @@ export default function InvoiceList() {
   const [companyFilter,  setCompanyFilter]  = useState('All');
   const [typeFilter,     setTypeFilter]     = useState('All');
   const [monthFilter,    setMonthFilter]    = useState('All');
+  const [partyTypeFilter,setPartyTypeFilter]= useState('All');
   const [showFilters,    setShowFilters]    = useState(false);
 
   const [showForm,       setShowForm]       = useState(false);
   const navigate = useNavigate();
+  const { canAdd, canEdit, canDelete } = usePermission();
   const [selectedInvoice,setSelectedInvoice]= useState(null);
   const [editingInvoice, setEditingInvoice] = useState(null);
   const [deletingInvoice,setDeletingInvoice]= useState(null);
@@ -84,7 +87,8 @@ export default function InvoiceList() {
     const cOk = companyFilter === 'All' || inv.companyId === companyFilter || inv.company === companyFilter;
     const tOk = typeFilter === 'All' || inv.items?.some((it) => it.particular?.toLowerCase().includes(typeFilter.toLowerCase()));
     const mOk = monthFilter === 'All' || (inv.billDate && new Date(inv.billDate).getMonth() === parseInt(monthFilter));
-    return sOk && stOk && cOk && tOk && mOk;
+    const ptOk= partyTypeFilter === 'All' || (partyTypeFilter === 'Tenant' ? !!inv.tenantId : !!inv.otherPartyId);
+    return sOk && stOk && cOk && tOk && mOk && ptOk;
   });
 
   const totalInvoiced    = filtered.reduce((s, i) => s + (i.totalInvoice || 0), 0);
@@ -93,7 +97,7 @@ export default function InvoiceList() {
   const paidCount        = filtered.filter(i => i.paymentStatus === 'Paid').length;
   const pendingCount     = filtered.filter(i => i.paymentStatus === 'Pending').length;
 
-  const activeFilters = [statusFilter, companyFilter, typeFilter, monthFilter].filter(f => f !== 'All').length;
+  const activeFilters = [statusFilter, companyFilter, typeFilter, monthFilter, partyTypeFilter].filter(f => f !== 'All').length;
 
   const handleDelete = async (id) => {
     try {
@@ -138,35 +142,40 @@ export default function InvoiceList() {
             {exporting ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }}/> : <Download size={14}/>}
             Export Excel
           </button>
-          <button onClick={() => setShowForm(true)}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 18px', background: '#f97316', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 700, color: '#fff', cursor: 'pointer', boxShadow: '0 4px 12px rgba(249,115,22,0.3)' }}>
-            <Plus size={15}/> New Invoice
-          </button>
+          {canAdd && (
+            <button onClick={() => setShowForm(true)}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 18px', background: '#f97316', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 700, color: '#fff', cursor: 'pointer', boxShadow: '0 4px 12px rgba(249,115,22,0.3)' }}>
+              <Plus size={15}/> New Invoice
+            </button>
+          )}
         </div>
       </div>
 
       {/* ── Stat Cards ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 20 }}>
         {[
-          { label: 'Total Invoiced',   value: fmt(totalInvoiced),    color: '#3b82f6', bg: '#eff6ff', icon: IndianRupee },
-          { label: 'Total Received',   value: fmt(totalReceived),    color: '#10b981', bg: '#f0fdf4', icon: CheckCircle2 },
-          { label: 'Outstanding',      value: fmt(totalOutstanding), color: '#ef4444', bg: '#fff1f2', icon: AlertCircle  },
-          { label: 'Paid',             value: `${paidCount}`,        color: '#10b981', bg: '#f0fdf4', icon: CheckCircle2 },
-          { label: 'Pending',          value: `${pendingCount}`,     color: '#ef4444', bg: '#fff1f2', icon: Clock        },
-        ].map(s => {
-          const Icon = s.icon;
-          return (
-            <div key={s.label} style={{ background: '#fff', borderRadius: 12, padding: '14px 16px', border: '1px solid #f0f2f5', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ width: 36, height: 36, borderRadius: 10, background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <Icon size={16} color={s.color}/>
-              </div>
-              <div style={{ minWidth: 0 }}>
-                <p style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', margin: 0, textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{s.label}</p>
-                <p style={{ fontSize: 16, fontWeight: 900, color: s.color, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.value}</p>
-              </div>
+          { label: 'Total Invoiced',  value: fmt(totalInvoiced),    sub: 'All bills combined',  Icon: IndianRupee,  icoColor: '#3b82f6' },
+          { label: 'Total Received',  value: fmt(totalReceived),    sub: 'Payments collected',  Icon: CheckCircle2, icoColor: '#10b981' },
+          { label: 'Outstanding',     value: fmt(totalOutstanding), sub: 'Pending dues',         Icon: AlertCircle,  icoColor: '#ef4444' },
+          { label: 'Paid',            value: `${paidCount}`,        sub: 'invoices',             Icon: CheckCircle2, icoColor: '#10b981' },
+          { label: 'Pending',         value: `${pendingCount}`,     sub: 'invoices',             Icon: Clock,        icoColor: '#ef4444' },
+        ].map((s, i) => (
+          <div key={s.label} style={{
+            background: '#fff', borderRadius: 14, padding: '20px 20px 16px', position: 'relative', minHeight: 108,
+            border: i === 0 ? '1.5px solid #3b82f6' : '1px solid #e8edf2',
+            boxShadow: i === 0 ? '0 0 0 4px rgba(59,130,246,0.06),0 2px 6px rgba(0,0,0,0.05)' : '0 1px 4px rgba(0,0,0,0.04)',
+            transition: 'all 0.2s',
+          }}
+            onMouseEnter={e => { e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.boxShadow='0 8px 24px rgba(0,0,0,0.09)'; }}
+            onMouseLeave={e => { e.currentTarget.style.transform='none'; e.currentTarget.style.boxShadow= i===0 ? '0 0 0 4px rgba(59,130,246,0.06),0 2px 6px rgba(0,0,0,0.05)' : '0 1px 4px rgba(0,0,0,0.04)'; }}>
+            <p style={{ fontSize: 11, fontWeight: 600, color: '#9ba8b5', margin: '0 0 10px', letterSpacing: '0.02em' }}>{s.label}</p>
+            <p style={{ fontSize: 26, fontWeight: 900, color: '#1a1a2e', margin: 0, letterSpacing: '-0.5px', lineHeight: 1.1 }}>{s.value}</p>
+            <p style={{ fontSize: 11, color: '#b0b8c4', margin: '6px 0 0' }}>{s.sub}</p>
+            <div style={{ position: 'absolute', bottom: 14, right: 16 }}>
+              <s.Icon size={26} color={s.icoColor} strokeWidth={1.5}/>
             </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
 
       {/* ── Filter Bar ── */}
@@ -211,7 +220,7 @@ export default function InvoiceList() {
 
           {/* Clear */}
           {(search || activeFilters > 0) && (
-            <button onClick={() => { setSearch(''); setStatusFilter('All'); setCompanyFilter('All'); setTypeFilter('All'); setMonthFilter('All'); }}
+            <button onClick={() => { setSearch(''); setStatusFilter('All'); setCompanyFilter('All'); setTypeFilter('All'); setMonthFilter('All'); setPartyTypeFilter('All'); }}
               style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 10px', borderRadius: 9, border: '1px solid #fecdd3', background: '#fff1f2', fontSize: 11, fontWeight: 700, color: '#ef4444', cursor: 'pointer' }}>
               <X size={11}/> Clear
             </button>
@@ -239,6 +248,13 @@ export default function InvoiceList() {
                   style={{ padding: '7px 10px', border: '1px solid #f0f2f5', borderRadius: 9, fontSize: 12, fontWeight: 600, color: '#475569', background: '#f8fafc', outline: 'none', cursor: 'pointer', fontFamily: 'inherit', flex: 1, minWidth: 180 }}>
                   <option value="All">All Charge Types</option>
                   {allTypes.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+                {/* Party Type */}
+                <select value={partyTypeFilter} onChange={e => setPartyTypeFilter(e.target.value)}
+                  style={{ padding: '7px 10px', border: '1px solid #f0f2f5', borderRadius: 9, fontSize: 12, fontWeight: 600, color: '#475569', background: '#f8fafc', outline: 'none', cursor: 'pointer', fontFamily: 'inherit', flex: 1, minWidth: 160 }}>
+                  <option value="All">All Parties</option>
+                  <option value="Tenant">Tenants</option>
+                  <option value="OtherParty">Other Parties</option>
                 </select>
               </div>
             </motion.div>
@@ -334,25 +350,19 @@ export default function InvoiceList() {
 
                     {/* Actions */}
                     <td style={{ padding: '12px 14px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                        <button onClick={() => setSelectedInvoice(inv)} title="View"
-                          style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', fontSize: 11, fontWeight: 600, color: '#475569', display: 'flex', alignItems: 'center', gap: 4, transition: 'all 0.1s' }}
-                          onMouseEnter={e => { (e.currentTarget).style.background = '#f0fdf4'; (e.currentTarget).style.color = '#10b981'; (e.currentTarget).style.borderColor = '#bbf7d0'; }}
-                          onMouseLeave={e => { (e.currentTarget).style.background = '#fff'; (e.currentTarget).style.color = '#475569'; (e.currentTarget).style.borderColor = '#e2e8f0'; }}>
-                          <Eye size={13}/> View
-                        </button>
-                        <button onClick={() => setEditingInvoice(inv)} title="Edit"
-                          style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', fontSize: 11, fontWeight: 600, color: '#475569', display: 'flex', alignItems: 'center', gap: 4, transition: 'all 0.1s' }}
-                          onMouseEnter={e => { (e.currentTarget).style.background = '#fffbeb'; (e.currentTarget).style.color = '#d97706'; (e.currentTarget).style.borderColor = '#fde68a'; }}
-                          onMouseLeave={e => { (e.currentTarget).style.background = '#fff'; (e.currentTarget).style.color = '#475569'; (e.currentTarget).style.borderColor = '#e2e8f0'; }}>
-                          <Edit2 size={13}/> Edit
-                        </button>
-                        <button onClick={() => setDeletingInvoice(inv)} title="Delete"
-                          style={{ padding: '6px 8px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', color: '#94a3b8', display: 'flex', alignItems: 'center', transition: 'all 0.1s' }}
-                          onMouseEnter={e => { (e.currentTarget).style.background = '#fff1f2'; (e.currentTarget).style.color = '#ef4444'; (e.currentTarget).style.borderColor = '#fecdd3'; }}
-                          onMouseLeave={e => { (e.currentTarget).style.background = '#fff'; (e.currentTarget).style.color = '#94a3b8'; (e.currentTarget).style.borderColor = '#e2e8f0'; }}>
-                          <Trash2 size={13}/>
-                        </button>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+                        {[
+                          { icon: Eye,    show: true,       title: 'View',   onClick: () => setSelectedInvoice(inv),  color: '#3b82f6', hbg: '#eff6ff' },
+                          { icon: Edit2,  show: canEdit,    title: 'Edit',   onClick: () => setEditingInvoice(inv),   color: '#f97316', hbg: '#fff7ed' },
+                          { icon: Trash2, show: canDelete,  title: 'Delete', onClick: () => setDeletingInvoice(inv), color: '#ef4444', hbg: '#fff1f2' },
+                        ].filter(b => b.show).map(({ icon: Ic, title, onClick, color, hbg }) => (
+                          <button key={title} onClick={onClick} title={title}
+                            style={{ width: 30, height: 30, borderRadius: 7, border: 'none', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#94a3b8', transition: 'all 0.15s' }}
+                            onMouseEnter={e => { e.currentTarget.style.background = hbg; e.currentTarget.style.color = color; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#94a3b8'; }}>
+                            <Ic size={15}/>
+                          </button>
+                        ))}
                       </div>
                     </td>
                   </motion.tr>
@@ -393,7 +403,8 @@ export default function InvoiceList() {
               otherParties.find(p => String(p.id||p._id) === String(selectedInvoice.otherPartyId))
             }
             company={companies.find(c => String(c.id||c._id) === String(selectedInvoice.companyId) || c.companyName === selectedInvoice.company)}
-            onClose={() => setSelectedInvoice(null)}/>
+            onClose={() => setSelectedInvoice(null)}
+            onApprove={(updated) => { setSelectedInvoice(updated); refetch(); }}/>
         )}
         {deletingInvoice && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}

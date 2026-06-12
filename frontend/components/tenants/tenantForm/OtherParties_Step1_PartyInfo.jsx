@@ -1,7 +1,7 @@
 import Select from 'react-select';
 import { Controller } from 'react-hook-form';
 import { Loader2, CheckCircle2 } from 'lucide-react';
-import { Field, inp, SELECT_STYLES } from './formUtils.jsx';
+import { Field, inp, SELECT_STYLES } from './OtherParties_formUtils.jsx';
 
 export default function Step1_PartyInfo({ register, control, errors, watch, companies, gstLoading, gstSuccess, onGstBlur }) {
   return (

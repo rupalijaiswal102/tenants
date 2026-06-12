@@ -26,6 +26,19 @@ export const authMiddleware = (req, res, next) => {
   }
 };
 
+// ── Viewer block middleware ───────────────────────────────────────────────────
+export const denyViewer = (req, res, next) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) return next(); // no auth = legacy pass-through
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded.role === 'Viewer') {
+      return res.status(403).json({ error: 'Access denied: View-only account cannot perform this action.' });
+    }
+  } catch { /* invalid token — let route handle it */ }
+  next();
+};
+
 router.post('/login', login);
 router.get('/me',     authMiddleware, getMe);
 

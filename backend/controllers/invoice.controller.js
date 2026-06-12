@@ -227,8 +227,8 @@ export const createInvoice = async (req, res) => {
     try {
       const partyRef = invoice.tenantId
         ? { tenantId: invoice.tenantId }
-        : (invoice).otherPartyId
-          ? { tenantId: (invoice).otherPartyId } // store otherPartyId in tenantId field for ledger compatibility
+        : invoice.otherPartyId
+          ? { otherPartyId: invoice.otherPartyId }
           : null;
 
       if (partyRef) {
@@ -448,11 +448,16 @@ export const updateInvoice = async (req, res) => {
 
     // Sync Ledger Entries
     await Ledger.deleteMany({ refId: invoice._id });
-    
+
+    // Resolve party field — tenantId for Tenants, otherPartyId for Other Parties
+    const partyRef = invoice.tenantId
+      ? { tenantId: invoice.tenantId }
+      : { otherPartyId: invoice.otherPartyId };
+
     const ledgerEntries = [];
     // 1. Invoice Debit
     ledgerEntries.push({
-      tenantId: invoice.tenantId,
+      ...partyRef,
       date: invoice.billDate || new Date(),
       type: 'INVOICE',
       particular: `Invoice #${invoice.invoiceNo}`,
@@ -463,10 +468,10 @@ export const updateInvoice = async (req, res) => {
       tds: 0
     });
 
-    // 1.5 Late Penalty Entry (New)
+    // 1.5 Late Penalty Entry
     if (invoice.latePenaltyAmount > 0) {
       ledgerEntries.push({
-        tenantId: invoice.tenantId,
+        ...partyRef,
         date: invoice.paymentDate || invoice.billDate || new Date(),
         type: 'ADJUSTMENT',
         particular: `Late Payment Penalty (${invoice.latePenaltyPercentage}%) - #${invoice.invoiceNo}`,
@@ -481,7 +486,7 @@ export const updateInvoice = async (req, res) => {
     // 2. Receipt
     if (invoice.receivedAmount > 0) {
       ledgerEntries.push({
-        tenantId: invoice.tenantId,
+        ...partyRef,
         date: invoice.paymentDate || invoice.billDate || new Date(),
         type: 'PAYMENT',
         particular: `Payment Received - #${invoice.invoiceNo}`,
@@ -496,7 +501,7 @@ export const updateInvoice = async (req, res) => {
     // 3. TDS
     if (invoice.tdsAmount > 0) {
       ledgerEntries.push({
-        tenantId: invoice.tenantId,
+        ...partyRef,
         date: invoice.paymentDate || invoice.billDate || new Date(),
         type: 'TDS',
         particular: `TDS Deduction - #${invoice.invoiceNo}`,

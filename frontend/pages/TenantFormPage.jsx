@@ -7,14 +7,14 @@ import { toast } from 'react-hot-toast';
 import axios from 'axios';
 
 // ── Sub-components ────────────────────────────────────────────────────────────
-import { getSteps }      from '../components/tenants/tenantForm/formUtils.jsx';
-import FormHeader from '../components/tenants/tenantForm/FormHeader.jsx';
-import StepIndicator     from '../components/tenants/tenantForm/StepIndicator.jsx';
-import FormNavFooter     from '../components/tenants/tenantForm/FormNavFooter.jsx';
-import Step1_PartyInfo   from '../components/tenants/tenantForm/Step1_PartyInfo.jsx';
-import Step2_LeaseProperty from '../components/tenants/tenantForm/Step2_LeaseProperty.jsx';
-import Step3_Financials  from '../components/tenants/tenantForm/Step3_Financials.jsx';
-import Step4_Documents   from '../components/tenants/tenantForm/Step4_Documents.jsx';
+import { getSteps }      from '../components/tenants/tenantForm/OtherParties_formUtils.jsx';
+import FormHeader from '../components/tenants/tenantForm/OtherParties_FormHeader.jsx';
+import StepIndicator     from '../components/tenants/tenantForm/OtherParties_StepIndicator.jsx';
+import FormNavFooter     from '../components/tenants/tenantForm/OtherParties_FormNavFooter.jsx';
+import Step1_PartyInfo   from '../components/tenants/tenantForm/OtherParties_Step1_PartyInfo.jsx';
+import Step2_LeaseProperty from '../components/tenants/tenantForm/OtherParties_Step2_LeaseProperty.jsx';
+import Step3_Financials  from '../components/tenants/tenantForm/OtherParties_Step3_Financials.jsx';
+import Step4_Documents   from '../components/tenants/tenantForm/OtherParties_Step4_Documents.jsx';
 
 // ── Step icon map ─────────────────────────────────────────────────────────────
 const STEP_ICONS = [
@@ -58,7 +58,7 @@ export default function TenantFormPage({ mode = 'tenant' }) {
   const [filePreview,    setFilePreview]    = useState(null);
   const [companies,      setCompanies]      = useState([]);
 
-  const { register, handleSubmit, control, setValue, watch, reset, formState: { errors } } = useForm({
+  const { register, handleSubmit, control, setValue, watch, reset, getValues, formState: { errors } } = useForm({
     defaultValues: DEFAULT_VALUES,
   });
 
@@ -86,13 +86,37 @@ export default function TenantFormPage({ mode = 'tenant' }) {
   const fetchTenant = async () => {
     try {
       const { data: t } = await axios.get(`${apiBase}/${id}`);
+      const str = (v) => v ?? '';
       reset({
         ...DEFAULT_VALUES,
         ...t,
+        name:                   str(t.name),
+        company:                str(t.company),
+        property:               str(t.property),
+        contactPerson:          str(t.contactPerson),
+        designation:            str(t.designation),
+        mobile:                 str(t.mobile),
+        email:                  str(t.email),
+        alternateContactPerson: str(t.alternateContactPerson),
+        rentalPurpose:          str(t.rentalPurpose),
+        leaseStart:             str(t.leaseStart),
+        leaseEnd:               str(t.leaseEnd),
+        nextEscalationDate:     str(t.nextEscalationDate),
+        referenceDate:          str(t.referenceDate),
+        gstNo:                  str(t.gstNo),
+        panNumber:              str(t.panNumber),
+        legalName:              str(t.legalName),
+        billingAddress:         str(t.billingAddress),
+        state:                  str(t.state),
+        pincode:                str(t.pincode),
+        agreementStatus:        t.agreementStatus   || 'Pending',
+        agreementFileUrl:       str(t.agreementFileUrl),
+        openingBalanceType:     t.openingBalanceType || 'Debit',
+        openingBalanceNotes:    str(t.openingBalanceNotes),
         tenure:               t.tenure               || 12,
         lockIn:               t.lockIn               || 6,
         noticePeriod:         t.noticePeriod         || 60,
-        escalationPercent:    t.escalationPercent    || 5,
+        escalationPercent:    t.escalationPercent    ?? 5,
         securityDeposit:      t.securityDeposit      || 0,
         currentRent:          t.currentRent          || 0,
         rentFreePeriodDays:   t.rentFreePeriodDays   || 0,
@@ -128,9 +152,11 @@ export default function TenantFormPage({ mode = 'tenant' }) {
     setLoading(true);
     const startTime = Date.now();
     try {
+      // getValues() ensures unmounted step fields (e.g. Step 3 when submitting from Step 4) are included
+      const allValues = { ...getValues(), ...data };
       const formData = new FormData();
-      Object.keys(data).forEach(k => {
-        if (data[k] !== null && data[k] !== undefined) formData.append(k, data[k]);
+      Object.keys(allValues).forEach(k => {
+        if (allValues[k] !== null && allValues[k] !== undefined) formData.append(k, allValues[k]);
       });
       if (agreementFile) formData.append('agreementFile', agreementFile);
 

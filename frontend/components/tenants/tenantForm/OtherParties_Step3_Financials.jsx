@@ -1,5 +1,5 @@
 import { IndianRupee, AlertCircle } from 'lucide-react';
-import { Field, inp } from './formUtils.jsx';
+import { Field, inp } from './OtherParties_formUtils.jsx';
 
 export default function Step3_Financials({ register }) {
   const iconStyle = { position:'absolute', left:12, top:'50%', transform:'translateY(-50%)' };

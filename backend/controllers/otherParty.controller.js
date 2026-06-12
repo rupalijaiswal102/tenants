@@ -40,13 +40,13 @@ const handleFileUpload = async (file, data, res) => {
 const addOpeningBalance = async (party) => {
   if (party.openingBalanceAmount > 0) {
     await new Ledger({
-      tenantId:   party._id,
-      date:       party.openingBalanceDate || new Date(),
-      type:       'OPENING_BALANCE',
-      particular: 'Opening Balance',
-      debit:      party.openingBalanceType === 'Debit'  ? party.openingBalanceAmount : 0,
-      credit:     party.openingBalanceType === 'Credit' ? party.openingBalanceAmount : 0,
-      notes:      party.openingBalanceNotes,
+      otherPartyId: party._id,
+      date:         party.openingBalanceDate || new Date(),
+      type:         'OPENING_BALANCE',
+      particular:   'Opening Balance',
+      debit:        party.openingBalanceType === 'Debit'  ? party.openingBalanceAmount : 0,
+      credit:       party.openingBalanceType === 'Credit' ? party.openingBalanceAmount : 0,
+      notes:        party.openingBalanceNotes,
     }).save();
   }
 };

@@ -3,7 +3,8 @@ import {
   Search, Download, TrendingUp, Clock,
   ReceiptIndianRupee, ShieldCheck, FileDown,
   CalendarDays, ChevronDown, Building2, X,
-  CheckCircle2, AlertCircle, Loader2, IndianRupee
+  CheckCircle2, AlertCircle, Loader2, IndianRupee,
+  Users, AlertTriangle, CheckCircle, FileText
 } from 'lucide-react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'motion/react';
@@ -43,6 +44,94 @@ function computeSummary(invoices, type) {
   const totalGst       = invoices.reduce((s, i) => s + ((i.cgst || 0) + (i.sgst || 0)), 0);
   const totalTds       = invoices.reduce((s, i) => s + (i.tdsAmount || 0), 0);
   return { totalInvoiced, totalReceived, totalBalance, totalGst, totalTds };
+}
+
+// ── Outstanding Dues PDF ──────────────────────────────────────────────────────
+function generateOutstandingPDF(data, totalBalance) {
+  const doc = new jsPDF('l', 'mm', 'a4');
+  const now = new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+
+  // Header band
+  doc.setFillColor(15, 23, 42);
+  doc.rect(0, 0, 297, 28, 'F');
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(16); doc.setFont('helvetica','bold');
+  doc.text('NEOTERIC PROPERTIES', 14, 11);
+  doc.setFontSize(9); doc.setFont('helvetica','normal');
+  doc.text('OUTSTANDING DUES REPORT', 14, 18);
+  doc.setFontSize(8);
+  doc.text(`Tenant Wise Balance · Generated: ${now}`, 14, 24);
+  doc.text(`Total Records: ${data.length}`, 220, 18, { align: 'right' });
+  doc.text(`Total Outstanding: Rs ${fmt(totalBalance)}`, 220, 24, { align: 'right' });
+
+  // Summary cards
+  const dueCount    = data.filter(d => d.closingBalance > 0).length;
+  const creditCount = data.filter(d => d.closingBalance < 0).length;
+  const cards = [
+    { label: 'Total Tenants',      value: `${data.length}`,               color: [220,38,38]   },
+    { label: 'Total Outstanding',  value: `Rs ${fmt(totalBalance)}`,      color: [220,38,38]   },
+    { label: 'With Dues',          value: `${dueCount}`,                  color: [239,68,68]   },
+    { label: 'Clear (Nil/Credit)', value: `${data.length - dueCount}`,    color: [16,185,129]  },
+  ];
+  let cx = 14;
+  cards.forEach(card => {
+    doc.setFillColor(...card.color);
+    doc.roundedRect(cx, 33, 56, 18, 3, 3, 'F');
+    doc.setTextColor(255,255,255);
+    doc.setFontSize(7); doc.setFont('helvetica','bold');
+    doc.text(card.label.toUpperCase(), cx + 5, 40);
+    doc.setFontSize(10); doc.setFont('helvetica','bold');
+    doc.text(card.value, cx + 5, 47);
+    cx += 60;
+  });
+
+  // Table header
+  const cols = [
+    { header: '#',               width: 12  },
+    { header: 'Tenant Name',     width: 110 },
+    { header: 'Closing Balance', width: 55  },
+    { header: 'Status',          width: 30  },
+  ];
+  const totalW = cols.reduce((s, c) => s + c.width, 0);
+  const startX = 14;
+  let ty = 58;
+
+  doc.setFillColor(15, 23, 42);
+  doc.rect(startX, ty, totalW, 8, 'F');
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(7); doc.setFont('helvetica','bold');
+  let hx = startX;
+  cols.forEach(col => { doc.text(col.header, hx + 2, ty + 5.5); hx += col.width; });
+  ty += 8;
+
+  // Data rows
+  data.forEach((d, ri) => {
+    if (ty > 185) { doc.addPage(); ty = 14; }
+    if (ri % 2 === 0) { doc.setFillColor(248,250,252); doc.rect(startX, ty, totalW, 7, 'F'); }
+    const isDue    = d.closingBalance > 0;
+    const isCredit = d.closingBalance < 0;
+    const statusLabel = isDue ? 'DUE' : isCredit ? 'CREDIT' : 'NIL';
+    const balStr      = `Rs ${fmt(Math.abs(d.closingBalance))}${isCredit ? ' (Cr)' : ''}`;
+    let rx = startX;
+    [ri + 1, d.tenantName, balStr, statusLabel].forEach((val, ci) => {
+      const v = String(val || '');
+      if (ci === 2) doc.setTextColor(isDue ? 220 : isCredit ? 16 : 100, isDue ? 38 : isCredit ? 185 : 116, isDue ? 38 : isCredit ? 129 : 136);
+      else          doc.setTextColor(30,30,30);
+      doc.setFontSize(7); doc.setFont('helvetica','normal');
+      doc.text(v.length > 24 ? v.slice(0,22)+'..' : v, rx + 2, ty + 5);
+      rx += cols[ci].width;
+    });
+    ty += 7;
+  });
+
+  // Footer
+  doc.setFillColor(15, 23, 42);
+  doc.rect(startX, ty + 2, totalW, 8, 'F');
+  doc.setTextColor(255,255,255); doc.setFont('helvetica','bold');
+  doc.text(`TOTAL (${data.length} tenants)`, startX + 2, ty + 7.5);
+  doc.text(`Rs ${fmt(totalBalance)}`, startX + cols[0].width + cols[1].width + 2, ty + 7.5);
+
+  doc.save('Outstanding_Dues_Report.pdf');
 }
 
 // ── PDF Generator ─────────────────────────────────────────────────────────────
@@ -252,7 +341,11 @@ export default function Reports() {
   const handlePDF = () => {
     setPdfLoading(true);
     setTimeout(() => {
-      try { generatePDF(filtered, reportType, selMonth, selYear); toast.success('PDF downloaded'); }
+      try {
+        if (reportType === 'outstanding') generateOutstandingPDF(filteredOutstanding, totalOutstandingBalance);
+        else                              generatePDF(filtered, reportType, selMonth, selYear);
+        toast.success('PDF downloaded');
+      }
       catch (e) { toast.error('PDF failed'); console.error(e); }
       finally { setPdfLoading(false); }
     }, 100);
@@ -306,23 +399,34 @@ export default function Reports() {
       </div>
 
       {/* ── Summary Cards ── */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))', gap:10, marginBottom:20 }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:12, marginBottom:20 }}>
         {(reportType === 'outstanding' ? [
-          { label:'Total Tenants',      value:`${filteredOutstanding.length}`,                                   color:'#dc2626', bg:'#fef2f2' },
-          { label:'Total Outstanding',  value:`₹${fmt(totalOutstandingBalance)}`,            color:'#dc2626', bg:'#fef2f2' },
-          { label:'With Dues',          value:`${filteredOutstanding.filter(d => d.closingBalance > 0).length}`, color:'#ef4444', bg:'#fff1f2' },
-          { label:'Clear (Nil/Credit)', value:`${filteredOutstanding.filter(d => d.closingBalance <= 0).length}`,color:'#10b981', bg:'#f0fdf4' },
+          { label:'Total Tenants',      value:`${filteredOutstanding.length}`,                                    sub:'All entities',    Icon:Users,        icoColor:'#dc2626' },
+          { label:'Total Outstanding',  value:`₹${fmt(totalOutstandingBalance)}`,                                 sub:'Balance due',     Icon:IndianRupee,  icoColor:'#ef4444' },
+          { label:'With Dues',          value:`${filteredOutstanding.filter(d => d.closingBalance > 0).length}`,  sub:'Need attention',  Icon:AlertTriangle, icoColor:'#ef4444' },
+          { label:'Clear / Credit',     value:`${filteredOutstanding.filter(d => d.closingBalance <= 0).length}`, sub:'Nil or advance',  Icon:CheckCircle,  icoColor:'#10b981' },
         ] : [
-          { label:'Total Invoiced', value:`₹${fmt(sum.totalInvoiced)}`, color:'#3b82f6', bg:'#eff6ff' },
-          { label:'Total Received', value:`₹${fmt(sum.totalReceived)}`, color:'#10b981', bg:'#f0fdf4' },
-          { label:'Outstanding',    value:`₹${fmt(sum.totalBalance)}`,  color:'#ef4444', bg:'#fff1f2' },
-          ...(reportType==='gst' ? [{ label:'Total GST', value:`₹${fmt(sum.totalGst)}`, color:'#6366f1', bg:'#eef2ff' }] : []),
-          ...(reportType==='tds' ? [{ label:'Total TDS', value:`₹${fmt(sum.totalTds)}`, color:'#f59e0b', bg:'#fffbeb' }] : []),
-          { label:'Records', value:`${filtered.length}`, color:'#64748b', bg:'#f8fafc' },
-        ]).map(s => (
-          <div key={s.label} style={{ background:s.bg, borderRadius:12, padding:'14px 16px', border:`1px solid ${s.color}22` }}>
-            <p style={{ fontSize:10, fontWeight:700, color:'#94a3b8', margin:'0 0 4px', textTransform:'uppercase', letterSpacing:'0.06em' }}>{s.label}</p>
-            <p style={{ fontSize:18, fontWeight:900, color:s.color, margin:0 }}>{s.value}</p>
+          { label:'Total Invoiced', value:`₹${fmt(sum.totalInvoiced)}`, sub:'All bills',    Icon:IndianRupee,  icoColor:'#3b82f6' },
+          { label:'Total Received', value:`₹${fmt(sum.totalReceived)}`, sub:'Collected',    Icon:CheckCircle,  icoColor:'#10b981' },
+          { label:'Outstanding',    value:`₹${fmt(sum.totalBalance)}`,  sub:'Pending',      Icon:AlertTriangle, icoColor:'#ef4444' },
+          ...(reportType==='gst' ? [{ label:'Total GST', value:`₹${fmt(sum.totalGst)}`, sub:'Tax collected',  Icon:FileText, icoColor:'#6366f1' }] : []),
+          ...(reportType==='tds' ? [{ label:'Total TDS', value:`₹${fmt(sum.totalTds)}`, sub:'TDS deducted',   Icon:FileText, icoColor:'#f59e0b' }] : []),
+          { label:'Records', value:`${filtered.length}`, sub:'filtered', Icon:FileText, icoColor:'#64748b' },
+        ]).map((s, i) => (
+          <div key={s.label} style={{
+            background:'#fff', borderRadius:14, padding:'20px 20px 16px', position:'relative', minHeight:108,
+            border: i === 0 ? '1.5px solid #3b82f6' : '1px solid #e8edf2',
+            boxShadow: i === 0 ? '0 0 0 4px rgba(59,130,246,0.06),0 2px 6px rgba(0,0,0,0.05)' : '0 1px 4px rgba(0,0,0,0.04)',
+            transition:'all 0.2s',
+          }}
+            onMouseEnter={e => { e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.boxShadow='0 8px 24px rgba(0,0,0,0.09)'; }}
+            onMouseLeave={e => { e.currentTarget.style.transform='none'; e.currentTarget.style.boxShadow= i===0 ? '0 0 0 4px rgba(59,130,246,0.06),0 2px 6px rgba(0,0,0,0.05)' : '0 1px 4px rgba(0,0,0,0.04)'; }}>
+            <p style={{ fontSize:11, fontWeight:600, color:'#9ba8b5', margin:'0 0 10px', letterSpacing:'0.02em' }}>{s.label}</p>
+            <p style={{ fontSize:26, fontWeight:900, color:'#1a1a2e', margin:0, letterSpacing:'-0.5px', lineHeight:1.1 }}>{s.value}</p>
+            <p style={{ fontSize:11, color:'#b0b8c4', margin:'6px 0 0' }}>{s.sub}</p>
+            <div style={{ position:'absolute', bottom:14, right:16 }}>
+              <s.Icon size={26} color={s.icoColor} strokeWidth={1.5}/>
+            </div>
           </div>
         ))}
       </div>

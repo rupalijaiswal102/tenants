@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Building2, Plus } from 'lucide-react';
 import axios from 'axios';
+import { usePermission } from '../src/hooks/usePermission.js';
 
 import CompanyCard       from '../components/compnies/CompanyCard.jsx';
 import CompanyStatsBar   from '../components/compnies/CompanyStatsBar.jsx';
@@ -8,6 +9,7 @@ import CompanyFilters    from '../components/compnies/CompanyFilters.jsx';
 import CompanyFormModal  from '../components/compnies/CompanyFormModal.jsx';
 import CompanyViewModal  from '../components/compnies/CompanyViewModal.jsx';
 export default function CompanyList() {
+  const { canAdd } = usePermission();
   const [companies,      setCompanies]      = useState([]);
   const [loading,        setLoading]        = useState(true);
   const [searchTerm,     setSearchTerm]     = useState('');
@@ -60,10 +62,12 @@ export default function CompanyList() {
           <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">Company Master</h1>
           <p className="text-slate-500 mt-1">Manage multiple business entities and branding.</p>
         </div>
-        <button onClick={openAdd}
-          className="flex items-center gap-2 bg-[#F97316] hover:bg-orange-600 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-orange-200 active:scale-95">
-          <Plus size={20} /> Add Company
-        </button>
+        {canAdd && (
+          <button onClick={openAdd}
+            className="flex items-center gap-2 bg-[#F97316] hover:bg-orange-600 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-orange-200 active:scale-95">
+            <Plus size={20} /> Add Company
+          </button>
+        )}
       </div>
 
       {/* Stats */}

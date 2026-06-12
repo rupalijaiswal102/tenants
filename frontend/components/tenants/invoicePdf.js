@@ -52,7 +52,6 @@ function imgFmt(b64) {
 export async function generateInvoicePDF(invoice, tenant, company) {
   const logoB64 = await loadImageB64(company?.logoUrl || null);
   const sealB64 = invoice.approved ? await loadImageB64(company?.sealUrl || null) : null;
-  const signB64 = invoice.approved && invoice.signatureImage ? invoice.signatureImage : null;
 
   const pdf = new jsPDF('p','mm','a4');
   const PW=210, PH=297, MG=14, CW=PW-MG*2;
@@ -307,20 +306,19 @@ export async function generateInvoicePDF(invoice, tenant, company) {
 
   let yS=y;
   const forStr=`For :${(company?.companyName||invoice.company||'').slice(0,28)}`;
-  fnt(8.5,false,...GR);
+  fnt(10,false,...GR);
   pdf.text(forStr, PW-MG-pdf.getTextWidth(forStr), yS); yS+=12;
 
   if(invoice.approved){
-    const stampY=yS-4;
-    if(signB64){ try{ pdf.addImage(signB64,imgFmt(signB64),PW-MG-60,stampY+2,26,18,undefined,'FAST'); }catch{} }
-    if(sealB64){ try{ pdf.addImage(sealB64,imgFmt(sealB64),PW-MG-32,stampY-2,26,26,undefined,'FAST'); }catch{} }
-    yS=stampY+(sealB64||signB64?26:4);
+    const stampY=yS-12;
+    if(sealB64){ try{ pdf.addImage(sealB64,imgFmt(sealB64),PW-MG-36,stampY-2,36,36,undefined,'FAST'); }catch{} }
+    yS=stampY+(sealB64?36:4);
   } else {
     yS+=9;
   }
 
-  fnt(10,true,...BLK);
-  pdf.text('Authorized Signatory', PW-MG-pdf.getTextWidth('Authorized Signatory'), yS+=10);
+  fnt(12,true,...BLK);
+  pdf.text('Authorized Signatory', PW-MG-pdf.getTextWidth('Authorized Signatory'), yS+=4);
 
   pdf.save(`Invoice_${invoice.invoiceNo||'download'}.pdf`);
 }

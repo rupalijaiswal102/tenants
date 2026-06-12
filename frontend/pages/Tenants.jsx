@@ -3,10 +3,12 @@ import { useResponsive } from '../src/hooks/useResponsive.js';
 
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Plus, Search, Eye, Edit2, Trash2, Users, IndianRupee, ShieldCheck, Download } from 'lucide-react';
+import { Plus, Search, Eye, Edit2, Trash2, Users, IndianRupee, ShieldCheck, Download, FileDown } from 'lucide-react';
+import jsPDF from 'jspdf';
 import { AnimatePresence } from 'motion/react';
 import { toast } from 'react-hot-toast';
 import { exportToExcel }          from '../src/lib/exportUtils.js';
+import { usePermission }          from '../src/hooks/usePermission.js';
 import { TenantDetailsView }      from '../components/tenants/TenantDetailsView.jsx';
 import { StatusBadge }            from '../components/tenants/TenantPrimitives.jsx';
 import { DeleteConfirmationModal } from '../components/tenants/DeleteConfirmationModal.jsx';
@@ -27,6 +29,8 @@ export default function TenantList({ mode = 'tenant' }) {
   const [tenantToDelete,    setTenantToDelete]    = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [exporting,         setExporting]         = useState(false);
+  const [pdfExporting,      setPdfExporting]      = useState(false);
+  const { canAdd, canEdit, canDelete } = usePermission();
 
   useEffect(() => { fetchTenants(); fetchCompanies(); }, [mode]);
 
@@ -94,6 +98,118 @@ export default function TenantList({ mode = 'tenant' }) {
     finally { setExporting(false); }
   };
 
+  const handleExportPDF = () => {
+    setPdfExporting(true);
+    setTimeout(() => {
+      try {
+        const doc  = new jsPDF('l', 'mm', 'a4');
+        const now  = new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+        const title = mode === 'otherParty' ? 'OTHER PARTIES' : 'TENANTS';
+        const sub   = mode === 'otherParty' ? 'Non-tenant billing parties' : 'Leasing records';
+
+        // Header band
+        doc.setFillColor(15, 23, 42);
+        doc.rect(0, 0, 297, 28, 'F');
+        doc.setTextColor(255,255,255);
+        doc.setFontSize(16); doc.setFont('helvetica','bold');
+        doc.text('NEOTERIC PROPERTIES', 14, 11);
+        doc.setFontSize(9); doc.setFont('helvetica','normal');
+        doc.text(`${title} LIST`, 14, 18);
+        doc.setFontSize(8);
+        doc.text(`${sub} · Generated: ${now}`, 14, 24);
+        doc.text(`Total Records: ${filtered.length}`, 220, 18, { align:'right' });
+
+        // Summary cards
+        const activeC = filtered.filter(t => t.agreementStatus === 'Active').length;
+        const rentSum = filtered.reduce((a, t) => a + (t.currentRent || 0), 0);
+        const cards = [
+          { label: mode === 'otherParty' ? 'Total Parties' : 'Total Tenants', value: `${filtered.length}`,                         color: [249,115,22]  },
+          { label: 'Active Agreements',                                        value: `${activeC}`,                                  color: [16,185,129]  },
+          { label: 'Monthly Rent Roll',                                        value: `Rs ${Math.round(rentSum).toLocaleString('en-IN')}`, color: [99,102,241]  },
+        ];
+        let cx = 14;
+        cards.forEach(card => {
+          doc.setFillColor(...card.color);
+          doc.roundedRect(cx, 33, 62, 18, 3, 3, 'F');
+          doc.setTextColor(255,255,255);
+          doc.setFontSize(7); doc.setFont('helvetica','bold');
+          doc.text(card.label.toUpperCase(), cx + 4, 40);
+          doc.setFontSize(11); doc.setFont('helvetica','bold');
+          doc.text(card.value, cx + 4, 47);
+          cx += 66;
+        });
+
+        // Table columns
+        const cols = [
+          { header: '#',          width: 10  },
+          { header: 'Code',       width: 18  },
+          { header: mode === 'otherParty' ? 'Party Name' : 'Tenant Name', width: 55 },
+          { header: 'Property / Address', width: 65 },
+          { header: 'Mobile',     width: 30  },
+          { header: 'Rent/Month', width: 28  },
+          { header: 'Lease Start',width: 24  },
+          { header: 'Lease End',  width: 24  },
+          { header: 'Status',     width: 22  },
+        ];
+        const totalW = cols.reduce((s, c) => s + c.width, 0);
+        const startX = 14;
+        let ty = 58;
+
+        // Table header row
+        doc.setFillColor(15, 23, 42);
+        doc.rect(startX, ty, totalW, 8, 'F');
+        doc.setTextColor(255,255,255);
+        doc.setFontSize(6.5); doc.setFont('helvetica','bold');
+        let hx = startX;
+        cols.forEach(col => { doc.text(col.header, hx + 2, ty + 5.5); hx += col.width; });
+        ty += 8;
+
+        const fmtDate = (d) => { try { return new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}); } catch { return d || '—'; } };
+        const STATUS_COLOR = { Active:[16,185,129], Expired:[239,68,68], Pending:[245,158,11] };
+
+        filtered.forEach((t, ri) => {
+          if (ty > 185) { doc.addPage(); ty = 14; }
+          if (ri % 2 === 0) { doc.setFillColor(248,250,252); doc.rect(startX, ty, totalW, 7, 'F'); }
+          doc.setTextColor(30,30,30);
+          doc.setFontSize(6.5); doc.setFont('helvetica','normal');
+          const statusColor = STATUS_COLOR[t.agreementStatus] || [100,116,139];
+          const rowData = [
+            ri + 1,
+            t.code || '—',
+            t.name || '—',
+            t.property || t.address || '—',
+            t.mobile || '—',
+            `Rs ${Math.round(t.currentRent||0).toLocaleString('en-IN')}`,
+            fmtDate(t.leaseStart),
+            fmtDate(t.leaseEnd),
+            t.agreementStatus || 'Pending',
+          ];
+          let rx = startX;
+          rowData.forEach((val, ci) => {
+            const v = String(val || '');
+            const maxLen = cols[ci].width < 25 ? 10 : cols[ci].width < 40 ? 14 : 22;
+            if (ci === 8) doc.setTextColor(...statusColor);
+            else          doc.setTextColor(30,30,30);
+            doc.text(v.length > maxLen ? v.slice(0, maxLen-2)+'..' : v, rx + 2, ty + 5);
+            rx += cols[ci].width;
+          });
+          ty += 7;
+        });
+
+        // Footer row
+        doc.setFillColor(15, 23, 42);
+        doc.rect(startX, ty + 2, totalW, 8, 'F');
+        doc.setTextColor(255,255,255); doc.setFont('helvetica','bold');
+        doc.text(`TOTAL (${filtered.length} records)`, startX + 2, ty + 7.5);
+
+        const label = mode === 'otherParty' ? 'OtherParties' : 'Tenants';
+        doc.save(`${label}_List_${new Date().toISOString().split('T')[0]}.pdf`);
+        toast.success('PDF downloaded');
+      } catch (e) { toast.error('PDF failed'); console.error(e); }
+      finally { setPdfExporting(false); }
+    }, 100);
+  };
+
   const filtered = tenants.filter(t => {
     if (companyFilter !== 'All Companies' && (t.company || (t).companyName) !== companyFilter) return false;
     const q  = search.toLowerCase();
@@ -153,26 +269,40 @@ export default function TenantList({ mode = 'tenant' }) {
             style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 16px', background:'#fff', border:'1.5px solid #e8edf0', borderRadius:10, fontSize:12, fontWeight:600, color:'#5a6474', cursor:'pointer', fontFamily:'inherit', boxShadow:'0 1px 3px rgba(0,0,0,0.04)' }}>
             <Download size={14}/> {exporting ? 'Exporting...' : 'Export Excel'}
           </button>
-          <button onClick={() => navigate(`${basePath}/create`)}
-            style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 20px', background:'#f97316', color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:700, cursor:'pointer', boxShadow:'0 3px 10px rgba(249,115,22,0.35)', fontFamily:'inherit' }}>
-            <Plus size={15}/> {mode === 'otherParty' ? 'New Other Party' : 'New Tenant'}
+          <button onClick={handleExportPDF} disabled={pdfExporting}
+            style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 16px', background:'#fff', border:'1.5px solid #e8edf0', borderRadius:10, fontSize:12, fontWeight:600, color:'#dc2626', cursor:'pointer', fontFamily:'inherit', boxShadow:'0 1px 3px rgba(0,0,0,0.04)', opacity:pdfExporting?0.6:1 }}>
+            <FileDown size={14}/> {pdfExporting ? 'Generating...' : 'Export PDF'}
           </button>
+          {canAdd && (
+            <button onClick={() => navigate(`${basePath}/create`)}
+              style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 20px', background:'#f97316', color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:700, cursor:'pointer', boxShadow:'0 3px 10px rgba(249,115,22,0.35)', fontFamily:'inherit' }}>
+              <Plus size={15}/> {mode === 'otherParty' ? 'New Other Party' : 'New Tenant'}
+            </button>
+          )}
         </div>
       </div>
 
       {/* ── Stat Cards ── */}
       <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3,1fr)', gap: isMobile ? 10 : 14, marginBottom:22 }}>
         {[
-          { label: mode === 'otherParty' ? 'Total Parties' : 'Total Tenants', val:filtered.length,                   icon:<Users size={18} color="#f97316"/>,      bg:'#fff7ed', border:'#f97316' },
-          { label:'Active Agreements', val:activeCount,                       icon:<ShieldCheck size={18} color="#10b981"/>, bg:'#f0fdf4', border:'#10b981' },
-          { label:'Monthly Rent Roll', val:`₹${rentTotal.toLocaleString()}`,  icon:<IndianRupee size={18} color="#6366f1"/>, bg:'#eef2ff', border:'#6366f1' },
+          { label: mode === 'otherParty' ? 'Total Parties' : 'Total Tenants', val: filtered.length,                  sub: 'All records',     Icon: Users,       icoColor:'#f97316' },
+          { label: 'Active Agreements',                                        val: activeCount,                      sub: 'In progress',     Icon: ShieldCheck,  icoColor:'#10b981' },
+          { label: 'Monthly Rent Roll',                                        val: `₹${rentTotal.toLocaleString()}`, sub: 'Monthly total',   Icon: IndianRupee,  icoColor:'#6366f1' },
         ].map((s, i) => (
-          <div key={i} style={{ background:'#fff', borderRadius:'0 16px 16px 0', borderLeft:`3px solid ${s.border}`, border:'1px solid #f0f2f5', borderLeftWidth:3, borderLeftColor:s.border, padding:'18px 20px', boxShadow:'0 1px 3px rgba(0,0,0,0.04)', transition:'all 0.2s' }}
-            onMouseEnter={e => { const el = e.currentTarget; el.style.transform='translateY(-2px)'; el.style.boxShadow='0 6px 20px rgba(0,0,0,0.07)'; }}
-            onMouseLeave={e => { const el = e.currentTarget; el.style.transform='none'; el.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'; }}>
-            <div style={{ width:40, height:40, borderRadius:11, background:s.bg, display:'flex', alignItems:'center', justifyContent:'center', marginBottom:14 }}>{s.icon}</div>
-            <div style={{ fontSize:26, fontWeight:800, color:'#1a1a2e', letterSpacing:'-0.5px' }}>{s.val}</div>
-            <div style={{ fontSize:10, color:'#9ba8b5', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', marginTop:3 }}>{s.label}</div>
+          <div key={i} style={{
+            background:'#fff', borderRadius:14, padding:'20px 20px 16px', position:'relative', minHeight:112,
+            border: i === 0 ? '1.5px solid #3b82f6' : '1px solid #e8edf2',
+            boxShadow: i === 0 ? '0 0 0 4px rgba(59,130,246,0.06),0 2px 6px rgba(0,0,0,0.05)' : '0 1px 4px rgba(0,0,0,0.04)',
+            transition:'all 0.2s',
+          }}
+            onMouseEnter={e => { e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.boxShadow='0 8px 24px rgba(0,0,0,0.09)'; }}
+            onMouseLeave={e => { e.currentTarget.style.transform='none'; e.currentTarget.style.boxShadow= i===0 ? '0 0 0 4px rgba(59,130,246,0.06),0 2px 6px rgba(0,0,0,0.05)' : '0 1px 4px rgba(0,0,0,0.04)'; }}>
+            <p style={{ fontSize:11, fontWeight:600, color:'#9ba8b5', margin:'0 0 10px', letterSpacing:'0.02em' }}>{s.label}</p>
+            <p style={{ fontSize:30, fontWeight:900, color:'#1a1a2e', margin:0, letterSpacing:'-0.6px', lineHeight:1.1 }}>{s.val}</p>
+            <p style={{ fontSize:11, color:'#b0b8c4', margin:'6px 0 0' }}>{s.sub}</p>
+            <div style={{ position:'absolute', bottom:16, right:16 }}>
+              <s.Icon size={28} color={s.icoColor} strokeWidth={1.5}/>
+            </div>
           </div>
         ))}
       </div>
@@ -273,19 +403,19 @@ export default function TenantList({ mode = 'tenant' }) {
 
                   {/* Actions */}
                   <td style={{ padding:'14px 18px' }} onClick={e => e.stopPropagation()}>
-                    <div style={{ display:'flex', alignItems:'center', justifyContent:'flex-end', gap:6 }}>
-                      <button onClick={() => openView(t)}
-                        style={{ padding:'6px 13px', background:'rgba(249,115,22,0.08)', border:'1px solid rgba(249,115,22,0.15)', borderRadius:8, cursor:'pointer', color:'#f97316', fontSize:11, fontWeight:700, display:'flex', alignItems:'center', gap:4, fontFamily:'inherit' }}>
-                        <Eye size={13}/> View
-                      </button>
-                      <button onClick={() => navigate(`${basePath}/edit/${t.id || t._id}`)}
-                        style={{ padding:'6px 13px', background:'#fffbeb', border:'1px solid #fde68a', borderRadius:8, cursor:'pointer', color:'#b45309', fontSize:11, fontWeight:700, display:'flex', alignItems:'center', gap:4, fontFamily:'inherit' }}>
-                        <Edit2 size={13}/> Edit
-                      </button>
-                      <button onClick={() => { setTenantToDelete(t); setShowDeleteConfirm(true); }}
-                        style={{ padding:'6px 9px', background:'#fff1f2', border:'1px solid #fecdd3', borderRadius:8, cursor:'pointer', color:'#e11d48', display:'flex', alignItems:'center', fontFamily:'inherit' }}>
-                        <Trash2 size={13}/>
-                      </button>
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'flex-end', gap:2 }}>
+                      {[
+                        { icon: Eye,   show: true,     title:'View',   onClick: () => openView(t),                                          color:'#3b82f6', hbg:'#eff6ff' },
+                        { icon: Edit2, show: canEdit,  title:'Edit',   onClick: () => navigate(`${basePath}/edit/${t.id || t._id}`),         color:'#f97316', hbg:'#fff7ed' },
+                        { icon: Trash2,show: canDelete,title:'Delete', onClick: () => { setTenantToDelete(t); setShowDeleteConfirm(true); }, color:'#ef4444', hbg:'#fff1f2' },
+                      ].filter(b => b.show).map(({ icon: Ic, title, onClick, color, hbg }) => (
+                        <button key={title} onClick={onClick} title={title}
+                          style={{ width:30, height:30, borderRadius:7, border:'none', background:'transparent', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'#94a3b8', transition:'all 0.15s' }}
+                          onMouseEnter={e => { e.currentTarget.style.background=hbg; e.currentTarget.style.color=color; }}
+                          onMouseLeave={e => { e.currentTarget.style.background='transparent'; e.currentTarget.style.color='#94a3b8'; }}>
+                          <Ic size={15}/>
+                        </button>
+                      ))}
                     </div>
                   </td>
                 </tr>

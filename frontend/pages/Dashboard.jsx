@@ -10,7 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import WorkflowPendingCards from '../components/invoices/WorkflowPendingCards.jsx';
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+  ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, PieChart, Pie, Cell
 } from 'recharts';
 
@@ -32,6 +32,7 @@ export default function Dashboard() {
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState(null);
   const [tenantQ,  setTenantQ]  = useState('');
+  const [chartType, setChartType] = useState('combined');
 
   const load = async () => {
     try {
@@ -67,11 +68,24 @@ export default function Dashboard() {
     { name: 'Pending', value: invoices.filter(i => i.paymentStatus === 'Pending').length, color: '#ef4444' },
   ].filter(d => d.value > 0);
 
-  const areaData = invoices.slice(-8).map((inv, i) => ({
-    name: `${i + 1}`,
-    billed:    inv.totalInvoice || 0,
-    recovered: (inv.receivedAmount || inv.received || 0) + (inv.tdsAmount || 0),
-  }));
+  const monthlyData = (() => {
+    const map = {};
+    const order = [];
+    invoices.forEach(inv => {
+      const raw = inv.billDate || inv.invoiceDate || inv.createdAt;
+      if (!raw) return;
+      const d = new Date(raw);
+      const key = `${d.toLocaleString('en-IN', { month: 'short' })} ${d.getFullYear()}`;
+      if (!map[key]) { map[key] = { name: key, planned: 0, actual: 0, _ts: d.getTime() }; order.push(key); }
+      map[key].planned += inv.totalInvoice || 0;
+      map[key].actual  += (inv.receivedAmount || inv.received || 0) + (inv.tdsAmount || 0);
+    });
+    return order
+      .filter((k, i) => order.indexOf(k) === i)
+      .sort((a, b) => map[a]._ts - map[b]._ts)
+      .slice(-8)
+      .map(k => ({ name: map[k].name, planned: map[k].planned, actual: map[k].actual, variance: map[k].planned - map[k].actual }));
+  })();
 
   const stats = [
     { label: 'Active Tenants',   value: tenants.length,         fmt: (v) => v,                        color: '#f97316', bg: '#fff7ed', icon: Users,          trend: '+12%', up: true  },
@@ -127,62 +141,74 @@ export default function Dashboard() {
       {/* ── Stat Cards ── */}
       <WorkflowPendingCards userRole={userRole}/>
       <div className="grid-responsive-6" style={{ marginBottom: 22 }}>
-        {stats.map((st, i) => (
-          <div key={i} style={{ ...S.card, borderLeft: `3px solid ${st.color}`, borderRadius: '0 14px 14px 0', padding: '14px 16px', transition: 'all 0.2s', cursor: 'default' }}
-            onMouseEnter={e => { (e.currentTarget).style.transform = 'translateY(-2px)'; (e.currentTarget).style.boxShadow = '0 6px 20px rgba(0,0,0,0.08)'; }}
-            onMouseLeave={e => { (e.currentTarget).style.transform = 'none'; (e.currentTarget).style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)'; }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-              <div style={{ width: 34, height: 34, borderRadius: 9, background: st.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {(() => { const StatIcon = st.icon; return <StatIcon size={16} color={st.color} />; })()}
-              </div>
-              <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 5, background: st.up ? '#f0fdf4' : '#fff1f2', color: st.up ? '#15803d' : '#be123c', display: 'flex', alignItems: 'center', gap: 2 }}>
-                {st.up ? <ArrowUpRight size={9} /> : <ArrowDownRight size={9} />}{st.trend}
+        {stats.map((st, i) => {
+          const StatIcon = st.icon;
+          return (
+            <div key={i} style={{
+              background: '#fff', borderRadius: 14, padding: '20px 20px 16px',
+              position: 'relative', minHeight: 112,
+              border: i === 0 ? '1.5px solid #3b82f6' : '1px solid #e8edf2',
+              boxShadow: i === 0 ? '0 0 0 4px rgba(59,130,246,0.06),0 2px 6px rgba(0,0,0,0.05)' : '0 1px 4px rgba(0,0,0,0.04)',
+              transition: 'all 0.2s', cursor: 'default',
+            }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.09)'; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = i === 0 ? '0 0 0 4px rgba(59,130,246,0.06),0 2px 6px rgba(0,0,0,0.05)' : '0 1px 4px rgba(0,0,0,0.04)'; }}>
+              <p style={{ fontSize: 11, fontWeight: 600, color: '#9ba8b5', margin: '0 0 10px', letterSpacing: '0.02em' }}>{st.label}</p>
+              <p style={{ fontSize: 24, fontWeight: 900, color: '#1a1a2e', margin: 0, letterSpacing: '-0.5px', lineHeight: 1.1 }}>{st.fmt(st.value)}</p>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, marginTop: 7, fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 6, background: st.up ? '#f0fdf4' : '#fff1f2', color: st.up ? '#15803d' : '#be123c' }}>
+                {st.up ? <ArrowUpRight size={9}/> : <ArrowDownRight size={9}/>}{st.trend}
               </span>
+              <div style={{ position: 'absolute', bottom: 14, right: 16 }}>
+                <StatIcon size={26} color={st.color} strokeWidth={1.5}/>
+              </div>
             </div>
-            <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{st.label}</div>
-            <div style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.5px', marginTop: 2 }}>{st.fmt(st.value)}</div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* ── Charts Row ── */}
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 300px', gap: 16, marginBottom: 16 }}>
 
-        {/* Area Chart */}
+        {/* Cash Flow Analysis Chart */}
         <div style={{ ...S.card, padding: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 }}>
             <div>
-              <p style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', margin: 0 }}>Financial Velocity</p>
-              <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 3 }}>Monthly Billing vs Recovery</p>
+              <p style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', margin: 0 }}>Cash Flow Analysis</p>
+              <p style={{ fontSize: 11, color: '#f97316', marginTop: 3, fontWeight: 600 }}>Planned vs Actual with Variance Trend</p>
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {[{ c: '#f97316', l: 'Billed' }, { c: '#10b981', l: 'Recovered' }].map(x => (
-                <span key={x.l} style={{ fontSize: 10, fontWeight: 600, color: '#64748b', background: '#f8fafc', padding: '4px 10px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: x.c, display: 'inline-block' }} />{x.l}
-                </span>
+            <div style={{ display: 'flex', gap: 3, background: '#f1f5f9', borderRadius: 10, padding: 3 }}>
+              {[{ k: 'combined', l: 'Combined' }, { k: 'bar', l: 'Bar' }, { k: 'line', l: 'Line' }].map(t => (
+                <button key={t.k} onClick={() => setChartType(t.k)}
+                  style={{ padding: '5px 12px', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 700, fontFamily: 'inherit', transition: 'all 0.15s',
+                    background: chartType === t.k ? '#1a1a2e' : 'transparent',
+                    color: chartType === t.k ? '#fff' : '#64748b',
+                  }}>
+                  {t.l}
+                </button>
               ))}
             </div>
           </div>
           <div style={{ height: 240 }}>
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={areaData} margin={{ left: -20 }}>
-                <defs>
-                  <linearGradient id="gB" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#f97316" stopOpacity={0.12} />
-                    <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="gR" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.12} />
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
+              <ComposedChart data={monthlyData} margin={{ left: -10, right: 8 }} barGap={4}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 600, fill: '#94a3b8' }} dy={6} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 600, fill: '#94a3b8' }} />
-                <Tooltip contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', fontSize: 12 }} />
-                <Area type="monotone" dataKey="billed"    stroke="#f97316" strokeWidth={2.5} fillOpacity={1} fill="url(#gB)" />
-                <Area type="monotone" dataKey="recovered" stroke="#10b981" strokeWidth={2.5} fillOpacity={1} fill="url(#gR)" />
-              </AreaChart>
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 600, fill: '#94a3b8' }}
+                  tickFormatter={v => v === 0 ? '₹0' : `₹${(v / 100000).toFixed(0)}L`} />
+                <Tooltip
+                  formatter={(val, name) => [`₹${(val / 100000).toFixed(2)}L`, name]}
+                  contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', fontSize: 12 }} />
+                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11, paddingTop: 12, color: '#64748b' }} />
+                {(chartType === 'combined' || chartType === 'bar') && (
+                  <Bar dataKey="planned" name="Planned" fill="#1a1a2e" radius={[4, 4, 0, 0]} barSize={18} />
+                )}
+                {(chartType === 'combined' || chartType === 'bar') && (
+                  <Bar dataKey="actual" name="Actual" fill="#5eead4" radius={[4, 4, 0, 0]} barSize={18} />
+                )}
+                {(chartType === 'combined' || chartType === 'line') && (
+                  <Line type="monotone" dataKey="variance" name="Variance" stroke="#f97316" strokeWidth={2.5} dot={{ fill: '#f97316', r: 4, strokeWidth: 0 }} activeDot={{ r: 6 }} />
+                )}
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
         </div>
@@ -237,93 +263,108 @@ export default function Dashboard() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #f0f2f5' }}>
             <div>
               <p style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', margin: 0 }}>All Tenants</p>
-              <p style={{ fontSize: 11, color: '#94a3b8', margin: '2px 0 0' }}>{tenants.length} tenant{tenants.length !== 1 ? 's' : ''}</p>
+              <p style={{ fontSize: 11, color: '#94a3b8', margin: '2px 0 0' }}>Manage and track leasing records</p>
             </div>
-            <a href="/tenants" style={{ fontSize: 12, fontWeight: 600, color: '#f97316', background: 'rgba(249,115,22,0.1)', padding: '5px 14px', borderRadius: 8, textDecoration: 'none' }}>View All</a>
-          </div>
-
-          {/* Search bar */}
-          <div style={{ padding: '10px 20px', borderBottom: '1px solid #f8fafc' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f8fafc', borderRadius: 9, padding: '7px 12px', border: '1px solid #f0f2f5' }}>
-              <FileText size={13} color="#94a3b8" />
-              <input
-                placeholder="Search tenants…"
-                value={tenantQ}
-                onChange={e => setTenantQ(e.target.value)}
-                style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: 12, color: '#0f172a', width: '100%', fontFamily: 'inherit' }}
-              />
-            </div>
-          </div>
-
-          {/* Scrollable list */}
-          <div style={{ maxHeight: 380, overflowY: 'auto', padding: '4px 0' }}
-            className="tenant-scroll-list">
-            <style>{`.tenant-scroll-list::-webkit-scrollbar{width:4px}.tenant-scroll-list::-webkit-scrollbar-track{background:transparent}.tenant-scroll-list::-webkit-scrollbar-thumb{background:#e2e8f0;border-radius:4px}.tenant-scroll-list::-webkit-scrollbar-thumb:hover{background:#cbd5e1}`}</style>
-
-            {tenants.filter(t => !tenantQ || t.name?.toLowerCase().includes(tenantQ.toLowerCase()) || t.property?.toLowerCase().includes(tenantQ.toLowerCase())).map((t, i) => {
-              const leaseEnd   = t.leaseEnd ? new Date(t.leaseEnd) : null;
-              const daysLeft   = leaseEnd ? Math.ceil((leaseEnd.getTime() - now.getTime()) / 86400000) : null;
-              const isExpiring = daysLeft !== null && daysLeft <= 30 && daysLeft > 0;
-              const isExpired  = daysLeft !== null && daysLeft <= 0;
-              const statusColor = isExpired ? '#ef4444' : isExpiring ? '#f59e0b' : '#10b981';
-              const statusBg    = isExpired ? '#fff1f2' : isExpiring ? '#fffbeb' : '#f0fdf4';
-              const statusLabel = isExpired ? 'Expired' : isExpiring ? `${daysLeft}d left` : 'Active';
-              const avatarColors = ['#f97316','#3b82f6','#10b981','#8b5cf6','#ec4899','#06b6d4'];
-              const ac = avatarColors[i % avatarColors.length];
-              return (
-                <div key={t.id || i}
-                  onClick={() => navigate(`/tenants/${t.id || (t)._id}`)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 20px', cursor: 'pointer', transition: 'background 0.12s', borderBottom: '1px solid #f8fafc' }}
-                  onMouseEnter={e => (e.currentTarget).style.background = '#fafbff'}
-                  onMouseLeave={e => (e.currentTarget).style.background = 'transparent'}
-                >
-                  {/* Avatar */}
-                  <div style={{ width: 36, height: 36, borderRadius: 10, background: `${ac}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, color: ac, flexShrink: 0 }}>
-                    {t.name?.[0]?.toUpperCase() || 'T'}
-                  </div>
-
-                  {/* Name + Property */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.name}</p>
-                    <p style={{ fontSize: 10, color: '#94a3b8', margin: '1px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.property || '—'}</p>
-                  </div>
-
-                  {/* Lease End */}
-                  <div style={{ textAlign: 'right', flexShrink: 0, minWidth: 72 }}>
-                    {leaseEnd ? (
-                      <>
-                        <p style={{ fontSize: 11, fontWeight: 600, color: isExpired ? '#ef4444' : isExpiring ? '#f59e0b' : '#475569', margin: 0, whiteSpace: 'nowrap' }}>
-                          {leaseEnd.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })}
-                        </p>
-                        <p style={{ fontSize: 9, color: '#94a3b8', margin: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Lease End</p>
-                      </>
-                    ) : <span style={{ fontSize: 10, color: '#e2e8f0' }}>—</span>}
-                  </div>
-
-                  {/* Rent */}
-                  <div style={{ textAlign: 'right', flexShrink: 0, minWidth: 76 }}>
-                    <p style={{ fontSize: 12, fontWeight: 700, color: (t.currentRent || 0) === 0 ? '#cbd5e1' : '#0f172a', margin: 0 }}>
-                      {(t.currentRent || 0) === 0 ? '—' : `₹${(t.currentRent).toLocaleString('en-IN')}`}
-                    </p>
-                    <p style={{ fontSize: 9, color: '#94a3b8', margin: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>/ month</p>
-                  </div>
-
-                  {/* Status badge */}
-                  <div style={{ flexShrink: 0 }}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 20, background: statusBg, color: statusColor, fontSize: 10, fontWeight: 700, whiteSpace: 'nowrap' }}>
-                      <span style={{ width: 5, height: 5, borderRadius: '50%', background: statusColor, flexShrink: 0 }} />
-                      {statusLabel}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-            {tenants.length === 0 && (
-              <div style={{ textAlign: 'center', padding: '32px 0', color: '#cbd5e1' }}>
-                <Users size={28} strokeWidth={1.5} style={{ marginBottom: 6 }} />
-                <p style={{ fontSize: 12, fontWeight: 600, margin: 0 }}>No tenants yet</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              {/* Search */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7, background: '#f8fafc', border: '1px solid #f0f2f5', borderRadius: 9, padding: '6px 12px', minWidth: 180 }}>
+                <FileText size={13} color="#94a3b8"/>
+                <input placeholder="Search tenants…" value={tenantQ} onChange={e => setTenantQ(e.target.value)}
+                  style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: 12, color: '#0f172a', width: '100%', fontFamily: 'inherit' }}/>
               </div>
-            )}
+              <a href="/tenants" style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, color: '#fff', background: '#f97316', padding: '7px 14px', borderRadius: 9, textDecoration: 'none', whiteSpace: 'nowrap', boxShadow: '0 2px 8px rgba(249,115,22,0.25)' }}>
+                View All
+              </a>
+            </div>
+          </div>
+
+          {/* Table */}
+          <div style={{ overflowX: 'auto', maxHeight: 400, overflowY: 'auto' }}
+            className="tenant-scroll-list">
+            <style>{`.tenant-scroll-list::-webkit-scrollbar{width:4px;height:4px}.tenant-scroll-list::-webkit-scrollbar-track{background:transparent}.tenant-scroll-list::-webkit-scrollbar-thumb{background:#e2e8f0;border-radius:4px}`}</style>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead style={{ position: 'sticky', top: 0, zIndex: 2 }}>
+                <tr style={{ background: '#f8fafc' }}>
+                  {['Tenant', 'Property', 'Lease End', 'Rent / Month', 'Status', 'Action'].map((h, idx) => (
+                    <th key={h} style={{ padding: '10px 16px', fontSize: 10, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', borderBottom: '2px solid #f0f2f5', textAlign: idx >= 2 && idx <= 3 ? 'right' : idx === 5 ? 'center' : 'left', whiteSpace: 'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {tenants.filter(t => !tenantQ || t.name?.toLowerCase().includes(tenantQ.toLowerCase()) || t.property?.toLowerCase().includes(tenantQ.toLowerCase())).map((t, i) => {
+                  const leaseEnd   = t.leaseEnd ? new Date(t.leaseEnd) : null;
+                  const daysLeft   = leaseEnd ? Math.ceil((leaseEnd.getTime() - now.getTime()) / 86400000) : null;
+                  const isExpiring = daysLeft !== null && daysLeft <= 30 && daysLeft > 0;
+                  const isExpired  = daysLeft !== null && daysLeft <= 0;
+                  const statusColor = isExpired ? '#ef4444' : isExpiring ? '#f59e0b' : '#10b981';
+                  const statusBg    = isExpired ? '#fff1f2' : isExpiring ? '#fffbeb' : '#f0fdf4';
+                  const statusLabel = isExpired ? 'Expired' : isExpiring ? `${daysLeft}d left` : 'Active';
+                  const avatarColors = ['#f97316','#3b82f6','#10b981','#8b5cf6','#ec4899','#06b6d4'];
+                  const ac = avatarColors[i % avatarColors.length];
+                  return (
+                    <tr key={t.id || i} style={{ borderBottom: '1px solid #f8fafc', transition: 'background 0.12s', cursor: 'pointer' }}
+                      onClick={() => navigate(`/tenants/${t.id || t._id}`)}
+                      onMouseEnter={e => e.currentTarget.style.background = '#fafbff'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+
+                      {/* Tenant Name */}
+                      <td style={{ padding: '11px 16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{ width: 34, height: 34, borderRadius: 10, background: `${ac}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, color: ac, flexShrink: 0 }}>
+                            {t.name?.[0]?.toUpperCase() || 'T'}
+                          </div>
+                          <div style={{ minWidth: 0 }}>
+                            <p style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 140 }}>{t.name}</p>
+                            <p style={{ fontSize: 10, color: '#94a3b8', margin: '1px 0 0' }}>{t.code || '—'}</p>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Property */}
+                      <td style={{ padding: '11px 16px', fontSize: 12, color: '#475569', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {t.property || '—'}
+                      </td>
+
+                      {/* Lease End */}
+                      <td style={{ padding: '11px 16px', textAlign: 'right' }}>
+                        {leaseEnd ? (
+                          <span style={{ fontSize: 11, fontWeight: 600, color: isExpired ? '#ef4444' : isExpiring ? '#f59e0b' : '#475569', whiteSpace: 'nowrap' }}>
+                            {leaseEnd.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })}
+                          </span>
+                        ) : <span style={{ color: '#e2e8f0', fontSize: 12 }}>—</span>}
+                      </td>
+
+                      {/* Rent */}
+                      <td style={{ padding: '11px 16px', textAlign: 'right', fontSize: 13, fontWeight: 800, color: (t.currentRent || 0) === 0 ? '#cbd5e1' : '#0f172a', whiteSpace: 'nowrap' }}>
+                        {(t.currentRent || 0) === 0 ? '—' : `₹${t.currentRent.toLocaleString('en-IN')}`}
+                      </td>
+
+                      {/* Status */}
+                      <td style={{ padding: '11px 16px' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 20, background: statusBg, color: statusColor, fontSize: 10, fontWeight: 700, whiteSpace: 'nowrap' }}>
+                          <span style={{ width: 5, height: 5, borderRadius: '50%', background: statusColor }}/>
+                          {statusLabel}
+                        </span>
+                      </td>
+
+                      {/* Action */}
+                      <td style={{ padding: '11px 16px', textAlign: 'center' }}>
+                        <button onClick={e => { e.stopPropagation(); navigate(`/tenants/${t.id || t._id}`); }}
+                          style={{ padding: '4px 12px', background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)', borderRadius: 7, fontSize: 11, fontWeight: 700, color: '#f97316', cursor: 'pointer', fontFamily: 'inherit' }}>
+                          View
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {tenants.length === 0 && (
+                  <tr><td colSpan={6} style={{ padding: '40px 0', textAlign: 'center', color: '#cbd5e1' }}>
+                    <Users size={28} strokeWidth={1.5} style={{ marginBottom: 6, display: 'block', margin: '0 auto 8px' }}/>
+                    <p style={{ fontSize: 12, fontWeight: 600, margin: 0 }}>No tenants yet</p>
+                  </td></tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
 

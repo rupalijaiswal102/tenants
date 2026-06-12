@@ -4,6 +4,7 @@ import {
   getOtherPartyDetails, createOtherParty, updateOtherParty, deleteOtherParty,
 } from '../controllers/otherParty.controller.js';
 import { upload } from '../middleware/multer.js';
+import { denyViewer } from './auth.routes.js';
 
 const router = express.Router();
 
@@ -16,10 +17,10 @@ const partyUpload = (req, res, next) => {
 
 router.get('/next-code',    getNextOtherPartyCode);
 router.get('/',             getOtherParties);
-router.post('/',            partyUpload, createOtherParty);
+router.post('/',            denyViewer, partyUpload, createOtherParty);
 router.get('/:id',          getOtherPartyById);
 router.get('/:id/details',  getOtherPartyDetails);
-router.put('/:id',          partyUpload, updateOtherParty);
-router.delete('/:id',       deleteOtherParty);
+router.put('/:id',          denyViewer, partyUpload, updateOtherParty);
+router.delete('/:id',       denyViewer, deleteOtherParty);
 
 export default router;
