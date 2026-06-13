@@ -142,8 +142,19 @@ export function InvoicePreviewDocument({ invoice, tenant, company, invoiceItems,
         </div>
         <div className="text-right flex flex-col justify-end items-end">
           <div className="mb-4">
-            <p className="text-[10px] font-bold text-slate-400 mb-8">For {company?.companyName || invoice.company}</p>
-            <div className="h-12" />
+            <p className="text-[10px] font-bold text-slate-400 mb-2">For {company?.companyName || invoice.company}</p>
+            {invoice.approved && company?.sealUrl ? (
+              <div style={{ position:'relative', height:80, display:'flex', alignItems:'flex-end', justifyContent:'flex-end', marginBottom:4 }}>
+                <img
+                  src={company.sealUrl}
+                  alt="Seal"
+                  referrerPolicy="no-referrer"
+                  style={{ height:80, width:80, objectFit:'contain', opacity:0.92 }}
+                />
+              </div>
+            ) : (
+              <div className="h-14" />
+            )}
             <p className="font-bold text-slate-800 border-t border-slate-200 pt-2 px-4">Authorized Signatory</p>
           </div>
         </div>
