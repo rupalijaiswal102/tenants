@@ -1,7 +1,8 @@
 import { TrendingUp, CheckCircle2, ShieldCheck, IndianRupee,
          User, Phone, Mail, MapPin, Building } from 'lucide-react';
+import { useState } from 'react';
 import { motion } from 'motion/react';
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 
 const SC = { background:'#fff', borderRadius:16, border:'1px solid #f0f2f5', boxShadow:'0 1px 3px rgba(0,0,0,0.04)' };
 const fmt = (v) => `₹${Math.round(v || 0).toLocaleString('en-IN')}`;
@@ -25,6 +26,7 @@ const CONTACT_FIELDS = (tenant) => [
 ];
 
 export default function OverviewTab({ tenant, paymentSummary = {}, analytics = {} }) {
+  const [chartType, setChartType] = useState('bar');
   return (
     <motion.div key="ov" initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-8 }}
       style={{ display:'flex', flexDirection:'column', gap:16 }}>
@@ -32,12 +34,12 @@ export default function OverviewTab({ tenant, paymentSummary = {}, analytics = {
       {/* Stat cards */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12 }}>
         {STAT_CARDS(paymentSummary).map((s, i) => (
-          <div key={i} style={{ ...SC, borderLeft:`3px solid ${s.color}`, borderRadius:'0 16px 16px 0', padding:'16px 18px' }}>
-            <div style={{ width:32, height:32, borderRadius:9, background:s.bg, display:'flex', alignItems:'center', justifyContent:'center', marginBottom:10 }}>
-              <s.Icon size={15} color={s.color}/>
+          <div key={i} style={{ background:'#fff', borderRadius:16, border:'1px solid #f0f2f5', borderLeft:`4px solid ${s.color}`, boxShadow:'0 1px 4px rgba(0,0,0,0.05)', padding:'18px 20px' }}>
+            <div style={{ width:36, height:36, borderRadius:10, background:s.bg, display:'flex', alignItems:'center', justifyContent:'center', marginBottom:12 }}>
+              <s.Icon size={17} color={s.color}/>
             </div>
-            <div style={{ fontSize:9, color:'#9ba8b5', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em' }}>{s.label}</div>
-            <div style={{ fontSize:20, fontWeight:800, color:'#1a1a2e', letterSpacing:'-0.5px', marginTop:2 }}>
+            <div style={{ fontSize:10, color:'#94a3b8', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.09em', marginBottom:4 }}>{s.label}</div>
+            <div style={{ fontSize:24, fontWeight:800, color:'#0f172a', letterSpacing:'-0.6px', lineHeight:1.2 }}>
               {fmt(s.val)}
             </div>
           </div>
@@ -48,48 +50,52 @@ export default function OverviewTab({ tenant, paymentSummary = {}, analytics = {
       <div style={{ display:'grid', gridTemplateColumns:'1fr 310px', gap:14 }}>
 
         {/* Revenue Chart */}
-        <div style={{ ...SC, padding:20 }}>
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
+        <div style={{ ...SC, padding:22 }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:16 }}>
             <div>
-              <p style={{ fontSize:14, fontWeight:800, color:'#1a1a2e', margin:0 }}>Financial Analytics</p>
-              <p style={{ fontSize:11, color:'#9ba8b5', marginTop:2 }}>Revenue trends — last 6 months</p>
+              <p style={{ fontSize:15, fontWeight:800, color:'#0f172a', margin:0 }}>Financial Analytics</p>
+              <p style={{ fontSize:11, color:'#94a3b8', marginTop:3 }}>Planned vs Actual — last 6 months</p>
             </div>
-            <div style={{ display:'flex', gap:8 }}>
-              {[{ c:'#f97316', l:'Invoiced' }, { c:'#10b981', l:'Received' }].map(x => (
-                <span key={x.l} style={{ fontSize:10, fontWeight:600, color:'#9ba8b5', background:'#f8f9fb', padding:'3px 9px', borderRadius:6, display:'flex', alignItems:'center', gap:4 }}>
-                  <span style={{ width:6, height:6, borderRadius:'50%', background:x.c, display:'inline-block' }}/> {x.l}
-                </span>
+            {/* Toggle buttons */}
+            <div style={{ display:'flex', gap:3, background:'#f1f5f9', borderRadius:10, padding:3 }}>
+              {[{ k:'combined', l:'Combined' }, { k:'bar', l:'Bar' }, { k:'line', l:'Line' }].map(t => (
+                <button key={t.k} onClick={() => setChartType(t.k)}
+                  style={{ padding:'5px 11px', borderRadius:7, border:'none', cursor:'pointer', fontSize:11, fontWeight:700, fontFamily:'inherit', transition:'all 0.15s',
+                    background: chartType === t.k ? '#1e3a5f' : 'transparent',
+                    color:      chartType === t.k ? '#fff'    : '#64748b',
+                  }}>
+                  {t.l}
+                </button>
               ))}
             </div>
           </div>
-          <div style={{ height:210 }}>
+          <div style={{ height:230 }}>
             {analytics.monthlyTrend?.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={analytics.monthlyTrend}>
-                  <defs>
-                    <linearGradient id="gi" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%"  stopColor="#f97316" stopOpacity={0.1}/>
-                      <stop offset="95%" stopColor="#f97316" stopOpacity={0}/>
-                    </linearGradient>
-                    <linearGradient id="gr" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%"  stopColor="#10b981" stopOpacity={0.1}/>
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f2f5"/>
-                  <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize:10, fontWeight:600, fill:'#9ba8b5' }} dy={6}/>
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize:10, fontWeight:600, fill:'#9ba8b5' }}
-                    tickFormatter={v => `₹${Math.round(v/1000)}k`}/>
-                  <Tooltip contentStyle={{ borderRadius:12, border:'none', boxShadow:'0 8px 24px rgba(0,0,0,0.08)', fontSize:12 }}
-                    formatter={(v) => [fmt(v), '']}/>
-                  <Area type="monotone" dataKey="invoiced" stroke="#f97316" strokeWidth={2.5} fillOpacity={1} fill="url(#gi)"/>
-                  <Area type="monotone" dataKey="received" stroke="#10b981" strokeWidth={2.5} fillOpacity={1} fill="url(#gr)"/>
-                </AreaChart>
+                <ComposedChart data={analytics.monthlyTrend} margin={{ left:-8, right:8 }} barGap={4}>
+                  <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#e8edf4"/>
+                  <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize:10, fontWeight:600, fill:'#94a3b8' }} dy={6}/>
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize:10, fontWeight:600, fill:'#94a3b8' }}
+                    tickFormatter={v => v === 0 ? '₹0L' : `₹${(v/100000).toFixed(0)}L`}/>
+                  <Tooltip contentStyle={{ borderRadius:12, border:'none', boxShadow:'0 8px 24px rgba(0,0,0,0.1)', fontSize:12 }}
+                    formatter={(v, name) => [`₹${(v/100000).toFixed(2)}L`, name === 'invoiced' ? 'Planned' : name === 'received' ? 'Actual' : 'Variance']}/>
+                  <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize:11, paddingTop:12, color:'#64748b' }}
+                    formatter={name => name === 'invoiced' ? 'Planned' : name === 'received' ? 'Actual' : 'Variance'}/>
+                  {(chartType === 'combined' || chartType === 'bar') && (
+                    <Bar dataKey="invoiced" name="invoiced" fill="#1e3a5f" radius={[4,4,0,0]} barSize={20}/>
+                  )}
+                  {(chartType === 'combined' || chartType === 'bar') && (
+                    <Bar dataKey="received" name="received" fill="#5bc4c4" radius={[4,4,0,0]} barSize={20}/>
+                  )}
+                  {(chartType === 'combined' || chartType === 'line') && (
+                    <Line type="monotone" dataKey="received" name="received" stroke="#5bc4c4" strokeWidth={2.5} dot={{ fill:'#5bc4c4', r:4, strokeWidth:0 }} activeDot={{ r:6 }}/>
+                  )}
+                </ComposedChart>
               </ResponsiveContainer>
             ) : (
-              <div style={{ height:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', color:'#c5cdd6', gap:8 }}>
-                <TrendingUp size={28} strokeWidth={1}/>
-                <p style={{ fontSize:12 }}>Not enough data</p>
+              <div style={{ height:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:8 }}>
+                <TrendingUp size={32} color="#e2e8f0" strokeWidth={1}/>
+                <p style={{ fontSize:12, color:'#94a3b8' }}>Not enough data yet</p>
               </div>
             )}
           </div>

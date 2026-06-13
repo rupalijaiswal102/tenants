@@ -8,7 +8,6 @@ import { useResponsive } from '../src/hooks/useResponsive.js';
 import { useNavigate } from 'react-router-dom';
 
 import axios from 'axios';
-import WorkflowPendingCards from '../components/invoices/WorkflowPendingCards.jsx';
 import {
   ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, PieChart, Pie, Cell
@@ -139,8 +138,7 @@ export default function Dashboard() {
       </div>
 
       {/* ── Stat Cards ── */}
-      <WorkflowPendingCards userRole={userRole}/>
-      <div className="grid-responsive-6" style={{ marginBottom: 22 }}>
+<div className="grid-responsive-6" style={{ marginBottom: 22 }}>
         {stats.map((st, i) => {
           const StatIcon = st.icon;
           return (

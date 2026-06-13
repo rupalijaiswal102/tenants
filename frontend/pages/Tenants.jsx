@@ -30,6 +30,8 @@ export default function TenantList({ mode = 'tenant' }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [exporting,         setExporting]         = useState(false);
   const [pdfExporting,      setPdfExporting]      = useState(false);
+  const [currentPage,       setCurrentPage]       = useState(1);
+  const [perPage,           setPerPage]           = useState(25);
   const { canAdd, canEdit, canDelete } = usePermission();
 
   useEffect(() => { fetchTenants(); fetchCompanies(); }, [mode]);
@@ -226,6 +228,14 @@ export default function TenantList({ mode = 'tenant' }) {
   const basePath    = mode === 'otherParty' ? '/other-parties' : '/tenants';
   const openView    = (t) => { setSelectedTenant(t); setShowDetails(true); navigate(`${basePath}/${t.id || t._id}`); };
 
+  const totalPages  = Math.max(1, Math.ceil(filtered.length / perPage));
+  const safePage    = Math.min(currentPage, totalPages);
+  const paginated   = filtered.slice((safePage - 1) * perPage, safePage * perPage);
+  const fromRecord  = filtered.length === 0 ? 0 : (safePage - 1) * perPage + 1;
+  const toRecord    = Math.min(safePage * perPage, filtered.length);
+
+  useEffect(() => { setCurrentPage(1); }, [search, companyFilter, monthFilter]);
+
   // ── DETAIL VIEW — no wrapper, no padding, no gap ──────────────────────────
   if (showDetails && selectedTenant) {
     return (
@@ -338,9 +348,12 @@ export default function TenantList({ mode = 'tenant' }) {
         <div style={{ overflowX:'auto' }}>
           <table style={{ width:'100%', borderCollapse:'collapse' }}>
             <thead>
-              <tr style={{ background:'#fafbfc' }}>
-                {(mode === 'otherParty' ? ['Code','Party Name','Address','Rent','Status','Actions'] : ['Code','Tenant Name','Property','Rent','Status','Actions']).map((h, i) => (
-                  <th key={h} style={{ padding:'12px 18px', textAlign: i === 3 ? 'right' : 'left', fontSize:10, fontWeight:800, color:'#9ba8b5', textTransform:'uppercase', letterSpacing:'0.1em', borderBottom:'2px solid #f0f2f5', whiteSpace:'nowrap' }}>{h}</th>
+              <tr style={{ background:'#f8fafc' }}>
+                {(mode === 'otherParty'
+                  ? ['Party Name', 'Address', 'Lease Period', 'Rent / Month', 'Status', 'Actions']
+                  : ['Tenant Name', 'Property', 'Lease Period', 'Rent / Month', 'Status', 'Actions']
+                ).map((h, i) => (
+                  <th key={h} style={{ padding:'11px 18px', textAlign:'left', fontSize:11, fontWeight:700, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.08em', borderBottom:'1px solid #f0f2f5', whiteSpace:'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -361,48 +374,56 @@ export default function TenantList({ mode = 'tenant' }) {
                     <p style={{ fontSize:12, color:'#c5cdd6', marginTop:4 }}>Try adjusting search filters</p>
                   </td>
                 </tr>
-              ) : filtered.map((t, idx) => (
+              ) : paginated.map((t, idx) => (
                 <tr key={t.id || t._id} onClick={() => openView(t)}
                   style={{ cursor:'pointer', transition:'background 0.12s', borderBottom:'1px solid #f8f9fb' }}
                   onMouseEnter={e => (e.currentTarget).style.background = '#fafbfc'}
                   onMouseLeave={e => (e.currentTarget).style.background = 'transparent'}>
 
-                  {/* Code */}
-                  <td style={{ padding:'14px 18px' }}>
-                    <span style={{ fontSize:12, fontWeight:800, color:'#f97316', background:'rgba(249,115,22,0.07)', padding:'3px 9px', borderRadius:6 }}>{t.code}</span>
-                  </td>
-
-                  {/* Name */}
-                  <td style={{ padding:'14px 18px' }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:11 }}>
-                      <div style={{ width:36, height:36, borderRadius:10, background:`hsl(${idx*47%360},60%,94%)`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, fontWeight:800, color:`hsl(${idx*47%360},50%,40%)`, flexShrink:0 }}>
-                        {(t.name||'?')[0].toUpperCase()}
-                      </div>
-                      <div>
-                        <p style={{ fontSize:13, fontWeight:700, color:'#1a1a2e', margin:0 }}>{t.name}</p>
-                        <p style={{ fontSize:10, color:'#9ba8b5', margin:'2px 0 0' }}>{t.email || (t).companyName || ''}</p>
-                      </div>
-                    </div>
+                  {/* Name + Code + Company */}
+                  <td style={{ padding:'16px 18px' }}>
+                    <p style={{ fontSize:14, fontWeight:700, color:'#0f172a', margin:0, lineHeight:1.3 }}>{t.name || '—'}</p>
+                    {t.code && (
+                      <p style={{ fontSize:11, fontWeight:600, color:'#f97316', margin:'3px 0 0', display:'flex', alignItems:'center', gap:4 }}>
+                        <span style={{ width:6, height:6, borderRadius:'50%', background:'#f97316', display:'inline-block', flexShrink:0 }}/>
+                        {t.code}
+                      </p>
+                    )}
+                    <p style={{ fontSize:11, color:'#94a3b8', margin:'2px 0 0' }}>{t.company || t.companyName || ''}</p>
                   </td>
 
                   {/* Property / Address */}
-                  <td style={{ padding:'14px 18px' }}>
-                    <p style={{ fontSize:12, color:'#5a6474', margin:0 }}>{t.property || (t).address || '—'}</p>
+                  <td style={{ padding:'16px 18px' }}>
+                    <p style={{ fontSize:13, color:'#334155', margin:0, fontWeight:500 }}>{t.property || t.address || '—'}</p>
+                    {t.mobile && <p style={{ fontSize:11, color:'#94a3b8', margin:'3px 0 0' }}>{t.mobile}</p>}
+                  </td>
+
+                  {/* Lease End */}
+                  <td style={{ padding:'16px 18px' }}>
+                    <p style={{ fontSize:13, color:'#334155', margin:0 }}>{t.leaseEnd ? new Date(t.leaseEnd).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) : '—'}</p>
+                    {t.leaseStart && <p style={{ fontSize:11, color:'#94a3b8', margin:'3px 0 0' }}>From {new Date(t.leaseStart).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</p>}
                   </td>
 
                   {/* Rent */}
-                  <td style={{ padding:'14px 18px', textAlign:'right' }}>
-                    <span style={{ fontSize:14, fontWeight:800, color:'#1a1a2e' }}>₹{(t.currentRent||0).toLocaleString()}</span>
-                    <p style={{ fontSize:9, color:'#9ba8b5', margin:'2px 0 0', textAlign:'right' }}>/month</p>
+                  <td style={{ padding:'16px 18px' }}>
+                    <p style={{ fontSize:14, fontWeight:700, color:'#0f172a', margin:0 }}>₹{(t.currentRent||0).toLocaleString('en-IN')}</p>
+                    <p style={{ fontSize:11, color:'#94a3b8', margin:'3px 0 0' }}>/month</p>
                   </td>
 
                   {/* Status */}
-                  <td style={{ padding:'14px 18px' }}>
-                    <StatusBadge status={t.agreementStatus || 'Pending'}/>
+                  <td style={{ padding:'16px 18px' }}>
+                    {(() => {
+                      const s = t.agreementStatus || 'Pending';
+                      const cfg = s === 'Active' ? { bg:'#dcfce7', color:'#16a34a' } : s === 'Expired' ? { bg:'#fee2e2', color:'#dc2626' } : { bg:'#fef9c3', color:'#ca8a04' };
+                      return <span style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'4px 10px', borderRadius:20, fontSize:11, fontWeight:700, background:cfg.bg, color:cfg.color }}>
+                        <span style={{ width:6, height:6, borderRadius:'50%', background:cfg.color }}/>
+                        {s}
+                      </span>;
+                    })()}
                   </td>
 
                   {/* Actions */}
-                  <td style={{ padding:'14px 18px' }} onClick={e => e.stopPropagation()}>
+                  <td style={{ padding:'16px 18px' }} onClick={e => e.stopPropagation()}>
                     <div style={{ display:'flex', alignItems:'center', justifyContent:'flex-end', gap:2 }}>
                       {[
                         { icon: Eye,   show: true,     title:'View',   onClick: () => openView(t),                                          color:'#3b82f6', hbg:'#eff6ff' },
@@ -424,6 +445,51 @@ export default function TenantList({ mode = 'tenant' }) {
           </table>
         </div>
       </div>
+
+      {/* ── Pagination ── */}
+      {filtered.length > 0 && (
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 20px', borderTop:'1px solid #f0f2f5', flexWrap:'wrap', gap:10 }}>
+          {/* Left: showing info + per page */}
+          <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+            <span style={{ fontSize:12, color:'#9ba8b5', fontWeight:500 }}>
+              Showing <strong style={{ color:'#1a1a2e' }}>{fromRecord}</strong> to <strong style={{ color:'#1a1a2e' }}>{toRecord}</strong> of <strong style={{ color:'#1a1a2e' }}>{filtered.length}</strong> {mode === 'otherParty' ? 'parties' : 'tenants'}
+            </span>
+            <select value={perPage} onChange={e => { setPerPage(Number(e.target.value)); setCurrentPage(1); }}
+              style={{ padding:'4px 8px', borderRadius:7, border:'1px solid #e8edf0', fontSize:12, fontWeight:600, color:'#5a6474', background:'#f8f9fb', outline:'none', cursor:'pointer', fontFamily:'inherit' }}>
+              {[10, 25, 50, 100].map(n => <option key={n} value={n}>{n} per page</option>)}
+            </select>
+          </div>
+          {/* Right: page buttons */}
+          <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+            <button onClick={() => setCurrentPage(p => Math.max(1, p-1))} disabled={safePage === 1}
+              style={{ padding:'5px 12px', borderRadius:7, border:'1px solid #e8edf0', fontSize:12, fontWeight:600, color: safePage===1?'#c5cdd6':'#5a6474', background:'#fff', cursor: safePage===1?'default':'pointer', fontFamily:'inherit' }}>
+              ‹ Previous
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .filter(p => p === 1 || p === totalPages || Math.abs(p - safePage) <= 1)
+              .reduce((acc, p, i, arr) => {
+                if (i > 0 && p - arr[i-1] > 1) acc.push('...');
+                acc.push(p);
+                return acc;
+              }, [])
+              .map((p, i) => p === '...' ? (
+                <span key={`d${i}`} style={{ padding:'5px 4px', fontSize:12, color:'#9ba8b5' }}>…</span>
+              ) : (
+                <button key={p} onClick={() => setCurrentPage(p)}
+                  style={{ width:32, height:32, borderRadius:7, border: p===safePage?'none':'1px solid #e8edf0', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
+                    background: p===safePage?'#1a1a2e':'#fff',
+                    color: p===safePage?'#fff':'#5a6474' }}>
+                  {p}
+                </button>
+              ))
+            }
+            <button onClick={() => setCurrentPage(p => Math.min(totalPages, p+1))} disabled={safePage === totalPages}
+              style={{ padding:'5px 12px', borderRadius:7, border:'1px solid #e8edf0', fontSize:12, fontWeight:600, color: safePage===totalPages?'#c5cdd6':'#5a6474', background:'#fff', cursor: safePage===totalPages?'default':'pointer', fontFamily:'inherit' }}>
+              Next ›
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Delete Modal ── */}
       <AnimatePresence>

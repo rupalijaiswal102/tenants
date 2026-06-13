@@ -87,7 +87,8 @@ export default function InvoiceList() {
     const cOk = companyFilter === 'All' || inv.companyId === companyFilter || inv.company === companyFilter;
     const tOk = typeFilter === 'All' || inv.items?.some((it) => it.particular?.toLowerCase().includes(typeFilter.toLowerCase()));
     const mOk = monthFilter === 'All' || (inv.billDate && new Date(inv.billDate).getMonth() === parseInt(monthFilter));
-    const ptOk= partyTypeFilter === 'All' || (partyTypeFilter === 'Tenant' ? !!inv.tenantId : !!inv.otherPartyId);
+    const resolvedPartyType = inv.otherPartyId ? 'OtherParty' : inv.tenantId ? 'Tenant' : (inv.partyType || 'Tenant');
+    const ptOk= partyTypeFilter === 'All' || resolvedPartyType === partyTypeFilter;
     return sOk && stOk && cOk && tOk && mOk && ptOk;
   });
 
