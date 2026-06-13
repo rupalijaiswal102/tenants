@@ -4,11 +4,13 @@ import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'react-hot-toast';
 import { ApproveSignatureModal } from '../tenants/ApproveSignatureModal.jsx';
 import { InvoicePreviewDocument } from '../invoices/InvoicePreviewDocument.jsx';
+import { usePermission } from '../../src/hooks/usePermission.js';
 
 export function ViewInvoiceModal({ invoice, tenant, company, onClose, onApprove }) {
   const [downloading,    setDownloading]    = useState(false);
   const [showApprove,    setShowApprove]    = useState(false);
   const [currentInvoice, setCurrentInvoice] = useState(invoice);
+  const { can } = usePermission('invoices');
 
   React.useEffect(() => { setCurrentInvoice(invoice); }, [invoice]);
 
@@ -69,7 +71,7 @@ export function ViewInvoiceModal({ invoice, tenant, company, onClose, onApprove 
               <CheckCircle size={18} />
               <span>Approved</span>
             </div>
-          ) : (
+          ) : can('approve') ? (
             <button
               onClick={() => setShowApprove(true)}
               className="bg-primary text-white px-4 py-2 rounded-lg shadow-lg hover:bg-orange-600 transition-colors flex items-center gap-2 font-bold text-sm"
@@ -77,7 +79,7 @@ export function ViewInvoiceModal({ invoice, tenant, company, onClose, onApprove 
               <ShieldCheck size={18} />
               <span>Approve &amp; Sign</span>
             </button>
-          )}
+          ) : null}
 
           <button onClick={onClose} className="bg-slate-800 text-white p-2 rounded-lg shadow-lg hover:bg-slate-700 transition-colors">
             <X size={20} />

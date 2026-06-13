@@ -11,18 +11,18 @@ const NAV = [
   {
     group: 'Main',
     items: [
-      { title: 'Dashboard',     icon: LayoutDashboard,    path: '/'              },
-      { title: 'Tenants',       icon: Users,              path: '/tenants'       },
-      { title: 'Other Parties', icon: Users2,             path: '/other-parties' },
-      { title: 'Invoices',      icon: ReceiptIndianRupee, path: '/invoices'      },
-      { title: 'Reports',       icon: FileText,           path: '/reports'       },
+      { title: 'Dashboard',     icon: LayoutDashboard,    path: '/',              module: null           },
+      { title: 'Tenants',       icon: Users,              path: '/tenants',       module: 'tenants'      },
+      { title: 'Other Parties', icon: Users2,             path: '/other-parties', module: 'otherParties' },
+      { title: 'Invoices',      icon: ReceiptIndianRupee, path: '/invoices',      module: 'invoices'     },
+      { title: 'Reports',       icon: FileText,           path: '/reports',       module: 'reports'      },
     ]
   },
   {
     group: 'Configuration',
     items: [
-      { title: 'Companies',  icon: Building2, path: '/companies' },
-      { title: 'Users',      icon: UserCog,   path: '/users'     },
+      { title: 'Companies', icon: Building2, path: '/companies', module: 'companies' },
+      { title: 'Users',     icon: UserCog,   path: '/users',     module: 'users'     },
     ]
   }
 ];
@@ -37,19 +37,27 @@ const ROLE_COLORS = {
 
 export default function Sidebar({ open, onClose, isMobile }) {
   const location = useLocation();
-  const { isViewer } = usePermission();
   const authData = JSON.parse(localStorage.getItem('neoteric_auth') || '{}');
+  const role = authData.role || 'Viewer';
+  const permissions = authData.permissions || {};
+
   const sidebarUser = {
     name:     authData.name     || 'Admin',
-    role:     authData.role     || 'Super Admin',
+    role,
     initials: authData.initials || (authData.name ? authData.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase() : 'AD'),
+  };
+
+  const canViewModule = (module) => {
+    if (!module) return true;                          // Dashboard always visible
+    if (role === 'Super Admin') return true;           // Super Admin sees everything
+    const p = permissions[module];
+    if (!p) return true;                               // No permissions set → fallback visible
+    return p.view || p.add || p.edit || p.delete;      // Hide only if ALL are false
   };
 
   const visibleNav = NAV.map(group => ({
     ...group,
-    items: group.items.filter(item =>
-      !isViewer || !(['/companies', '/users'].includes(item.path))
-    ),
+    items: group.items.filter(item => canViewModule(item.module)),
   })).filter(group => group.items.length > 0);
 
   const isActive = (path) =>

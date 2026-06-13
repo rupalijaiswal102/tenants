@@ -16,6 +16,29 @@ const inp = {
   transition:'border 0.15s',
 };
 
+const MODULES = [
+  { key: 'tenants',      label: 'Tenants',       actions: ['view','add','edit','delete'] },
+  { key: 'otherParties', label: 'Other Parties',  actions: ['view','add','edit','delete'] },
+  { key: 'invoices',     label: 'Invoices',       actions: ['view','add','edit','delete','payment','approve'] },
+  { key: 'companies',    label: 'Companies',      actions: ['view','add','edit','delete'] },
+  { key: 'users',        label: 'Users',          actions: ['view','add','edit','delete'] },
+  { key: 'reports',      label: 'Reports',        actions: ['view','add','edit','delete'] },
+  { key: 'ledger',       label: 'Ledger',         actions: ['view','adjustment'] },
+];
+const STD_ACTIONS = ['view','add','edit','delete'];
+
+const ACTION_LABELS = { view:'View', add:'Add', edit:'Edit', delete:'Delete', payment:'Payment', approve:'Approve', adjustment:'Adjust' };
+
+const DEFAULT_PERMISSIONS = {
+  tenants:      { view: true,  add: true,  edit: true,  delete: false },
+  otherParties: { view: true,  add: true,  edit: true,  delete: false },
+  invoices:     { view: true,  add: true,  edit: true,  delete: false, payment: false, approve: false },
+  companies:    { view: true,  add: false, edit: false, delete: false },
+  users:        { view: false, add: false, edit: false, delete: false },
+  reports:      { view: true,  add: false, edit: false, delete: false },
+  ledger:       { view: true,  adjustment: false },
+};
+
 const ROLES_DEFAULT = [
   { value:'Super Admin', label:'Super Admin', color:'#ef4444', bg:'#fff1f2', description:'Full system access' },
   { value:'Admin',       label:'Admin',       color:'#f97316', bg:'#fff7ed', description:'All modules access' },
@@ -38,13 +61,23 @@ function RoleBadge({ role }) {
 function UserModal({ user, onClose, onSuccess }) {
   const isEdit = !!user;
   const [form, setForm] = useState({
-    name:       user?.name       || '',
-    email:      user?.email      || '',
-    password:   '',
-    role:       user?.role       || 'MDO',
-    phone:      user?.phone      || '',
-    department: user?.department || '',
-    isActive:   user?.isActive   ?? true,
+    name:        user?.name       || '',
+    email:       user?.email      || '',
+    password:    '',
+    role:        user?.role       || 'MDO',
+    phone:       user?.phone      || '',
+    department:  user?.department || '',
+    isActive:    user?.isActive   ?? true,
+    permissions: (() => {
+      if (!user?.permissions) return DEFAULT_PERMISSIONS;
+      const p = JSON.parse(JSON.stringify(user.permissions));
+      return {
+        ...DEFAULT_PERMISSIONS,
+        ...p,
+        invoices: { ...DEFAULT_PERMISSIONS.invoices, ...(p.invoices || {}) },
+        ledger:   { ...DEFAULT_PERMISSIONS.ledger,   ...(p.ledger   || {}) },
+      };
+    })(),
   });
   const [showPass, setShowPass] = useState(false);
   const [saving,   setSaving]   = useState(false);
@@ -72,7 +105,7 @@ function UserModal({ user, onClose, onSuccess }) {
       <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
         onClick={onClose} style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.5)', backdropFilter:'blur(4px)' }}/>
       <motion.div initial={{ scale:0.95, opacity:0, y:20 }} animate={{ scale:1, opacity:1, y:0 }}
-        style={{ position:'relative', background:'#fff', width:'100%', maxWidth:520, borderRadius:24, boxShadow:'0 20px 60px rgba(0,0,0,0.15)', overflow:'hidden' }}>
+        style={{ position:'relative', background:'#fff', width:'100%', maxWidth:680, borderRadius:24, boxShadow:'0 20px 60px rgba(0,0,0,0.15)', overflow:'hidden' }}>
 
         {/* Header */}
         <div style={{ padding:'20px 24px', borderBottom:'1px solid #f0f2f5', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
@@ -140,6 +173,75 @@ function UserModal({ user, onClose, onSuccess }) {
               ))}
             </div>
           </div>
+
+          {/* Permission Matrix — hidden for Super Admin */}
+          {form.role !== 'Super Admin' && (
+            <div>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
+                <label style={{ fontSize:10, fontWeight:800, color:'#9ba8b5', textTransform:'uppercase', letterSpacing:'0.08em' }}>Module Permissions</label>
+                <div style={{ display:'flex', gap:6 }}>
+                  <button type="button" onClick={() => set('permissions', Object.fromEntries(MODULES.map(m => [m.key, Object.fromEntries(m.actions.map(a => [a, true]))])))}
+                    style={{ fontSize:10, fontWeight:700, padding:'3px 10px', borderRadius:6, border:'1px solid #e2e8f0', background:'#f8fafc', color:'#64748b', cursor:'pointer', fontFamily:'inherit' }}>
+                    Select All
+                  </button>
+                  <button type="button" onClick={() => set('permissions', Object.fromEntries(MODULES.map(m => [m.key, Object.fromEntries(m.actions.map(a => [a, false]))])))}
+                    style={{ fontSize:10, fontWeight:700, padding:'3px 10px', borderRadius:6, border:'1px solid #e2e8f0', background:'#f8fafc', color:'#64748b', cursor:'pointer', fontFamily:'inherit' }}>
+                    Clear All
+                  </button>
+                </div>
+              </div>
+              <div style={{ border:'1px solid #f0f2f5', borderRadius:12, overflow:'hidden' }}>
+                {/* Header — max 6 action columns */}
+                <div style={{ display:'grid', gridTemplateColumns:'140px repeat(6, 1fr)', background:'#f8fafc', borderBottom:'1px solid #f0f2f5', padding:'8px 14px', gap:4 }}>
+                  <span style={{ fontSize:10, fontWeight:800, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.08em' }}>Module</span>
+                  {['View','Add','Edit','Delete','Payment','Approve / Adjust'].map(a => (
+                    <span key={a} style={{ fontSize:9, fontWeight:800, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'center', lineHeight:1.3 }}>{a}</span>
+                  ))}
+                </div>
+                {/* Rows */}
+                {MODULES.map((mod, mi) => {
+                  const defEmpty = Object.fromEntries(mod.actions.map(a => [a, false]));
+                  const p = form.permissions?.[mod.key] || defEmpty;
+                  const allOn = mod.actions.every(a => p[a]);
+                  // Map each column to the right action key for this module
+                  const colActions = ['view','add','edit','delete',
+                    mod.key === 'invoices' ? 'payment'    : null,
+                    mod.key === 'invoices' ? 'approve'    : mod.key === 'ledger' ? 'adjustment' : null,
+                  ];
+                  return (
+                    <div key={mod.key} style={{ display:'grid', gridTemplateColumns:'140px repeat(6, 1fr)', padding:'10px 14px', gap:4, borderBottom: mi < MODULES.length-1 ? '1px solid #f8f9fb' : 'none', alignItems:'center',
+                      background: mi % 2 === 0 ? '#fff' : '#fafbfc' }}>
+                      {/* Module name + toggle */}
+                      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                        <div onClick={() => {
+                          const newVal = !allOn;
+                          const next = Object.fromEntries(mod.actions.map(a => [a, newVal]));
+                          set('permissions', { ...form.permissions, [mod.key]: next });
+                        }} style={{ width:28, height:16, borderRadius:8, background: allOn ? '#f97316' : '#e2e8f0', position:'relative', cursor:'pointer', transition:'background 0.2s', flexShrink:0 }}>
+                          <div style={{ position:'absolute', top:2, left: allOn ? 12 : 2, width:12, height:12, borderRadius:'50%', background:'#fff', boxShadow:'0 1px 2px rgba(0,0,0,0.15)', transition:'left 0.2s' }}/>
+                        </div>
+                        <span style={{ fontSize:12, fontWeight:700, color:'#1a1a2e' }}>{mod.label}</span>
+                      </div>
+                      {/* Checkboxes per column */}
+                      {colActions.map((action, ci) => (
+                        <div key={ci} style={{ display:'flex', justifyContent:'center' }}>
+                          {action && mod.actions.includes(action) ? (
+                            <div onClick={() => set('permissions', { ...form.permissions, [mod.key]: { ...p, [action]: !p[action] } })}
+                              style={{ width:18, height:18, borderRadius:4, border:`2px solid ${p[action] ? '#f97316' : '#d1d5db'}`, background: p[action] ? '#f97316' : '#fff', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', transition:'all 0.15s', flexShrink:0 }}>
+                              {p[action] && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                            </div>
+                          ) : (
+                            <span style={{ width:18, height:18, display:'block', background:'#f1f5f9', borderRadius:4 }}/>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+              <p style={{ fontSize:10, color:'#94a3b8', marginTop:6 }}>Toggle row to set all permissions at once. Super Admin always has full access.</p>
+            </div>
+          )}
 
           {/* Phone + Department */}
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>

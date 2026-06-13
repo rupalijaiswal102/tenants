@@ -34,7 +34,7 @@ export const getRoles = async (req, res) => {
 export const createUser = async (req, res) => {
   try {
     if (!requireSuperAdmin(req, res)) return;
-    const { name, email, password, role, phone, department } = req.body;
+    const { name, email, password, role, phone, department, permissions } = req.body;
 
     if (!name || !email || !password) return res.status(400).json({ error: 'Name, email and password required' });
     if (!ROLES[role]) return res.status(400).json({ error: `Invalid role: ${role}` });
@@ -47,6 +47,7 @@ export const createUser = async (req, res) => {
       phone: phone || '', department: department || '',
       createdBy: req.user?.name || 'Admin',
       isActive: true,
+      ...(permissions && { permissions }),
     });
 
     const { password: _, ...safeUser } = user.toObject();
@@ -58,7 +59,7 @@ export const createUser = async (req, res) => {
 export const updateUser = async (req, res) => {
   try {
     if (!requireSuperAdmin(req, res)) return;
-    const { name, email, role, phone, department, isActive, password } = req.body;
+    const { name, email, role, phone, department, isActive, password, permissions } = req.body;
 
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ error: 'User not found' });
@@ -75,6 +76,10 @@ export const updateUser = async (req, res) => {
     if (department !== undefined) user.department  = department;
     if (isActive !== undefined)   user.isActive    = isActive;
     if (password && password.length >= 6) user.password = password;
+    if (permissions) {
+      user.set('permissions', permissions);
+      user.markModified('permissions');
+    }
 
     await user.save();
     const { password: _, ...safeUser } = user.toObject();

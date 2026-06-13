@@ -10,7 +10,7 @@ export default function LedgerTab({
   onAdjustment, onExportExcel, onExportPDF,
   exportingExcel, exportingPDF, ledgerRef,
 }) {
-  const { canEdit } = usePermission();
+  const { can } = usePermission('ledger');
   const summary = ledgerData?.summary || {};
   const fmt = (v) => `₹${Math.round(v || 0).toLocaleString('en-IN')}`;
 
@@ -109,7 +109,7 @@ export default function LedgerTab({
           ))}
         </div>
         <div style={{ display:'flex', gap:8 }}>
-          {canEdit && (
+          {can('adjustment') && (
             <button onClick={onAdjustment}
               style={{ display:'flex', alignItems:'center', gap:5, padding:'7px 14px', background:'#fffbeb', border:'1px solid #fde68a', borderRadius:9, fontSize:11, fontWeight:700, color:'#b45309', cursor:'pointer', fontFamily:'inherit' }}>
               <Plus size={12}/> Adjustment

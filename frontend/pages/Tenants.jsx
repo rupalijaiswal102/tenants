@@ -32,7 +32,7 @@ export default function TenantList({ mode = 'tenant' }) {
   const [pdfExporting,      setPdfExporting]      = useState(false);
   const [currentPage,       setCurrentPage]       = useState(1);
   const [perPage,           setPerPage]           = useState(25);
-  const { canAdd, canEdit, canDelete } = usePermission();
+  const { canAdd, canEdit, canDelete } = usePermission(mode === 'otherParty' ? 'otherParties' : 'tenants');
 
   useEffect(() => { fetchTenants(); fetchCompanies(); }, [mode]);
 

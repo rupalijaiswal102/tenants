@@ -23,7 +23,7 @@ export default function Login({ onLogin }) {
       });
       const { token, user } = res.data;
       const initials = user.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0,2);
-      const authData = { name:user.name, role:user.role, initials, token };
+      const authData = { name:user.name, role:user.role, initials, token, permissions: user.permissions || {} };
       localStorage.setItem('neoteric_auth', JSON.stringify(authData));
       onLogin(authData);
     } catch (err) {

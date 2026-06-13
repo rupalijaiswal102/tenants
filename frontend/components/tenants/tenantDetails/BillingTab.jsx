@@ -6,7 +6,7 @@ import { usePermission } from '../../../src/hooks/usePermission.js';
 const SC = { background:'#fff', borderRadius:16, border:'1px solid #f0f2f5', boxShadow:'0 1px 3px rgba(0,0,0,0.04)' };
 
 export default function BillingTab({ invoices = [], onPay, onView, onEdit, onDelete, onWorkflow }) {
-  const { canEdit, canDelete } = usePermission();
+  const { canEdit, canDelete, can } = usePermission('invoices');
   return (
     <motion.div key="inv" initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-8 }}
       style={{ ...SC, overflow:'hidden' }}>
@@ -59,7 +59,7 @@ export default function BillingTab({ invoices = [], onPay, onView, onEdit, onDel
                   })()}
                   <td style={{ padding:'11px 16px' }}>
                     <div style={{ display:'flex', gap:4, justifyContent:'flex-end' }}>
-                      {canEdit && (
+                      {can('payment') && (
                         <button onClick={() => onPay(inv)} style={{ padding:'4px 10px', background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:6, cursor:'pointer', fontSize:10, fontWeight:700, color:'#15803d', display:'flex', alignItems:'center', gap:3, fontFamily:'inherit' }}>
                           <Plus size={11}/> Pay
                         </button>

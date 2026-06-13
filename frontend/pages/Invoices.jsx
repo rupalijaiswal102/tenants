@@ -50,7 +50,7 @@ export default function InvoiceList() {
 
   const [showForm,       setShowForm]       = useState(false);
   const navigate = useNavigate();
-  const { canAdd, canEdit, canDelete } = usePermission();
+  const { canAdd, canEdit, canDelete } = usePermission('invoices');
   const [selectedInvoice,setSelectedInvoice]= useState(null);
   const [editingInvoice, setEditingInvoice] = useState(null);
   const [deletingInvoice,setDeletingInvoice]= useState(null);

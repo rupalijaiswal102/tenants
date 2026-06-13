@@ -33,6 +33,8 @@ export const ROLES = {
   },
 };
 
+const b = () => ({ type: Boolean, default: false });
+
 const UserSchema = new Schema({
   name:     { type: String, required: true, trim: true },
   email:    { type: String, required: true, unique: true, lowercase: true, trim: true },
@@ -43,6 +45,15 @@ const UserSchema = new Schema({
   department: { type: String, default: '' },
   lastLogin:  { type: Date },
   createdBy:  { type: String, default: 'System' },
+  permissions: {
+    tenants:      { view: b(), add: b(), edit: b(), delete: b() },
+    otherParties: { view: b(), add: b(), edit: b(), delete: b() },
+    invoices:     { view: b(), add: b(), edit: b(), delete: b(), payment: b(), approve: b() },
+    companies:    { view: b(), add: b(), edit: b(), delete: b() },
+    users:        { view: b(), add: b(), edit: b(), delete: b() },
+    reports:      { view: b(), add: b(), edit: b(), delete: b() },
+    ledger:       { view: b(), adjustment: b() },
+  },
 }, { timestamps: true });
 UserSchema.pre('save', async function() {
   if (!this.isModified('password')) return;

@@ -22,7 +22,7 @@ export const login = async (req, res) => {
  { expiresIn: JWT_EXPIRES }
  );
  const initials = user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0,2);
- res.json({ token, user: { id: user._id, name: user.name, email: user.email, role: user.role, initials } });
+ res.json({ token, user: { id: user._id, name: user.name, email: user.email, role: user.role, initials, permissions: user.permissions || {} } });
  } catch (err) { res.status(500).json({ error: err.message }); }
 };
 
