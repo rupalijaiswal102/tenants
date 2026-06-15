@@ -107,9 +107,9 @@ export async function generateInvoicePDF(invoice, tenant, company, { download = 
   // ════════════════════════════════════════════════════════════════
   // 2. INVOICE TITLE
   // ════════════════════════════════════════════════════════════════
-  fnt(20,true,160,160,160);
-  pdf.text('INVOICE', PW/2, y+7, { align:'center' });
-  y+=16;
+  fnt(18,true,160,160,160);
+  pdf.text('INVOICE', PW/2, y+6, { align:'center' });
+  y+=11;
 
   // ════════════════════════════════════════════════════════════════
   // 3. THREE-COLUMN: Bill To | Ship To | Invoice Details
@@ -136,7 +136,7 @@ export async function generateInvoicePDF(invoice, tenant, company, { download = 
   pdf.text('Bill To', C1X, y+1);
   if (hasShipTo) pdf.text('Ship To', C2X, y+1);
   pdf.text('Invoice Details', MG+CW, y+1, { align:'right' });
-  y+=9;
+  y+=6;
 
   let yBill=y, yShip=y, yInv=y;
 
@@ -174,12 +174,12 @@ export async function generateInvoicePDF(invoice, tenant, company, { download = 
   if (invoice.crmPhone) { pdf.text(`Phone : ${invoice.crmPhone}`, RX, yInv, { align:'right' }); yInv+=4.5; }
   if (invoice.crmEmail) { pdf.text(`Email : ${(invoice.crmEmail||'').slice(0,32)}`, RX, yInv, { align:'right' }); yInv+=4.5; }
 
-  y = Math.max(yBill, yShip, yInv) + 6;
+  y = Math.max(yBill, yShip, yInv) + 4;
 
   // ════════════════════════════════════════════════════════════════
   // 4. LINE ITEMS TABLE
   // ════════════════════════════════════════════════════════════════
-  const RH=10;
+  const RH=8;
   const COLS=[
     { lbl:'#',        w:7,                                                              r:false },
     { lbl:'Item name',w:CW*0.28,                                                        r:false },
@@ -244,16 +244,16 @@ export async function generateInvoicePDF(invoice, tenant, company, { download = 
     ], idx%2===0?null:ROW_ALT);
   });
 
-  // Total row
+  // Total row — shows sum of item amounts only (CGST/SGST shown separately in right box)
   const totalAmt=Math.round(invoice.totalInvoice||subtotal);
   pdf.setDrawColor(...BDR); pdf.setLineWidth(0.4);
   pdf.line(MG,y,MG+CW,y);
   pdf.line(MG,y+RH,MG+CW,y+RH);
   fnt(10,true,...BLK);
   pdf.text('Total', MG+8+2, y+RH-2);
-  const totLbl=fmtI(totalAmt);
+  const totLbl=fmtI(Math.round(subtotal));
   pdf.text(totLbl, MG+CW-pdf.getTextWidth(totLbl)-2, y+RH-2);
-  y+=RH+8;
+  y+=RH+5;
 
   // ════════════════════════════════════════════════════════════════
   // 5. DESCRIPTION (left) | SUB-TOTAL / TOTAL BOX (right)
@@ -265,23 +265,22 @@ export async function generateInvoicePDF(invoice, tenant, company, { download = 
 
   let yL=y;
   if (invoice.remarks) {
-    fnt(10,true,...BLK); pdf.text('Description', MG,yL); yL+=5;
-    fnt(9,false,...GR);
+    fnt(9,true,...BLK); pdf.text('Description', MG,yL); yL+=4;
+    fnt(8.5,false,...GR);
     const remLines = pdf.splitTextToSize(String(invoice.remarks), leftEndX-MG);
-    remLines.forEach(l => { pdf.text(l, MG, yL); yL+=4.5; });
-    yL+=4;
+    remLines.forEach(l => { pdf.text(l, MG, yL); yL+=4; });
+    yL+=1;
   }
 
-  fnt(10,true,...BLK); pdf.text('Invoice Amount In Words', MG,yL); yL+=5;
-  fnt(9,false,...GR);
+  fnt(9,true,...BLK); pdf.text('Invoice Amount In Words', MG,yL); yL+=4;
+  fnt(8.5,false,...GR);
   const wLines = pdf.splitTextToSize(n2w(totalAmt)+' Rupees only', leftEndX-MG);
-  wLines.forEach(l=>{ pdf.text(l,MG,yL); yL+=4.5; });
+  wLines.forEach(l=>{ pdf.text(l,MG,yL); yL+=4; });
   yL+=2;
-
-  fnt(10,true,...BLK); pdf.text('Terms and Conditions', MG,yL); yL+=5;
-  fnt(9,false,...GR);
-  pdf.text('Please pay before due date.',                    MG,yL); yL+=4.5;
-  pdf.text('Late payment penalty charges # 1.5% Per Month', MG,yL); yL+=4.5;
+  fnt(8.5,true,...BLK); pdf.text('Terms and Conditions', MG, yL); yL+=4;
+  fnt(7.5,false,140,140,140);
+  pdf.text('Please pay before due date.', MG, yL); yL+=3.5;
+  pdf.text('Late payment penalty charges @ 1.5% Per Month.', MG, yL); yL+=4;
 
   // Right — Sub Total + CGST + SGST + Round Off + Total
   let yR=y;
@@ -306,14 +305,14 @@ export async function generateInvoicePDF(invoice, tenant, company, { download = 
   if (Math.abs(roundOff) >= 0.001) sumRow('Round off', fmtD(Math.abs(roundOff)));
   sumRow('Total',     fmtI(totalAmt), true);
 
-  y=Math.max(yL,yR+4)+4+7;
+  y=Math.max(yL,yR+2)+3+3;
 
   // ════════════════════════════════════════════════════════════════
   // 6. PAY TO (left) | FOR COMPANY + SEAL + SIGNATORY (right)
   // ════════════════════════════════════════════════════════════════
-  if(y>PH-60){ pdf.addPage(); y=MG; }
+  if(y>PH-50){ pdf.addPage(); y=MG; }
 
-  const bankColW = 60;   // continuation line width for bank details
+  const bankColW = 90;   // continuation line width for bank details
   const sigX     = PW-MG; // right edge for signature section
 
   // ── Pay To — left side, label bold-large / value small ──────────
@@ -365,6 +364,7 @@ export async function generateInvoicePDF(invoice, tenant, company, { download = 
 
   fnt(10,true,...BLK);
   pdf.text('Authorized Signatory', centX, yS+4, { align:'center' });
+
 
   if (download) {
     pdf.save(`Invoice_${invoice.invoiceNo||'download'}.pdf`);
