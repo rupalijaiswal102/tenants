@@ -148,13 +148,13 @@ export function InvoicePreviewDocument({ invoice, tenant, company, invoiceItems,
             ))}
           </div>
         </div>
-        <div className="text-right flex flex-col justify-end items-end">
-          <div className="mb-4">
-            <p className="text-[10px] font-bold mb-2" style={{ color:'#1a1a2e', whiteSpace:'nowrap' }}>
+        <div className="flex flex-col justify-end items-end">
+          <div style={{ display:'inline-flex', flexDirection:'column', alignItems:'center' }}>
+            <p className="text-[10px] font-bold mb-3" style={{ color:'#1a1a2e', whiteSpace:'nowrap' }}>
               For :{company?.companyName || invoice.company}
             </p>
             {invoice.approved && company?.sealUrl ? (
-              <div style={{ position:'relative', height:80, display:'flex', alignItems:'flex-end', justifyContent:'flex-end', marginBottom:4 }}>
+              <div style={{ display:'flex', justifyContent:'center', marginBottom:4 }}>
                 <img
                   src={company.sealUrl}
                   alt="Seal"
@@ -165,7 +165,10 @@ export function InvoicePreviewDocument({ invoice, tenant, company, invoiceItems,
             ) : (
               <div className="h-14" />
             )}
-            <p className="text-[11px] font-bold text-slate-800 border-t border-slate-200 pt-2 px-4">Authorized Signatory</p>
+            <p className="text-[11px] font-bold text-slate-800 border-t border-slate-200 pt-2"
+               style={{ width:'100%', textAlign:'center' }}>
+              Authorized Signatory
+            </p>
           </div>
         </div>
       </div>

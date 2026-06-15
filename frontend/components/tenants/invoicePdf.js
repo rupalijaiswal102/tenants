@@ -313,12 +313,12 @@ export async function generateInvoicePDF(invoice, tenant, company) {
   // ════════════════════════════════════════════════════════════════
   if(y>PH-60){ pdf.addPage(); y=MG; }
 
-  const bankColW = 90;   // max width for bank detail lines (left column)
+  const bankColW = 60;   // continuation line width for bank details
   const sigX     = PW-MG; // right edge for signature section
 
   // ── Pay To — left side, label bold-large / value small ──────────
   let yP=y;
-  fnt(10,true,...BLK); pdf.text('Pay To:', MG, yP); yP+=6;
+  fnt(9,true,...BLK); pdf.text('Pay To:', MG, yP); yP+=6;
 
   const bankFields=[
     { lbl:'Bank Name',             val: company?.bankName },
@@ -334,10 +334,11 @@ export async function generateInvoicePDF(invoice, tenant, company) {
     pdf.text(lblTxt, MG, yP);
     const lblW=pdf.getTextWidth(lblTxt)+2;
 
-    // Value — 9pt normal dark; first chunk on same line as label, continuation at left margin
+    // Value — 9pt normal dark; first line capped at 60mm so long bank names wrap;
+    // continuation lines at left margin with full bankColW
     fnt(9,false,...BLK);
     const valStr = String(val);
-    const firstChunk = pdf.splitTextToSize(valStr, bankColW - lblW);
+    const firstChunk = pdf.splitTextToSize(valStr, 30);
     pdf.text(firstChunk[0], MG + lblW, yP);
     if (firstChunk.length > 1) {
       const rest = pdf.splitTextToSize(firstChunk.slice(1).join(' '), bankColW);
@@ -349,19 +350,21 @@ export async function generateInvoicePDF(invoice, tenant, company) {
   // ── For: Company + Seal + Authorized Signatory — right side ─────
   let yS=y;
   const compFull = company?.companyName || invoice.company || '';
-  fnt(9,false,...BLK);                                               // black, single line
-  pdf.text(`For :${compFull}`, sigX, yS, { align:'right' });
-  yS += 9;
+  fnt(9,false,...BLK);
+  const forText = `For :${compFull}`;
+  pdf.text(forText, sigX, yS, { align:'right' });
+  const centX = sigX - pdf.getTextWidth(forText) / 2; // center x under "For :Company"
+  yS += 12;
 
   if(invoice.approved){
-    if(sealB64){ try{ pdf.addImage(sealB64,imgFmt(sealB64),sigX-36,yS,36,36,undefined,'FAST'); yS+=38; }catch{ yS+=4; } }
+    if(sealB64){ try{ pdf.addImage(sealB64,imgFmt(sealB64),centX-18,yS,36,36,undefined,'FAST'); yS+=38; }catch{ yS+=4; } }
     else { yS+=4; }
   } else {
     yS+=9;
   }
 
   fnt(10,true,...BLK);
-  pdf.text('Authorized Signatory', sigX, yS+4, { align:'right' });
+  pdf.text('Authorized Signatory', centX, yS+4, { align:'center' });
 
   pdf.save(`Invoice_${invoice.invoiceNo||'download'}.pdf`);
 }
