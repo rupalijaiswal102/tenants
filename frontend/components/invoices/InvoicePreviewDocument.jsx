@@ -29,41 +29,48 @@ export function InvoicePreviewDocument({ invoice, tenant, company, invoiceItems,
       </div>
 
       {/* Bill To / Ship To / Invoice Details */}
-      <div className="grid grid-cols-3 gap-8 mb-8 text-[12px]">
-        <div>
-          <h3 className="font-bold mb-2">Bill To</h3>
-          <p className="font-bold">{tenant?.name || invoice.partyName}</p>
-          <div className="space-y-1 mt-1 text-[#4a4a4a]">
-            <p className="whitespace-pre-line leading-relaxed mb-2">{tenant?.billingAddress || 'N/A'}</p>
-            <p>GSTIN : {tenant?.gstNo || 'Unregistered'}</p>
-            <p>State: 23-Madhya Pradesh</p>
-            <p>Security Deposit : {tenant?.securityDeposit ? `${tenant.securityDeposit}/-` : '-'}</p>
-            {tenant?.leaseStart && (
-              <p>Rent Start Date : {new Date(tenant.leaseStart).toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' })}</p>
-            )}
-            {tenant?.leaseEnd && (
-              <p>Agreement End Date: {new Date(tenant.leaseEnd).toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' })}</p>
-            )}
-          </div>
-        </div>
-
-        <div>
-          <h3 className="font-bold mb-2">Ship To</h3>
-          <div className="space-y-1 text-[#4a4a4a]">
+      {(() => {
+        const shipAddr = tenant?.property || invoice.property || '';
+        return (
+        <div className={`grid gap-8 mb-8 text-[12px] ${shipAddr ? 'grid-cols-3' : 'grid-cols-2'}`}>
+          <div>
+            <h3 className="font-bold mb-2">Bill To</h3>
             <p className="font-bold">{tenant?.name || invoice.partyName}</p>
-            <p className="whitespace-pre-line leading-relaxed">{tenant?.property || 'N/A'}</p>
+            <div className="space-y-1 mt-1 text-[#4a4a4a]">
+              {(tenant?.billingAddress) && <p className="whitespace-pre-line leading-relaxed mb-2">{tenant.billingAddress}</p>}
+              {(tenant?.gstNo)          && <p>GSTIN : {tenant.gstNo}</p>}
+              {(tenant?.state)          && <p>State: {tenant.state}</p>}
+              {tenant?.securityDeposit  ? <p>Security Deposit : {tenant.securityDeposit}/-</p> : null}
+              {tenant?.leaseStart && (
+                <p>Rent Start Date : {new Date(tenant.leaseStart).toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' })}</p>
+              )}
+              {tenant?.leaseEnd && (
+                <p>Agreement End Date: {new Date(tenant.leaseEnd).toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' })}</p>
+              )}
+            </div>
           </div>
-        </div>
 
-        <div className="text-right">
-          <h3 className="font-bold mb-2">Invoice Details</h3>
-          <div className="space-y-1 text-[#4a4a4a]">
-            <p>Invoice No. : {invoice.invoiceNo}</p>
-            <p>Date : {new Date(invoice.billDate).toLocaleDateString('en-GB')}</p>
-            <p>Due Date : {dueDate.toLocaleDateString('en-GB')}</p>
+          {shipAddr && (
+            <div>
+              <h3 className="font-bold mb-2">Ship To</h3>
+              <div className="space-y-1 text-[#4a4a4a]">
+                <p className="font-bold">{tenant?.name || invoice.partyName}</p>
+                <p className="whitespace-pre-line leading-relaxed">{shipAddr}</p>
+              </div>
+            </div>
+          )}
+
+          <div className="text-right">
+            <h3 className="font-bold mb-2">Invoice Details</h3>
+            <div className="space-y-1 text-[#4a4a4a]">
+              <p>Invoice No. : {invoice.invoiceNo}</p>
+              <p>Date : {new Date(invoice.billDate).toLocaleDateString('en-GB')}</p>
+              <p>Due Date : {dueDate.toLocaleDateString('en-GB')}</p>
+            </div>
           </div>
         </div>
-      </div>
+        );
+      })()}
 
       {/* Line Items */}
       <div className="mb-8">
@@ -98,6 +105,13 @@ export function InvoicePreviewDocument({ invoice, tenant, company, invoiceItems,
       {/* Totals + Amount in words */}
       <div className="grid grid-cols-2 gap-12 text-[12px]">
         <div>
+          {/* Description */}
+          {invoice.remarks && (
+            <div className="mb-4">
+              <h4 className="font-bold mb-1">Description</h4>
+              <p className="text-[#4a4a4a] whitespace-pre-line">{invoice.remarks}</p>
+            </div>
+          )}
           <h4 className="font-bold mb-1">Invoice Amount In Words</h4>
           <p className="text-[#1a1a1a] italic capitalize">{numberToWords(totalAmount)} Rupees only</p>
         </div>
@@ -120,29 +134,25 @@ export function InvoicePreviewDocument({ invoice, tenant, company, invoiceItems,
       {/* Bank Details + Signatory */}
       <div className="mt-12 pt-8 border-t border-[#eeeeee] grid grid-cols-2 gap-12 text-[11px]">
         <div>
-          <h4 className="font-bold mb-3 uppercase tracking-wider text-[#4a4a4a]">Bank Details</h4>
-          <div className="space-y-1.5 text-[#333]">
-            <p className="flex justify-between">
-              <span className="text-slate-400">Account Name:</span>
-              <span className="font-bold">{company?.accountHolderName || company?.companyName || invoice.company}</span>
-            </p>
-            <p className="flex justify-between">
-              <span className="text-slate-400">Bank Name:</span>
-              <span className="font-bold">{company?.bankName || 'N/A'}</span>
-            </p>
-            <p className="flex justify-between">
-              <span className="text-slate-400">Account Number:</span>
-              <span className="font-bold tracking-wider">{company?.accountNumber || 'N/A'}</span>
-            </p>
-            <p className="flex justify-between">
-              <span className="text-slate-400">IFSC Code:</span>
-              <span className="font-bold tracking-widest text-primary">{company?.ifscCode || 'N/A'}</span>
-            </p>
+          <p style={{ fontSize:11, fontWeight:700, color:'#1a1a2e', marginBottom:8 }}>Pay To:</p>
+          <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
+            {[
+              company?.bankName          && ['Bank Name',             company.bankName],
+              company?.accountNumber     && ['Bank Account No.',      company.accountNumber],
+              company?.ifscCode          && ['Bank IFSC code',        company.ifscCode],
+              company?.accountHolderName && ["Account holder's name", company.accountHolderName],
+            ].filter(Boolean).map(([lbl, val]) => (
+              <p key={lbl} style={{ fontSize:10, color:'#1a1a2e', margin:0, lineHeight:1.5, wordBreak:'break-word' }}>
+                <span style={{ fontWeight:700 }}>{lbl} : </span>{val}
+              </p>
+            ))}
           </div>
         </div>
         <div className="text-right flex flex-col justify-end items-end">
           <div className="mb-4">
-            <p className="text-[10px] font-bold text-slate-400 mb-2">For {company?.companyName || invoice.company}</p>
+            <p className="text-[10px] font-bold mb-2" style={{ color:'#1a1a2e', whiteSpace:'nowrap' }}>
+              For :{company?.companyName || invoice.company}
+            </p>
             {invoice.approved && company?.sealUrl ? (
               <div style={{ position:'relative', height:80, display:'flex', alignItems:'flex-end', justifyContent:'flex-end', marginBottom:4 }}>
                 <img
@@ -155,7 +165,7 @@ export function InvoicePreviewDocument({ invoice, tenant, company, invoiceItems,
             ) : (
               <div className="h-14" />
             )}
-            <p className="font-bold text-slate-800 border-t border-slate-200 pt-2 px-4">Authorized Signatory</p>
+            <p className="text-[11px] font-bold text-slate-800 border-t border-slate-200 pt-2 px-4">Authorized Signatory</p>
           </div>
         </div>
       </div>

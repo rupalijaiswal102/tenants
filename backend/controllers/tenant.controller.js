@@ -288,10 +288,13 @@ export const updateTenant = async (req, res) => {
     }
 
     // ── Real DB ──
+    const cleanData = Object.fromEntries(
+      Object.entries(updateData).filter(([, v]) => v !== undefined)
+    );
     const tenant = await Tenant.findByIdAndUpdate(
       req.params.id,
-      { $set: updateData },
-      { new: true, runValidators: true }
+      { $set: cleanData },
+      { new: true }
     );
     if (!tenant) return res.status(404).json({ error: 'Tenant not found' });
 

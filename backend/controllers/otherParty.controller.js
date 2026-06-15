@@ -160,10 +160,15 @@ export const updateOtherParty = async (req, res) => {
 
     parseNumericFields(data);
 
+    // Remove undefined values so they don't overwrite existing DB fields with null
+    const cleanData = Object.fromEntries(
+      Object.entries(data).filter(([, v]) => v !== undefined)
+    );
+
     const party = await OtherParty.findByIdAndUpdate(
       req.params.id,
-      { $set: data },
-      { new: true, runValidators: true }
+      { $set: cleanData },
+      { new: true }
     );
     if (!party) return res.status(404).json({ error: 'Other Party not found' });
 

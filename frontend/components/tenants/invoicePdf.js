@@ -114,28 +114,31 @@ export async function generateInvoicePDF(invoice, tenant, company) {
   // ════════════════════════════════════════════════════════════════
   // 3. THREE-COLUMN: Bill To | Ship To | Invoice Details
   // ════════════════════════════════════════════════════════════════
-  const C1W=CW*0.37, C2W=CW*0.34;
-  const C1X=MG, C2X=MG+C1W, C3X=MG+C1W+C2W;
-
-  // Column headings — no underline below them
-  fnt(12,true,...BLK);
-  pdf.text('Bill To',  C1X, y+1);
-  pdf.text('Ship To',  C2X, y+1);
-  pdf.text('Invoice Details', MG+CW, y+1, { align:'right' });
-  y+=9;
-
-  let yBill=y, yShip=y, yInv=y;
-
   const party           = tenant || {};
   const partyName       = party.name          || invoice.partyName    || '';
   const billingAddr     = party.billingAddress || party.address        || invoice.billingAddress || '';
-  const shippingAddr    = party.property       || party.billingAddress || party.address || invoice.property || '';
+  const shippingAddr    = party.property       || invoice.property     || '';   // only actual property — no billingAddress fallback
   const partyMobile     = party.mobile         || party.phone          || '';
   const partyGst        = party.gstNo          || party.gstNumber      || invoice.gstNo || '';
   const partyState      = party.state          || '';
   const partyLeaseStart = party.leaseStart     || '';
   const partyLeaseEnd   = party.leaseEnd       || '';
   const partyEscalation = party.nextEscalationDate || '';
+
+  // Layout: 3-col when Ship To exists, 2-col otherwise
+  const hasShipTo = !!shippingAddr;
+  const C1W = hasShipTo ? CW*0.37 : CW*0.55;
+  const C2W = CW*0.34;
+  const C1X=MG, C2X=MG+C1W;
+
+  // Column headings
+  fnt(12,true,...BLK);
+  pdf.text('Bill To', C1X, y+1);
+  if (hasShipTo) pdf.text('Ship To', C2X, y+1);
+  pdf.text('Invoice Details', MG+CW, y+1, { align:'right' });
+  y+=9;
+
+  let yBill=y, yShip=y, yInv=y;
 
   // Bill To
   fnt(10,true,...BLK);
@@ -152,9 +155,9 @@ export async function generateInvoicePDF(invoice, tenant, company) {
   if (partyLeaseEnd)  { pdf.text(`Agreement End : ${fdDot(partyLeaseEnd)}`,     C1X,yBill); yBill+=4.5; }
   if (partyEscalation){ pdf.text(`Rent Escalation : ${fdDot(partyEscalation)}`, C1X,yBill); yBill+=4.5; }
 
-  // Ship To — only address
-  fnt(9,false,...GR);
-  if (shippingAddr) {
+  // Ship To — only shown when property address exists
+  if (hasShipTo) {
+    fnt(9,false,...GR);
     const sAddr = pdf.splitTextToSize(shippingAddr, C2W-3);
     sAddr.slice(0,6).forEach(l=>{ pdf.text(l,C2X,yShip); yShip+=4.5; });
   }
@@ -176,32 +179,42 @@ export async function generateInvoicePDF(invoice, tenant, company) {
   // ════════════════════════════════════════════════════════════════
   // 4. LINE ITEMS TABLE
   // ════════════════════════════════════════════════════════════════
-  const RH=9;
+  const RH=10;
   const COLS=[
-    { lbl:'#',        w:8,                                                      r:false },
-    { lbl:'Item name',w:CW*0.33,                                                r:false },
-    { lbl:'HSN/ SAC', w:CW*0.12,                                                r:false },
-    { lbl:'Month',    w:CW*0.13,                                                r:false },
-    { lbl:'From',     w:CW*0.115,                                               r:false },
-    { lbl:'To',       w:CW*0.115,                                               r:false },
-    { lbl:'Amount',   w:CW-8-CW*0.33-CW*0.12-CW*0.13-CW*0.115-CW*0.115,      r:true  },
+    { lbl:'#',        w:7,                                                              r:false },
+    { lbl:'Item name',w:CW*0.28,                                                        r:false },
+    { lbl:'HSN/ SAC', w:CW*0.11,                                                        r:false },
+    { lbl:'Month',    w:CW*0.19,                                                        r:false },
+    { lbl:'From',     w:CW*0.115,                                                       r:false },
+    { lbl:'To',       w:CW*0.115,                                                       r:false },
+    { lbl:'Amount',   w:CW-7-CW*0.28-CW*0.11-CW*0.19-CW*0.115-CW*0.115,              r:true  },
   ];
 
   const drawRow=(cells,bg,hdr=false)=>{
-    if(bg) box(MG,y,CW,RH,...bg);
-    hl(MG,y+RH,MG+CW,...BDR);
+    // pre-wrap each cell to find the tallest
+    const wrapped=cells.map((val,i)=>{
+      if(hdr) return [val];
+      const maxW=COLS[i].w-4;
+      if(i===1||i===6) fnt(9,true,...BLK); else fnt(9,false,...GR);
+      return pdf.splitTextToSize(String(val||''), maxW);
+    });
+    const rowH=Math.max(RH, Math.max(...wrapped.map(l=>l.length))*4.5+3);
+    if(bg) box(MG,y,CW,rowH,...bg);
+    hl(MG,y+rowH,MG+CW,...BDR);
     let cx=MG;
-    cells.forEach((val,i)=>{
+    wrapped.forEach((lines,i)=>{
       const col=COLS[i];
       if(hdr)        fnt(9.5,true,...WH);
       else if(i===1) fnt(9,true,...BLK);
       else if(i===6) fnt(9,true,...BLK);
       else           fnt(9,false,...GR);
-      const tw=pdf.getTextWidth(val);
-      pdf.text(val, col.r ? cx+col.w-tw-2 : cx+2, y+RH-2);
+      lines.forEach((line,li)=>{
+        const tw=pdf.getTextWidth(line);
+        pdf.text(line, col.r ? cx+col.w-tw-2 : cx+2, y+4.5+li*4.5);
+      });
       cx+=col.w;
     });
-    y+=RH;
+    y+=rowH;
   };
 
   drawRow(['#','Item name','HSN/ SAC','Month','From','To','Amount'],TH_BG,true);
@@ -251,9 +264,13 @@ export async function generateInvoicePDF(invoice, tenant, company) {
   const leftEndX=PW/2-5;
 
   let yL=y;
-  fnt(10,true,...BLK); pdf.text('Description', MG,yL); yL+=5;
-  fnt(9,false,...GR);
-  pdf.text(`Period - ${fmDef.replace(/\//g,'.')} to ${toDef.replace(/\//g,'.')}`, MG,yL); yL+=7;
+  if (invoice.remarks) {
+    fnt(10,true,...BLK); pdf.text('Description', MG,yL); yL+=5;
+    fnt(9,false,...GR);
+    const remLines = pdf.splitTextToSize(String(invoice.remarks), leftEndX-MG);
+    remLines.forEach(l => { pdf.text(l, MG, yL); yL+=4.5; });
+    yL+=4;
+  }
 
   fnt(10,true,...BLK); pdf.text('Invoice Amount In Words', MG,yL); yL+=5;
   fnt(9,false,...GR);
@@ -294,31 +311,57 @@ export async function generateInvoicePDF(invoice, tenant, company) {
   // ════════════════════════════════════════════════════════════════
   // 6. PAY TO (left) | FOR COMPANY + SEAL + SIGNATORY (right)
   // ════════════════════════════════════════════════════════════════
-  if(y>PH-50){ pdf.addPage(); y=MG; }
+  if(y>PH-60){ pdf.addPage(); y=MG; }
 
+  const bankColW = 90;   // max width for bank detail lines (left column)
+  const sigX     = PW-MG; // right edge for signature section
+
+  // ── Pay To — left side, label bold-large / value small ──────────
   let yP=y;
-  fnt(10,true,...BLK); pdf.text('Pay To:', MG,yP); yP+=5;
-  fnt(9,false,...GR);
-  if(company?.bankName)          { pdf.text(`Bank Name : ${company.bankName}`,                         MG,yP); yP+=4.5; }
-  if(company?.accountNumber)     { pdf.text(`Bank Account No. : ${company.accountNumber}`,             MG,yP); yP+=4.5; }
-  if(company?.ifscCode)          { pdf.text(`Bank IFSC code : ${company.ifscCode}`,                    MG,yP); yP+=4.5; }
-  if(company?.accountHolderName) { pdf.text(`Account holder's name : ${company.accountHolderName}`,   MG,yP); yP+=4.5; }
+  fnt(10,true,...BLK); pdf.text('Pay To:', MG, yP); yP+=6;
 
+  const bankFields=[
+    { lbl:'Bank Name',             val: company?.bankName },
+    { lbl:'Bank Account No.',      val: company?.accountNumber },
+    { lbl:'Bank IFSC code',        val: company?.ifscCode },
+    { lbl:"Account holder's name", val: company?.accountHolderName },
+  ].filter(f=>f.val);
+
+  for(const {lbl,val} of bankFields){
+    // Label — 9pt bold dark
+    fnt(9,true,...BLK);
+    const lblTxt=`${lbl} :`;
+    pdf.text(lblTxt, MG, yP);
+    const lblW=pdf.getTextWidth(lblTxt)+2;
+
+    // Value — 9pt normal dark; first chunk on same line as label, continuation at left margin
+    fnt(9,false,...BLK);
+    const valStr = String(val);
+    const firstChunk = pdf.splitTextToSize(valStr, bankColW - lblW);
+    pdf.text(firstChunk[0], MG + lblW, yP);
+    if (firstChunk.length > 1) {
+      const rest = pdf.splitTextToSize(firstChunk.slice(1).join(' '), bankColW);
+      rest.forEach(line => { yP += 4; pdf.text(line, MG, yP); });
+    }
+    yP += 5;
+  }
+
+  // ── For: Company + Seal + Authorized Signatory — right side ─────
   let yS=y;
-  const forStr=`For :${(company?.companyName||invoice.company||'').slice(0,28)}`;
-  fnt(10,false,...GR);
-  pdf.text(forStr, PW-MG-pdf.getTextWidth(forStr), yS); yS+=12;
+  const compFull = company?.companyName || invoice.company || '';
+  fnt(9,false,...BLK);                                               // black, single line
+  pdf.text(`For :${compFull}`, sigX, yS, { align:'right' });
+  yS += 9;
 
   if(invoice.approved){
-    const stampY=yS-12;
-    if(sealB64){ try{ pdf.addImage(sealB64,imgFmt(sealB64),PW-MG-36,stampY-2,36,36,undefined,'FAST'); }catch{} }
-    yS=stampY+(sealB64?36:4);
+    if(sealB64){ try{ pdf.addImage(sealB64,imgFmt(sealB64),sigX-36,yS,36,36,undefined,'FAST'); yS+=38; }catch{ yS+=4; } }
+    else { yS+=4; }
   } else {
     yS+=9;
   }
 
-  fnt(12,true,...BLK);
-  pdf.text('Authorized Signatory', PW-MG-pdf.getTextWidth('Authorized Signatory'), yS+=4);
+  fnt(10,true,...BLK);
+  pdf.text('Authorized Signatory', sigX, yS+4, { align:'right' });
 
   pdf.save(`Invoice_${invoice.invoiceNo||'download'}.pdf`);
 }
