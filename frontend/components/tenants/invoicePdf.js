@@ -49,7 +49,7 @@ function imgFmt(b64) {
 }
 
 // ── INVOICE PDF ───────────────────────────────────────────────────────────────
-export async function generateInvoicePDF(invoice, tenant, company) {
+export async function generateInvoicePDF(invoice, tenant, company, { download = true } = {}) {
   const logoB64 = await loadImageB64(company?.logoUrl || null);
   const sealB64 = invoice.approved ? await loadImageB64(company?.sealUrl || null) : null;
 
@@ -366,7 +366,30 @@ export async function generateInvoicePDF(invoice, tenant, company) {
   fnt(10,true,...BLK);
   pdf.text('Authorized Signatory', centX, yS+4, { align:'center' });
 
-  pdf.save(`Invoice_${invoice.invoiceNo||'download'}.pdf`);
+  if (download) {
+    pdf.save(`Invoice_${invoice.invoiceNo||'download'}.pdf`);
+  } else {
+    return pdf.output('datauristring').split(',')[1];
+  }
+}
+
+// ── Send full invoice PDF to Slack (no download) ──────────────────────────────
+export async function sendInvoicePDFToSlack(invoice, tenant, company) {
+  try {
+    const pdfBase64 = await generateInvoicePDF(invoice, tenant, company, { download: false });
+    if (!pdfBase64) return;
+    await fetch('/api/slack/upload-pdf', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        pdfBase64,
+        invoiceNo:    invoice.invoiceNo    || '',
+        partyName:    invoice.partyName    || '',
+        totalInvoice: invoice.totalInvoice || 0,
+        billDate:     invoice.billDate     || '',
+      }),
+    });
+  } catch { /* non-fatal */ }
 }
 
 // ── LEDGER PDF ────────────────────────────────────────────────────────────────

@@ -11,6 +11,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'react-hot-toast';
 import { cn } from '@/lib/utils';
+import { sendInvoicePDFToSlack } from '../tenants/invoicePdf.js';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { PDFDocument } from 'pdf-lib';
@@ -222,8 +223,16 @@ export function InvoiceFormModal({ tenants = [], companies, otherParties = [], o
       const method = initialData?.id ? 'PUT' : 'POST';
 
       const res = await axios({ url, method, data });
-      if (res.status === 200 || res.status === 201) onSuccess();
-      else toast.error('Failed to save invoice');
+      if (res.status === 200 || res.status === 201) {
+        // Send PDF to Slack only on new invoice creation (not edit)
+        if (method === 'POST') {
+          const savedInvoice = res.data;
+          const company = companies?.find(c => (c._id || c.id) === String(savedInvoice.companyId || data.companyId));
+          const tenant  = tenants?.find(t  => (t._id  || t.id)  === String(savedInvoice.tenantId  || data.tenantId));
+          sendInvoicePDFToSlack(savedInvoice, tenant, company).catch(() => {});
+        }
+        onSuccess();
+      } else toast.error('Failed to save invoice');
     } catch (err) {
       const msg = err?.response?.data?.error || err?.response?.data?.message || err?.message || 'Error saving invoice';
       toast.error(msg);

@@ -1,9 +1,9 @@
 import mongoose from 'mongoose';
-;
 import { Invoice } from '../models/Invoice.js';
 import { InvoiceWorkflow, WORKFLOW_STEPS } from '../models/InvoiceWorkflow.js';
 import { Ledger } from '../models/Ledger.js';
 import { mockStorage, isUsingMockData } from '../src/mockData.js';
+import { notifyInvoiceCreated } from '../src/slack.js';
 
 
 // ── Generate Invoice Number: {currentYear}{nextYear2d}{count3d} ──────────────
@@ -304,6 +304,9 @@ export const createInvoice = async (req, res) => {
     } catch (wfErr) {
       console.error('Workflow auto-create error (non-fatal):', wfErr.message);
     }
+
+    // ── Slack notification (non-blocking) ─────────────────────────────────────
+    notifyInvoiceCreated(invoice.toObject()).catch(err => console.error('[Slack] outer error:', err.message));
 
     res.status(201).json({ ...invoice.toObject(), id: invoice._id });
   } catch (err) {
