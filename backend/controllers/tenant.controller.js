@@ -3,7 +3,7 @@ import { Tenant }   from '../models/Tenant.js';
 import { Invoice }  from '../models/Invoice.js';
 import { Ledger }   from '../models/Ledger.js';
 import { mockStorage, isUsingMockData } from '../src/mockData.js';
-import { uploadToGridFS } from '../src/gridfs.js';
+import { uploadToGridFS, deleteFromGridFS } from '../src/gridfs.js';
 import fs from 'fs';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -329,5 +329,49 @@ export const deleteTenant = async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     res.status(400).json({ error: err.message });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ELECTRICITY BILLS — Upload & Delete
+// ─────────────────────────────────────────────────────────────────────────────
+export const uploadElectricityBill = async (req, res) => {
+  try {
+    const tenant = await Tenant.findById(req.params.id);
+    if (!tenant) return res.status(404).json({ error: 'Tenant not found' });
+    if (!req.file)  return res.status(400).json({ error: 'No file uploaded' });
+
+    const url  = await uploadToGridFS(req.file);
+    const bill = {
+      url,
+      name: req.body.billName || req.file.originalname,
+      uploadedAt: new Date().toISOString(),
+    };
+
+    const bills = Array.isArray(tenant.electricityBills) ? tenant.electricityBills : [];
+    bills.push(bill);
+    await Tenant.findByIdAndUpdate(req.params.id, { electricityBills: bills });
+    res.json({ ok: true, bill });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const deleteElectricityBill = async (req, res) => {
+  try {
+    const tenant = await Tenant.findById(req.params.id);
+    if (!tenant) return res.status(404).json({ error: 'Tenant not found' });
+
+    const bills = Array.isArray(tenant.electricityBills) ? [...tenant.electricityBills] : [];
+    const idx   = parseInt(req.params.index, 10);
+    if (isNaN(idx) || idx < 0 || idx >= bills.length)
+      return res.status(400).json({ error: 'Invalid bill index' });
+
+    const [removed] = bills.splice(idx, 1);
+    await deleteFromGridFS(removed.url).catch(() => {});
+    await Tenant.findByIdAndUpdate(req.params.id, { electricityBills: bills });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };

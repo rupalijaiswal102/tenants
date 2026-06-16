@@ -1,5 +1,7 @@
-import { Clock, IndianRupee, FileCheck, FileText } from 'lucide-react';
+import { Clock, IndianRupee, FileCheck, FileText, Zap, Trash2, Upload, Eye, Download } from 'lucide-react';
 import { motion } from 'motion/react';
+import { useState, useRef } from 'react';
+import axios from 'axios';
 import { TimelineItemLarge, ConfigBlock } from '../TenantPrimitives.jsx';
 
 const SC = { background:'#fff', borderRadius:16, border:'1px solid #f0f2f5', boxShadow:'0 1px 3px rgba(0,0,0,0.04)' };
@@ -53,9 +55,50 @@ export function LeaseTab({ tenant, lockInExpiry }) {
 }
 
 // ── Documents Tab ─────────────────────────────────────────────────────────────
-export function DocumentsTab({ tenant }) {
+export function DocumentsTab({ tenant, onRefresh }) {
+  const [bills, setBills]       = useState(tenant.electricityBills || []);
+  const [uploading, setUploading] = useState(false);
+  const [deleting, setDeleting]   = useState(null);
+  const fileRef = useRef();
+
+  const handleUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('billFile', file);
+      fd.append('billName', file.name);
+      const { data } = await axios.post(`/api/tenants/${tenant._id}/electricity-bills`, fd);
+      setBills(prev => [...prev, data.bill]);
+    } catch (err) {
+      alert('Upload failed: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setUploading(false);
+      fileRef.current.value = '';
+    }
+  };
+
+  const handleDelete = async (idx) => {
+    if (!confirm('Delete this bill?')) return;
+    setDeleting(idx);
+    try {
+      await axios.delete(`/api/tenants/${tenant._id}/electricity-bills/${idx}`);
+      setBills(prev => prev.filter((_, i) => i !== idx));
+    } catch (err) {
+      alert('Delete failed: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setDeleting(null);
+    }
+  };
+
+  const fmt = (iso) => { try { return new Date(iso).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }); } catch { return '—'; } };
+
   return (
-    <motion.div key="doc" initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-8 }}>
+    <motion.div key="doc" initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-8 }}
+      style={{ display:'flex', flexDirection:'column', gap:20 }}>
+
+      {/* Lease Agreement */}
       {tenant.agreementFileUrl ? (
         <div style={{ ...SC, padding:24, maxWidth:360, display:'flex', flexDirection:'column', alignItems:'center', gap:16, textAlign:'center' }}>
           <div style={{ width:56, height:56, borderRadius:14, background:'#f0fdf4', display:'flex', alignItems:'center', justifyContent:'center' }}>
@@ -82,6 +125,63 @@ export function DocumentsTab({ tenant }) {
           <p style={{ fontSize:13, fontWeight:600, color:'#9ba8b5', margin:0 }}>No documents uploaded</p>
         </div>
       )}
+
+      {/* Electricity Bills */}
+      <div style={{ ...SC, padding:20 }}>
+        {/* Header */}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <div style={{ width:32, height:32, borderRadius:9, background:'#fefce8', display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <Zap size={15} color="#eab308"/>
+            </div>
+            <p style={{ fontSize:14, fontWeight:800, color:'#1a1a2e', margin:0 }}>Electricity Bills</p>
+          </div>
+          <label style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', background:'#f97316', color:'#fff', borderRadius:8, fontWeight:700, fontSize:12, cursor: uploading ? 'not-allowed' : 'pointer', opacity: uploading ? 0.7 : 1 }}>
+            <Upload size={13}/>
+            {uploading ? 'Uploading…' : 'Upload Bill'}
+            <input ref={fileRef} type="file" accept=".pdf,image/*" style={{ display:'none' }} onChange={handleUpload} disabled={uploading}/>
+          </label>
+        </div>
+
+        {/* Bill list */}
+        {bills.length === 0 ? (
+          <div style={{ padding:'28px 0', display:'flex', flexDirection:'column', alignItems:'center', gap:8, border:'2px dashed #f0f2f5', borderRadius:10 }}>
+            <Zap size={28} color="#e0e4ea"/>
+            <p style={{ fontSize:12, color:'#9ba8b5', margin:0 }}>No electricity bills uploaded yet</p>
+          </div>
+        ) : (
+          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+            {bills.map((bill, idx) => (
+              <div key={idx} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', background:'#f8f9fb', borderRadius:10, border:'1px solid #f0f2f5' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                  <FileText size={18} color="#eab308"/>
+                  <div>
+                    <p style={{ fontSize:12, fontWeight:700, color:'#1a1a2e', margin:0 }}>{bill.name || `Bill ${idx+1}`}</p>
+                    <p style={{ fontSize:10, color:'#9ba8b5', margin:0 }}>{fmt(bill.uploadedAt)}</p>
+                  </div>
+                </div>
+                <div style={{ display:'flex', gap:6 }}>
+                  <a href={bill.url} target="_blank" rel="noopener noreferrer"
+                    title="Preview"
+                    style={{ width:30, height:30, background:'#fff', border:'1px solid #e5e7eb', borderRadius:7, display:'flex', alignItems:'center', justifyContent:'center', textDecoration:'none' }}>
+                    <Eye size={13} color="#6b7280"/>
+                  </a>
+                  <a href={bill.url} download
+                    title="Download"
+                    style={{ width:30, height:30, background:'#fff', border:'1px solid #e5e7eb', borderRadius:7, display:'flex', alignItems:'center', justifyContent:'center', textDecoration:'none' }}>
+                    <Download size={13} color="#6b7280"/>
+                  </a>
+                  <button onClick={() => handleDelete(idx)} disabled={deleting === idx}
+                    title="Delete"
+                    style={{ width:30, height:30, background:'#fff5f5', border:'1px solid #fecaca', borderRadius:7, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
+                    <Trash2 size={13} color={deleting === idx ? '#ccc' : '#ef4444'}/>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </motion.div>
   );
 }
