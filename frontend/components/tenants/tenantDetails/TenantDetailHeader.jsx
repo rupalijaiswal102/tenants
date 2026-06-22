@@ -26,7 +26,7 @@ export default function TenantDetailHeader({ tenant, activeTab, setActiveTab, on
             <div>
               {/* Name + status */}
               <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-                <h2 style={{ fontSize:15, fontWeight:800, color:'#1a1a2e', margin:0 }}>{tenant.name}</h2>
+                <h2 style={{ fontSize:15, fontWeight:600, color:'#1e293b', margin:0 }}>{tenant.name}</h2>
                 <StatusBadge status={tenant.agreementStatus}/>
               </div>
               {/* Meta chips */}
@@ -68,7 +68,7 @@ export default function TenantDetailHeader({ tenant, activeTab, setActiveTab, on
             return (
               <button key={t.id} onClick={() => setActiveTab(t.id)}
                 style={{ display:'flex', alignItems:'center', gap:5, padding:'9px 16px', background:'none', border:'none', cursor:'pointer', fontSize:12, fontFamily:'inherit', whiteSpace:'nowrap', transition:'all 0.15s',
-                  fontWeight:    activeTab === t.id ? 700 : 500,
+                  fontWeight:    activeTab === t.id ? 600 : 400,
                   color:         activeTab === t.id ? '#f97316' : '#9ba8b5',
                   borderBottom:  activeTab === t.id ? '2px solid #f97316' : '2px solid transparent',
                   marginBottom: -2,

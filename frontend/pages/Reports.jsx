@@ -483,9 +483,9 @@ export default function Reports() {
           {reportType === 'outstanding' ? (
             <table style={{ width:'100%', borderCollapse:'collapse' }}>
               <thead>
-                <tr style={{ background:'#f8fafc', borderBottom:'1px solid #f0f2f5' }}>
+                <tr style={{ background:'#f8fafc', borderBottom:'1px solid #eef0f4' }}>
                   {['#', 'Tenant Name', 'Closing Balance', 'Status'].map((h, i) => (
-                    <th key={h} style={{ padding:'11px 16px', fontSize:10, fontWeight:700, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.06em', textAlign: i >= 2 ? 'right' : 'left', whiteSpace:'nowrap', borderBottom:'1px solid #f0f2f5' }}>{h}</th>
+                    <th key={h} style={{ padding:'11px 16px', fontSize:11, fontWeight:600, color:'#9ba8b5', textTransform:'uppercase', letterSpacing:'0.07em', textAlign: i >= 2 ? 'right' : 'left', whiteSpace:'nowrap', borderBottom:'1px solid #eef0f4' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -503,13 +503,13 @@ export default function Reports() {
                         style={{ borderBottom:'1px solid #f8fafc', transition:'background 0.1s' }}
                         onMouseEnter={e => e.currentTarget.style.background='#fafbff'}
                         onMouseLeave={e => e.currentTarget.style.background='transparent'}>
-                        <td style={{ padding:'12px 16px', fontSize:11, color:'#cbd5e1', fontWeight:600 }}>{idx+1}</td>
-                        <td style={{ padding:'12px 16px', fontSize:13, fontWeight:700, color:'#0f172a' }}>{d.tenantName}</td>
-                        <td style={{ padding:'12px 16px', fontSize:14, fontWeight:900, color:balColor, textAlign:'right', whiteSpace:'nowrap' }}>
+                        <td style={{ padding:'13px 16px', fontSize:12, color:'#9ba8b5', fontWeight:400 }}>{idx+1}</td>
+                        <td style={{ padding:'13px 16px', fontSize:13, fontWeight:500, color:'#1e293b' }}>{d.tenantName}</td>
+                        <td style={{ padding:'13px 16px', fontSize:13, fontWeight:600, color:balColor, textAlign:'right', whiteSpace:'nowrap' }}>
                           ₹{fmt(Math.abs(d.closingBalance))}
                         </td>
-                        <td style={{ padding:'12px 16px', textAlign:'right' }}>
-                          <span style={{ display:'inline-block', padding:'3px 10px', borderRadius:20, background:statusBg, color:statusColor, fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em' }}>{statusLabel}</span>
+                        <td style={{ padding:'13px 16px', textAlign:'right' }}>
+                          <span style={{ display:'inline-block', padding:'4px 10px', borderRadius:20, background:statusBg, color:statusColor, fontSize:11, fontWeight:600 }}>{statusLabel}</span>
                         </td>
                       </motion.tr>
                     );
@@ -537,7 +537,7 @@ export default function Reports() {
           /* Invoice-based tables */
           <table style={{ width:'100%', borderCollapse:'collapse' }}>
             <thead>
-              <tr style={{ background:'#f8fafc', borderBottom:'1px solid #f0f2f5' }}>
+              <tr style={{ background:'#f8fafc', borderBottom:'1px solid #eef0f4' }}>
                 {['#','Date','Invoice No.','Party Name','Invoiced',
                   ...(reportType==='collection' ? ['Received','Balance'] : []),
                   ...(reportType==='pending'    ? ['Outstanding']        : []),
@@ -545,7 +545,7 @@ export default function Reports() {
                   ...(reportType==='tds'        ? ['TDS Deducted','Net Received'] : []),
                   'Status'
                 ].map((h,i) => (
-                  <th key={h+i} style={{ padding:'11px 16px', fontSize:10, fontWeight:700, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:i>3?'right':'left', whiteSpace:'nowrap', borderBottom:'1px solid #f0f2f5' }}>{h}</th>
+                  <th key={h+i} style={{ padding:'11px 16px', fontSize:11, fontWeight:600, color:'#9ba8b5', textTransform:'uppercase', letterSpacing:'0.07em', textAlign:i>3?'right':'left', whiteSpace:'nowrap', borderBottom:'1px solid #eef0f4' }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -558,31 +558,29 @@ export default function Reports() {
                       style={{ borderBottom:'1px solid #f8fafc', cursor:'default', transition:'background 0.1s' }}
                       onMouseEnter={e => (e.currentTarget).style.background='#fafbff'}
                       onMouseLeave={e => (e.currentTarget).style.background='transparent'}>
-                      <td style={{ padding:'11px 16px', fontSize:11, color:'#cbd5e1', fontWeight:600 }}>{idx+1}</td>
-                      <td style={{ padding:'11px 16px', fontSize:12, color:'#475569', fontWeight:600, whiteSpace:'nowrap' }}>
+                      <td style={{ padding:'13px 16px', fontSize:12, color:'#9ba8b5', fontWeight:400 }}>{idx+1}</td>
+                      <td style={{ padding:'13px 16px', fontSize:13, color:'#64748b', fontWeight:400, whiteSpace:'nowrap' }}>
                         {new Date(inv.billDate).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}
                       </td>
-                      <td style={{ padding:'11px 16px' }}>
-                        <span style={{ fontSize:11, fontWeight:800, color:'#0f172a', background:'#f8fafc', padding:'3px 8px', borderRadius:6 }}>#{inv.invoiceNo}</span>
-                      </td>
-                      <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#0f172a', maxWidth:180, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{inv.partyName}</td>
-                      <td style={{ padding:'11px 16px', fontSize:12, fontWeight:800, color:'#0f172a', textAlign:'right', whiteSpace:'nowrap' }}>₹{fmt(inv.totalInvoice)}</td>
+                      <td style={{ padding:'13px 16px', fontSize:12, fontWeight:600, color:'#475569' }}>#{inv.invoiceNo}</td>
+                      <td style={{ padding:'13px 16px', fontSize:13, fontWeight:500, color:'#1e293b', maxWidth:180, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{inv.partyName}</td>
+                      <td style={{ padding:'13px 16px', fontSize:13, fontWeight:600, color:'#1e293b', textAlign:'right', whiteSpace:'nowrap' }}>₹{fmt(inv.totalInvoice)}</td>
                       {reportType==='collection' && <>
-                        <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#10b981', textAlign:'right', whiteSpace:'nowrap' }}>₹{fmt(inv.receivedAmount || inv.received)}</td>
-                        <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#ef4444', textAlign:'right', whiteSpace:'nowrap' }}>₹{fmt(inv.balanceAmount || inv.balance)}</td>
+                        <td style={{ padding:'13px 16px', fontSize:13, fontWeight:600, color:'#10b981', textAlign:'right', whiteSpace:'nowrap' }}>₹{fmt(inv.receivedAmount || inv.received)}</td>
+                        <td style={{ padding:'13px 16px', fontSize:13, fontWeight:600, color:'#ef4444', textAlign:'right', whiteSpace:'nowrap' }}>₹{fmt(inv.balanceAmount || inv.balance)}</td>
                       </>}
-                      {reportType==='pending' && <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#ef4444', textAlign:'right', whiteSpace:'nowrap' }}>₹{fmt(inv.balanceAmount || inv.balance)}</td>}
+                      {reportType==='pending' && <td style={{ padding:'13px 16px', fontSize:13, fontWeight:600, color:'#ef4444', textAlign:'right', whiteSpace:'nowrap' }}>₹{fmt(inv.balanceAmount || inv.balance)}</td>}
                       {reportType==='gst' && <>
-                        <td style={{ padding:'11px 16px', fontSize:12, fontWeight:600, color:'#6366f1', textAlign:'right', whiteSpace:'nowrap' }}>₹{fmt(inv.cgst)}</td>
-                        <td style={{ padding:'11px 16px', fontSize:12, fontWeight:600, color:'#6366f1', textAlign:'right', whiteSpace:'nowrap' }}>₹{fmt(inv.sgst)}</td>
-                        <td style={{ padding:'11px 16px', fontSize:12, fontWeight:800, color:'#6366f1', textAlign:'right', whiteSpace:'nowrap' }}>₹{fmt((inv.cgst||0)+(inv.sgst||0))}</td>
+                        <td style={{ padding:'13px 16px', fontSize:13, fontWeight:500, color:'#6366f1', textAlign:'right', whiteSpace:'nowrap' }}>₹{fmt(inv.cgst)}</td>
+                        <td style={{ padding:'13px 16px', fontSize:13, fontWeight:500, color:'#6366f1', textAlign:'right', whiteSpace:'nowrap' }}>₹{fmt(inv.sgst)}</td>
+                        <td style={{ padding:'13px 16px', fontSize:13, fontWeight:600, color:'#6366f1', textAlign:'right', whiteSpace:'nowrap' }}>₹{fmt((inv.cgst||0)+(inv.sgst||0))}</td>
                       </>}
                       {reportType==='tds' && <>
-                        <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#f59e0b', textAlign:'right', whiteSpace:'nowrap' }}>₹{fmt(inv.tdsAmount)}</td>
-                        <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#10b981', textAlign:'right', whiteSpace:'nowrap' }}>₹{fmt(inv.receivedAmount || inv.received)}</td>
+                        <td style={{ padding:'13px 16px', fontSize:13, fontWeight:600, color:'#f59e0b', textAlign:'right', whiteSpace:'nowrap' }}>₹{fmt(inv.tdsAmount)}</td>
+                        <td style={{ padding:'13px 16px', fontSize:13, fontWeight:600, color:'#10b981', textAlign:'right', whiteSpace:'nowrap' }}>₹{fmt(inv.receivedAmount || inv.received)}</td>
                       </>}
-                      <td style={{ padding:'11px 16px', textAlign:'right' }}>
-                        <span style={{ display:'inline-block', padding:'3px 9px', borderRadius:20, background:st.bg, color:st.color, fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em' }}>{inv.paymentStatus}</span>
+                      <td style={{ padding:'13px 16px', textAlign:'right' }}>
+                        <span style={{ display:'inline-block', padding:'4px 10px', borderRadius:20, background:st.bg, color:st.color, fontSize:11, fontWeight:600 }}>{inv.paymentStatus}</span>
                       </td>
                     </motion.tr>
                   );

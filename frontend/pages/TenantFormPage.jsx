@@ -1,22 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { User, Building, IndianRupee, FileCheck, Loader2 } from 'lucide-react';
+import { User, Building, IndianRupee, FileCheck, Loader2, X, ArrowLeft, ArrowRight, Save } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'react-hot-toast';
 import axios from 'axios';
 
-// ── Sub-components ────────────────────────────────────────────────────────────
-import { getSteps }      from '../components/tenants/tenantForm/OtherParties_formUtils.jsx';
-import FormHeader from '../components/tenants/tenantForm/OtherParties_FormHeader.jsx';
-import StepIndicator     from '../components/tenants/tenantForm/OtherParties_StepIndicator.jsx';
-import FormNavFooter     from '../components/tenants/tenantForm/OtherParties_FormNavFooter.jsx';
-import Step1_PartyInfo   from '../components/tenants/tenantForm/OtherParties_Step1_PartyInfo.jsx';
-import Step2_LeaseProperty from '../components/tenants/tenantForm/OtherParties_Step2_LeaseProperty.jsx';
-import Step3_Financials  from '../components/tenants/tenantForm/OtherParties_Step3_Financials.jsx';
-import Step4_Documents   from '../components/tenants/tenantForm/OtherParties_Step4_Documents.jsx';
+import { getSteps }            from '../components/tenants/tenantForm/OtherParties_formUtils.jsx';
+import StepIndicator           from '../components/tenants/tenantForm/OtherParties_StepIndicator.jsx';
+import Step1_PartyInfo         from '../components/tenants/tenantForm/OtherParties_Step1_PartyInfo.jsx';
+import Step2_LeaseProperty     from '../components/tenants/tenantForm/OtherParties_Step2_LeaseProperty.jsx';
+import Step3_Financials        from '../components/tenants/tenantForm/OtherParties_Step3_Financials.jsx';
+import Step4_Documents         from '../components/tenants/tenantForm/OtherParties_Step4_Documents.jsx';
 
-// ── Step icon map ─────────────────────────────────────────────────────────────
 const STEP_ICONS = [
   <User size={15} color="#f97316"/>,
   <Building size={15} color="#f97316"/>,
@@ -24,7 +20,6 @@ const STEP_ICONS = [
   <FileCheck size={15} color="#f97316"/>,
 ];
 
-// ── Default form values ───────────────────────────────────────────────────────
 const DEFAULT_VALUES = {
   code: 'Loading...', name: '', company: '', property: '', contactPerson: '', designation: '',
   mobile: '', email: '', alternateContactPerson: '', rentalPurpose: '',
@@ -37,15 +32,15 @@ const DEFAULT_VALUES = {
   openingBalanceDate: new Date().toISOString().split('T')[0], openingBalanceNotes: '',
 };
 
-export default function TenantFormPage({ mode = 'tenant' }) {
-  const STEPS   = getSteps(mode);
+export default function TenantFormPage({ mode = 'tenant', propId, onClose: propOnClose, onSuccess: propOnSuccess }) {
+  const STEPS    = getSteps(mode);
   const basePath = mode === 'otherParty' ? '/other-parties' : '/tenants';
   const apiBase  = mode === 'otherParty' ? '/api/other-parties' : '/api/tenants';
 
-  const { id }   = useParams();
-  const navigate = useNavigate();
+  const { id: paramId } = useParams();
+  const id              = propId ?? paramId;   // prefer prop, fall back to URL param
+  const navigate        = useNavigate();
 
-  // ── State ──────────────────────────────────────────────────────────────────
   const [step,           setStep]           = useState(1);
   const [loading,        setLoading]        = useState(false);
   const [initialLoading, setInitialLoading] = useState(!!id);
@@ -57,12 +52,15 @@ export default function TenantFormPage({ mode = 'tenant' }) {
   const [agreementFile,  setAgreementFile]  = useState(null);
   const [filePreview,    setFilePreview]    = useState(null);
   const [companies,      setCompanies]      = useState([]);
+  const [visible,        setVisible]        = useState(false);
 
   const { register, handleSubmit, control, setValue, watch, reset, getValues, formState: { errors } } = useForm({
     defaultValues: DEFAULT_VALUES,
   });
 
-  // ── Fetch data on mount ────────────────────────────────────────────────────
+  // Animate in on mount
+  useEffect(() => { setTimeout(() => setVisible(true), 10); }, []);
+
   useEffect(() => {
     fetchCompanies();
     if (id) fetchTenant();
@@ -88,40 +86,26 @@ export default function TenantFormPage({ mode = 'tenant' }) {
       const { data: t } = await axios.get(`${apiBase}/${id}`);
       const str = (v) => v ?? '';
       reset({
-        ...DEFAULT_VALUES,
-        ...t,
-        name:                   str(t.name),
-        company:                str(t.company),
-        property:               str(t.property),
-        contactPerson:          str(t.contactPerson),
-        designation:            str(t.designation),
-        mobile:                 str(t.mobile),
-        email:                  str(t.email),
+        ...DEFAULT_VALUES, ...t,
+        name: str(t.name), company: str(t.company), property: str(t.property),
+        contactPerson: str(t.contactPerson), designation: str(t.designation),
+        mobile: str(t.mobile), email: str(t.email),
         alternateContactPerson: str(t.alternateContactPerson),
-        rentalPurpose:          str(t.rentalPurpose),
-        leaseStart:             str(t.leaseStart),
-        leaseEnd:               str(t.leaseEnd),
-        nextEscalationDate:     str(t.nextEscalationDate),
-        referenceDate:          str(t.referenceDate),
-        gstNo:                  str(t.gstNo),
-        panNumber:              str(t.panNumber),
-        legalName:              str(t.legalName),
-        billingAddress:         str(t.billingAddress),
-        state:                  str(t.state),
-        pincode:                str(t.pincode),
-        agreementStatus:        t.agreementStatus   || 'Pending',
-        agreementFileUrl:       str(t.agreementFileUrl),
-        openingBalanceType:     t.openingBalanceType || 'Debit',
-        openingBalanceNotes:    str(t.openingBalanceNotes),
-        tenure:               t.tenure               ?? 12,
-        lockIn:               t.lockIn               ?? 6,
-        noticePeriod:         t.noticePeriod         ?? 60,
-        escalationPercent:    t.escalationPercent    ?? 5,
-        securityDeposit:      t.securityDeposit      ?? 0,
-        currentRent:          t.currentRent          ?? 0,
-        rentFreePeriodDays:   t.rentFreePeriodDays   ?? 0,
+        rentalPurpose: str(t.rentalPurpose),
+        leaseStart: str(t.leaseStart), leaseEnd: str(t.leaseEnd),
+        nextEscalationDate: str(t.nextEscalationDate), referenceDate: str(t.referenceDate),
+        gstNo: str(t.gstNo), panNumber: str(t.panNumber), legalName: str(t.legalName),
+        billingAddress: str(t.billingAddress), state: str(t.state), pincode: str(t.pincode),
+        agreementStatus: t.agreementStatus || 'Pending',
+        agreementFileUrl: str(t.agreementFileUrl),
+        openingBalanceType: t.openingBalanceType || 'Debit',
+        openingBalanceNotes: str(t.openingBalanceNotes),
+        tenure: t.tenure ?? 12, lockIn: t.lockIn ?? 6,
+        noticePeriod: t.noticePeriod ?? 60, escalationPercent: t.escalationPercent ?? 5,
+        securityDeposit: t.securityDeposit ?? 0, currentRent: t.currentRent ?? 0,
+        rentFreePeriodDays: t.rentFreePeriodDays ?? 0,
         openingBalanceAmount: t.openingBalanceAmount ?? 0,
-        openingBalanceDate:   t.openingBalanceDate   || DEFAULT_VALUES.openingBalanceDate,
+        openingBalanceDate: t.openingBalanceDate || DEFAULT_VALUES.openingBalanceDate,
       });
     } catch {
       toast.error('Failed to load');
@@ -131,7 +115,6 @@ export default function TenantFormPage({ mode = 'tenant' }) {
     }
   };
 
-  // ── GST autofill ──────────────────────────────────────────────────────────
   const handleGstFetch = async (gstNo) => {
     if (!gstNo || !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][A-Z0-9]{3}$/.test(gstNo)) return;
     setGstLoading(true); setGstSuccess(false);
@@ -141,20 +124,17 @@ export default function TenantFormPage({ mode = 'tenant' }) {
       const d = await r.json();
       if (d.billingAddress || d.address) {
         setValue('billingAddress', d.billingAddress || d.address);
-        setGstSuccess(true);
-        toast.success('Address autofilled');
+        setGstSuccess(true); toast.success('Address autofilled');
       }
     } catch {} finally { setGstLoading(false); }
   };
 
-  // ── Submit ────────────────────────────────────────────────────────────────
   const onFormSubmit = async (data) => {
     setLoading(true);
     const startTime = Date.now();
     try {
-      // getValues() ensures unmounted step fields (e.g. Step 3 when submitting from Step 4) are included
       const allValues = { ...getValues(), ...data };
-      const formData = new FormData();
+      const formData  = new FormData();
       Object.keys(allValues).forEach(k => {
         if (allValues[k] !== null && allValues[k] !== undefined) formData.append(k, allValues[k]);
       });
@@ -177,7 +157,8 @@ export default function TenantFormPage({ mode = 'tenant' }) {
         await axios.post(apiBase, formData, config);
         toast.success(mode === 'otherParty' ? 'Other party created' : 'Tenant created');
       }
-      navigate(basePath);
+      if (propOnSuccess) propOnSuccess();
+      else               navigate(basePath);
     } catch (e) {
       toast.error(e.response?.data?.error || 'Failed to save');
     } finally {
@@ -185,55 +166,103 @@ export default function TenantFormPage({ mode = 'tenant' }) {
     }
   };
 
-  // ── Loading screen ────────────────────────────────────────────────────────
+  const handleClose = () => {
+    setVisible(false);
+    setTimeout(() => {
+      if (propOnClose) propOnClose();
+      else             navigate(basePath);
+    }, 300);
+  };
+
+  const currentStepData = STEPS[step - 1];
+  const isLastStep      = step === STEPS.length;
+  const submitLabel     = id
+    ? 'Save Changes'
+    : (mode === 'otherParty' ? 'Create Other Party' : 'Create Tenant');
+
   if (initialLoading) return (
-    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:400 }}>
+    <div style={{ position:'fixed', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(15,23,42,0.35)', zIndex:200 }}>
       <Loader2 size={36} color="#f97316" style={{ animation:'spin 1s linear infinite' }}/>
     </div>
   );
 
-  const currentStepData = STEPS[step - 1];
-
-  // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div style={{ minHeight:'100vh', background:'#F4F6FA', paddingBottom:60 }}>
+    <>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
 
-      {/* Orange top bar */}
-      <div style={{ background:'linear-gradient(135deg,#f97316,#ea580c)', height:8, width:'100%' }}/>
-
-      {/* Sticky header */}
-      <FormHeader
-        mode={mode} id={id}
-        step={step} totalSteps={STEPS.length}
-        stepSub={currentStepData.sub}
-        loading={loading} compressing={compressing}
-        onSubmit={handleSubmit(onFormSubmit)}
+      {/* ── Backdrop ── */}
+      <div
+        onClick={handleClose}
+        style={{
+          position:'fixed', inset:0, zIndex:199,
+          background: visible ? 'rgba(15,23,42,0.4)' : 'transparent',
+          backdropFilter: visible ? 'blur(2px)' : 'none',
+          transition:'all 0.3s',
+        }}
       />
 
-      <div style={{ maxWidth:900, margin:'0 auto', padding:'20px 24px 0' }}>
+      {/* ── Panel ── */}
+      <div style={{
+        position:'fixed', top:0, right:0, bottom:0, zIndex:200,
+        width: 780, maxWidth:'100vw',
+        background:'#fff',
+        display:'flex', flexDirection:'column',
+        boxShadow:'-8px 0 40px rgba(0,0,0,0.12)',
+        borderRadius:'20px 0 0 20px',
+        transform: visible ? 'translateX(0)' : 'translateX(100%)',
+        transition:'transform 0.3s cubic-bezier(0.32,0.72,0,1)',
+      }}>
 
-        {/* Step indicator */}
-        <StepIndicator steps={STEPS} currentStep={step} onStepClick={setStep}/>
+        {/* ── Panel Header ── */}
+        <div style={{
+          padding:'18px 24px',
+          borderBottom:'1px solid #f0f2f5',
+          display:'flex', alignItems:'center', justifyContent:'space-between',
+          flexShrink:0,
+        }}>
+          <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+            <div style={{ width:42, height:42, borderRadius:12, background:'#fff7ed', display:'flex', alignItems:'center', justifyContent:'center' }}>
+              {STEP_ICONS[step - 1]}
+            </div>
+            <div>
+              <h2 style={{ fontSize:16, fontWeight:800, color:'#1a1a2e', margin:0 }}>
+                {id ? `Edit ${mode === 'otherParty' ? 'Other Party' : 'Tenant'}` : `New ${mode === 'otherParty' ? 'Other Party' : 'Tenant'}`}
+              </h2>
+              <p style={{ fontSize:11, color:'#9ba8b5', margin:'2px 0 0', fontWeight:500 }}>
+                Step {step} of {STEPS.length} — {currentStepData.sub}
+              </p>
+            </div>
+          </div>
+          <button onClick={handleClose}
+            style={{ width:32, height:32, borderRadius:8, border:'1px solid #e5e7eb', background:'#fff', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'#9ba8b5' }}>
+            <X size={16}/>
+          </button>
+        </div>
 
-        {/* Form card */}
-        <form onSubmit={handleSubmit(onFormSubmit)}>
-          <AnimatePresence mode="wait">
-            <motion.div key={step} initial={{ opacity:0, x:20 }} animate={{ opacity:1, x:0 }} exit={{ opacity:0, x:-20 }} transition={{ duration:0.2 }}
-              style={{ background:'#fff', borderRadius:20, border:'1px solid #e8edf4', boxShadow:'0 1px 3px rgba(0,0,0,0.04)', overflow:'hidden' }}>
+        {/* ── Step Indicator ── */}
+        <div style={{ padding:'12px 24px 0', borderBottom:'1px solid #f8f9fb', flexShrink:0 }}>
+          <StepIndicator steps={STEPS} currentStep={step} onStepClick={setStep}/>
+        </div>
 
-              {/* Card header */}
-              <div style={{ borderBottom:'2px solid #f8fafc', padding:'20px 28px', display:'flex', alignItems:'center', gap:10 }}>
-                <div style={{ width:32, height:32, borderRadius:9, background:'rgba(249,115,22,0.1)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                  {STEP_ICONS[step - 1]}
+        {/* ── Scrollable Form Content ── */}
+        <div style={{ flex:1, overflowY:'auto', padding:'20px 24px' }}>
+          <form onSubmit={handleSubmit(onFormSubmit)}>
+            <AnimatePresence mode="wait">
+              <motion.div key={step}
+                initial={{ opacity:0, x:16 }} animate={{ opacity:1, x:0 }} exit={{ opacity:0, x:-16 }}
+                transition={{ duration:0.18 }}>
+
+                {/* Step section header */}
+                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:20, paddingBottom:12, borderBottom:'1px solid #f0f2f5' }}>
+                  <div style={{ width:28, height:28, borderRadius:8, background:'rgba(249,115,22,0.1)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                    {STEP_ICONS[step - 1]}
+                  </div>
+                  <div>
+                    <p style={{ fontSize:10, fontWeight:800, color:'#f97316', textTransform:'uppercase', letterSpacing:'0.12em', margin:0 }}>{currentStepData.title}</p>
+                    <p style={{ fontSize:11, color:'#94a3b8', margin:0 }}>{currentStepData.sub}</p>
+                  </div>
                 </div>
-                <div>
-                  <p style={{ fontSize:10, fontWeight:800, color:'#f97316', textTransform:'uppercase', letterSpacing:'0.12em', margin:0 }}>{currentStepData.title}</p>
-                  <p style={{ fontSize:12, color:'#94a3b8', margin:0, fontWeight:500 }}>{currentStepData.sub}</p>
-                </div>
-              </div>
 
-              {/* Step content */}
-              <div style={{ padding:28 }}>
                 {step === 1 && (
                   <Step1_PartyInfo
                     register={register} control={control} errors={errors} watch={watch}
@@ -259,21 +288,73 @@ export default function TenantFormPage({ mode = 'tenant' }) {
                     mode={mode}
                   />
                 )}
-              </div>
+              </motion.div>
+            </AnimatePresence>
+          </form>
+        </div>
 
-              {/* Navigation footer */}
-              <FormNavFooter
-                steps={STEPS} currentStep={step}
-                onPrev={() => setStep(s => s - 1)}
-                onNext={() => setStep(s => s + 1)}
-                onSubmit={handleSubmit(onFormSubmit)}
-                loading={loading} compressing={compressing}
-                mode={mode} id={id}
-              />
-            </motion.div>
-          </AnimatePresence>
-        </form>
+        {/* ── Panel Footer (Back / Next / Submit) ── */}
+        <div style={{
+          padding:'14px 24px',
+          borderTop:'1px solid #f0f2f5',
+          display:'flex', alignItems:'center', justifyContent:'space-between',
+          flexShrink:0, background:'#fff',
+        }}>
+          {/* Back */}
+          <button type="button" onClick={() => setStep(s => s - 1)} disabled={step === 1}
+            style={{
+              display:'flex', alignItems:'center', gap:6,
+              padding:'9px 18px', borderRadius:9, fontFamily:'inherit',
+              border: step > 1 ? '1px solid #e5e7eb' : 'none',
+              background: step > 1 ? '#fff' : 'transparent',
+              color: step > 1 ? '#64748b' : 'transparent',
+              fontSize:13, fontWeight:600, cursor: step > 1 ? 'pointer' : 'default',
+            }}>
+            <ArrowLeft size={14}/> Back
+          </button>
+
+          {/* Step dots */}
+          <div style={{ display:'flex', gap:5 }}>
+            {STEPS.map(s => (
+              <div key={s.id} style={{
+                height:6, borderRadius:4, transition:'all 0.3s',
+                width: step === s.id ? 20 : 6,
+                background: step >= s.id ? '#f97316' : '#e8edf4',
+              }}/>
+            ))}
+          </div>
+
+          {/* Next / Submit */}
+          {!isLastStep ? (
+            <button type="button" onClick={() => setStep(s => s + 1)}
+              style={{
+                display:'flex', alignItems:'center', gap:6,
+                padding:'9px 20px', background:'#f97316', color:'#fff',
+                border:'none', borderRadius:9, fontSize:13, fontWeight:700,
+                cursor:'pointer', fontFamily:'inherit',
+                boxShadow:'0 2px 8px rgba(249,115,22,0.3)',
+              }}>
+              Next <ArrowRight size={14}/>
+            </button>
+          ) : (
+            <button type="button" onClick={handleSubmit(onFormSubmit)}
+              disabled={loading || compressing}
+              style={{
+                display:'flex', alignItems:'center', gap:6,
+                padding:'9px 20px', borderRadius:9, fontFamily:'inherit',
+                background: loading ? '#fdba74' : '#f97316',
+                color:'#fff', border:'none', fontSize:13, fontWeight:700,
+                cursor: loading ? 'not-allowed' : 'pointer',
+                boxShadow:'0 2px 8px rgba(249,115,22,0.3)',
+              }}>
+              {loading
+                ? <Loader2 size={14} style={{ animation:'spin 1s linear infinite' }}/>
+                : <Save size={14}/>}
+              {loading ? 'Saving…' : submitLabel}
+            </button>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }

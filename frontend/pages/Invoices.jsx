@@ -268,9 +268,9 @@ export default function InvoiceList() {
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 600 }}>
             <thead>
-              <tr style={{ background: '#f8fafc', borderBottom: '1px solid #f0f2f5' }}>
+              <tr style={{ background: '#f8fafc', borderBottom: '1px solid #eef0f4' }}>
                 {['Invoice No', 'Party Name', 'Bill Date', 'Amount', 'Received', 'Balance', 'Status', 'Workflow', 'Actions'].map((h, i) => (
-                  <th key={h} style={{ padding: '11px 14px', fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', textAlign: i >= 3 && i <= 5 ? 'right' : i === 7 ? 'center' : 'left', whiteSpace: 'nowrap', borderBottom: '1px solid #f0f2f5' }}>{h}</th>
+                  <th key={h} style={{ padding: '11px 16px', fontSize: 11, fontWeight: 600, color: '#9ba8b5', textTransform: 'uppercase', letterSpacing: '0.07em', textAlign: i >= 3 && i <= 5 ? 'right' : i === 7 ? 'center' : 'left', whiteSpace: 'nowrap', borderBottom: '1px solid #eef0f4' }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -302,47 +302,47 @@ export default function InvoiceList() {
                     onMouseLeave={e => (e.currentTarget).style.background = 'transparent'}>
 
                     {/* Invoice No */}
-                    <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
-                      <span style={{ fontSize: 11, fontWeight: 800, color: '#0f172a', background: '#f8fafc', padding: '3px 8px', borderRadius: 6, fontFamily: 'monospace' }}>#{inv.invoiceNo}</span>
+                    <td style={{ padding: '13px 16px', whiteSpace: 'nowrap' }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>#{inv.invoiceNo}</span>
                     </td>
 
                     {/* Party Name */}
-                    <td style={{ padding: '12px 14px', maxWidth: 180 }}>
-                      <p style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inv.partyName}</p>
-                      <p style={{ fontSize: 10, color: '#94a3b8', margin: '1px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inv.company}</p>
+                    <td style={{ padding: '13px 16px', maxWidth: 180 }}>
+                      <p style={{ fontSize: 13, fontWeight: 500, color: '#1e293b', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inv.partyName}</p>
+                      <p style={{ fontSize: 11, color: '#9ba8b5', margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inv.company}</p>
                     </td>
 
                     {/* Bill Date */}
-                    <td style={{ padding: '12px 14px', fontSize: 11, color: '#475569', fontWeight: 600, whiteSpace: 'nowrap' }}>{fmtDate(inv.billDate)}</td>
+                    <td style={{ padding: '13px 16px', fontSize: 13, color: '#64748b', fontWeight: 400, whiteSpace: 'nowrap' }}>{fmtDate(inv.billDate)}</td>
 
                     {/* Amount */}
-                    <td style={{ padding: '12px 14px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      <span style={{ fontSize: 13, fontWeight: 800, color: '#0f172a' }}>{fmt(inv.totalInvoice)}</span>
+                    <td style={{ padding: '13px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: '#1e293b' }}>{fmt(inv.totalInvoice)}</span>
                     </td>
 
                     {/* Received */}
-                    <td style={{ padding: '12px 14px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: received > 0 ? '#10b981' : '#cbd5e1' }}>{fmt(received)}</span>
+                    <td style={{ padding: '13px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: received > 0 ? '#10b981' : '#cbd5e1' }}>{fmt(received)}</span>
                     </td>
 
                     {/* Balance */}
-                    <td style={{ padding: '12px 14px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: balance > 0 ? '#ef4444' : '#10b981' }}>{fmt(balance)}</span>
+                    <td style={{ padding: '13px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: balance > 0 ? '#ef4444' : '#10b981' }}>{fmt(balance)}</span>
                     </td>
 
                     {/* Status */}
-                    <td style={{ padding: '12px 14px', textAlign: 'center' }}>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', borderRadius: 20, background: st.bg, color: st.color, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
-                        <span style={{ width: 4, height: 4, borderRadius: '50%', background: st.dot, flexShrink: 0 }}/>
+                    <td style={{ padding: '13px 16px', textAlign: 'center' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, background: st.bg, color: st.color, fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                        <span style={{ width: 5, height: 5, borderRadius: '50%', background: st.dot, flexShrink: 0 }}/>
                         {inv.paymentStatus}
                       </span>
                     </td>
 
                     {/* Workflow */}
-                    <td style={{ padding: '12px 14px', textAlign:'center' }}>
+                    <td style={{ padding: '13px 16px', textAlign:'center' }}>
                       <button
                         onClick={() => navigate(`/invoices/${inv.id || inv._id}/workflow`)}
-                        style={{ padding:'5px 12px', borderRadius:8, border:'1px solid #bbf7d0', background:'#f0fdf4', cursor:'pointer', fontSize:11, fontWeight:700, color:'#15803d', display:'inline-flex', alignItems:'center', gap:5, transition:'all 0.1s' }}
+                        style={{ padding:'5px 12px', borderRadius:8, border:'1px solid #bbf7d0', background:'#f0fdf4', cursor:'pointer', fontSize:11, fontWeight:600, color:'#15803d', display:'inline-flex', alignItems:'center', gap:5, transition:'all 0.1s' }}
                         onMouseEnter={e => { e.currentTarget.style.background='#15803d'; e.currentTarget.style.color='#fff'; }}
                         onMouseLeave={e => { e.currentTarget.style.background='#f0fdf4'; e.currentTarget.style.color='#15803d'; }}>
                         <GitBranch size={12}/> Workflow
@@ -350,7 +350,7 @@ export default function InvoiceList() {
                     </td>
 
                     {/* Actions */}
-                    <td style={{ padding: '12px 14px' }}>
+                    <td style={{ padding: '13px 16px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
                         {[
                           { icon: Eye,    show: true,       title: 'View',   onClick: () => setSelectedInvoice(inv),  color: '#3b82f6', hbg: '#eff6ff' },

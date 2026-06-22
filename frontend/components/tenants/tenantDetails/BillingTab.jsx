@@ -14,7 +14,7 @@ export default function BillingTab({ invoices = [], onPay, onView, onEdit, onDel
       {/* Header */}
       <div style={{ padding:'16px 20px', borderBottom:'1px solid #f8f9fb', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
         <div>
-          <p style={{ fontSize:14, fontWeight:800, color:'#1a1a2e', margin:0 }}>Billing History</p>
+          <p style={{ fontSize:14, fontWeight:600, color:'#1e293b', margin:0 }}>Billing History</p>
           <p style={{ fontSize:11, color:'#9ba8b5', margin:'3px 0 0' }}>Complete record of generated invoices</p>
         </div>
         <div style={{ display:'flex', gap:6 }}>
@@ -30,7 +30,7 @@ export default function BillingTab({ invoices = [], onPay, onView, onEdit, onDel
           <thead>
             <tr style={{ background:'#f8f9fb' }}>
               {['Inv No.','Bill Date','Total','Received','TDS','Balance','Status','Actions'].map((h, i) => (
-                <th key={h} style={{ padding:'10px 16px', fontSize:9, fontWeight:800, color:'#9ba8b5', textTransform:'uppercase', letterSpacing:'0.08em', borderBottom:'2px solid #f0f2f5', whiteSpace:'nowrap',
+                <th key={h} style={{ padding:'10px 16px', fontSize:11, fontWeight:600, color:'#9ba8b5', textTransform:'uppercase', letterSpacing:'0.07em', borderBottom:'1px solid #eef0f4', whiteSpace:'nowrap',
                   textAlign: i >= 2 && i <= 5 ? 'right' : 'left',
                 }}>{h}</th>
               ))}
@@ -44,23 +44,23 @@ export default function BillingTab({ invoices = [], onPay, onView, onEdit, onDel
                 <tr key={inv.id} style={{ borderBottom:'1px solid #f8f9fb', transition:'background 0.1s' }}
                   onMouseEnter={e => e.currentTarget.style.background = '#fafbfc'}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                  <td style={{ padding:'11px 16px', fontSize:11, fontWeight:700, color:'#9ba8b5' }}>#{inv.invoiceNo}</td>
-                  <td style={{ padding:'11px 16px', fontSize:12, fontWeight:600, color:'#1a1a2e' }}>{inv.billDate}</td>
-                  <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#1a1a2e', textAlign:'right' }}>₹{Math.round(inv.totalInvoice || 0).toLocaleString()}</td>
-                  <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#10b981', textAlign:'right' }}>₹{Math.round(inv.receivedAmount || inv.received || 0).toLocaleString()}</td>
-                  <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#8b5cf6', textAlign:'right' }}>₹{Math.round(inv.tdsAmount || 0).toLocaleString()}</td>
+                  <td style={{ padding:'12px 16px', fontSize:12, fontWeight:500, color:'#64748b' }}>#{inv.invoiceNo}</td>
+                  <td style={{ padding:'12px 16px', fontSize:13, fontWeight:400, color:'#64748b' }}>{inv.billDate}</td>
+                  <td style={{ padding:'12px 16px', fontSize:13, fontWeight:600, color:'#1e293b', textAlign:'right' }}>₹{Math.round(inv.totalInvoice || 0).toLocaleString()}</td>
+                  <td style={{ padding:'12px 16px', fontSize:13, fontWeight:600, color:'#10b981', textAlign:'right' }}>₹{Math.round(inv.receivedAmount || inv.received || 0).toLocaleString()}</td>
+                  <td style={{ padding:'12px 16px', fontSize:13, fontWeight:600, color:'#8b5cf6', textAlign:'right' }}>₹{Math.round(inv.tdsAmount || 0).toLocaleString()}</td>
                   {(() => { const bal = Math.max(0, Math.round(inv.balanceAmount || inv.balance || 0)); return (
-                  <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color: bal === 0 ? '#10b981' : '#ef4444', textAlign:'right' }}>₹{bal.toLocaleString()}</td>
+                  <td style={{ padding:'12px 16px', fontSize:13, fontWeight:600, color: bal === 0 ? '#10b981' : '#ef4444', textAlign:'right' }}>₹{bal.toLocaleString()}</td>
                   ); })()}
                   {(() => {
                     const bal = Math.max(0, Math.round(inv.balanceAmount || inv.balance || 0));
                     const status = bal === 0 && (inv.totalInvoice || 0) > 0 ? 'Paid' : inv.paymentStatus;
-                    return <td style={{ padding:'11px 16px' }}><InvoiceStatusBadge status={status}/></td>;
+                    return <td style={{ padding:'12px 16px' }}><InvoiceStatusBadge status={status}/></td>;
                   })()}
-                  <td style={{ padding:'11px 16px' }}>
+                  <td style={{ padding:'12px 16px' }}>
                     <div style={{ display:'flex', gap:4, justifyContent:'flex-end' }}>
                       {can('payment') && (
-                        <button onClick={() => onPay(inv)} style={{ padding:'4px 10px', background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:6, cursor:'pointer', fontSize:10, fontWeight:700, color:'#15803d', display:'flex', alignItems:'center', gap:3, fontFamily:'inherit' }}>
+                        <button onClick={() => onPay(inv)} style={{ padding:'4px 10px', background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:6, cursor:'pointer', fontSize:10, fontWeight:600, color:'#15803d', display:'flex', alignItems:'center', gap:3, fontFamily:'inherit' }}>
                           <Plus size={11}/> Pay
                         </button>
                       )}
@@ -78,7 +78,7 @@ export default function BillingTab({ invoices = [], onPay, onView, onEdit, onDel
                         </button>
                       )}
                       <button onClick={() => onWorkflow && onWorkflow(inv)}
-                        style={{ padding:'4px 10px', background:'#f0fdf4', border:'1px solid #86efac', borderRadius:6, cursor:'pointer', color:'#15803d', display:'flex', alignItems:'center', gap:4, fontFamily:'inherit', fontSize:10, fontWeight:700 }}>
+                        style={{ padding:'4px 10px', background:'#f0fdf4', border:'1px solid #86efac', borderRadius:6, cursor:'pointer', color:'#15803d', display:'flex', alignItems:'center', gap:4, fontFamily:'inherit', fontSize:10, fontWeight:600 }}>
                         <GitBranch size={11}/> Flow
                       </button>
                     </div>

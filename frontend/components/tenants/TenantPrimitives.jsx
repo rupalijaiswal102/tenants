@@ -25,7 +25,7 @@ export function TypeBadge({ type }) {
     ADJUSTMENT:      'bg-amber-50  text-amber-600   border-amber-100',
   };
   return (
-    <span className={cn('px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter border', styles[type] || 'bg-slate-50 text-slate-500 border-slate-100')}>
+    <span className={cn('px-1.5 py-0.5 rounded text-[9px] font-medium uppercase tracking-tight border', styles[type] || 'bg-slate-50 text-slate-500 border-slate-100')}>
       {type.replace('_', ' ')}
     </span>
   );
@@ -39,7 +39,7 @@ export function InvoiceStatusBadge({ status }) {
     Pending: 'badge-pending',
   };
   return (
-    <span className={cn('px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider border', styles[status] || 'bg-slate-50 text-slate-500 border-slate-100')}>
+    <span className={cn('px-2 py-0.5 rounded text-[10px] font-semibold border', styles[status] || 'bg-slate-50 text-slate-500 border-slate-100')}>
       {status}
     </span>
   );
@@ -100,8 +100,8 @@ export function TimelineItemLarge({ label, date, desc, active, danger }) {
         active ? 'bg-primary' : danger ? 'bg-red-500' : 'bg-slate-200')}
       />
       <div className="space-y-0.5 pt-1">
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
-        <p className={cn('text-sm font-bold', danger ? 'text-red-500' : 'text-slate-700')}>{date || '—'}</p>
+        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">{label}</p>
+        <p className={cn('text-sm font-medium', danger ? 'text-red-500' : 'text-slate-600')}>{date || '—'}</p>
         {desc && <p className="text-[10px] text-slate-400">{desc}</p>}
       </div>
     </div>
@@ -112,8 +112,8 @@ export function TimelineItemLarge({ label, date, desc, active, danger }) {
 export function ConfigBlock({ label, value, sub, highlight }) {
   return (
     <div className={cn('p-4 rounded-2xl border', highlight ? 'bg-primary/5 border-primary/20' : 'bg-slate-50 border-slate-100')}>
-      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">{label}</p>
-      <p className={cn('text-lg font-black', highlight ? 'text-primary' : 'text-slate-800')}>{value}</p>
+      <p className="text-[9px] font-medium text-slate-400 uppercase tracking-wider mb-1">{label}</p>
+      <p className={cn('text-base font-semibold', highlight ? 'text-primary' : 'text-slate-700')}>{value}</p>
       {sub && <p className="text-[9px] text-slate-400 mt-1">{sub}</p>}
     </div>
   );

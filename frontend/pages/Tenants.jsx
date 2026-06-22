@@ -12,6 +12,7 @@ import { usePermission }          from '../src/hooks/usePermission.js';
 import { TenantDetailsView }      from '../components/tenants/TenantDetailsView.jsx';
 import { StatusBadge }            from '../components/tenants/TenantPrimitives.jsx';
 import { DeleteConfirmationModal } from '../components/tenants/DeleteConfirmationModal.jsx';
+import TenantFormPage             from './TenantFormPage.jsx';
 
 export default function TenantList({ mode = 'tenant' }) {
   const { id }   = useParams();
@@ -28,6 +29,8 @@ export default function TenantList({ mode = 'tenant' }) {
   const [showDetails,       setShowDetails]       = useState(false);
   const [tenantToDelete,    setTenantToDelete]    = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showForm,          setShowForm]          = useState(false);
+  const [editFormId,        setEditFormId]        = useState(null);
   const [exporting,         setExporting]         = useState(false);
   const [pdfExporting,      setPdfExporting]      = useState(false);
   const [currentPage,       setCurrentPage]       = useState(1);
@@ -284,7 +287,7 @@ export default function TenantList({ mode = 'tenant' }) {
             <FileDown size={14}/> {pdfExporting ? 'Generating...' : 'Export PDF'}
           </button>
           {canAdd && (
-            <button onClick={() => navigate(`${basePath}/create`)}
+            <button onClick={() => { setEditFormId(null); setShowForm(true); }}
               style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 20px', background:'#f97316', color:'#fff', border:'none', borderRadius:10, fontSize:13, fontWeight:700, cursor:'pointer', boxShadow:'0 3px 10px rgba(249,115,22,0.35)', fontFamily:'inherit' }}>
               <Plus size={15}/> {mode === 'otherParty' ? 'New Other Party' : 'New Tenant'}
             </button>
@@ -353,7 +356,7 @@ export default function TenantList({ mode = 'tenant' }) {
                   ? ['Party Name', 'Address', 'Lease Period', 'Rent / Month', 'Status', 'Actions']
                   : ['Tenant Name', 'Property', 'Lease Period', 'Rent / Month', 'Status', 'Actions']
                 ).map((h, i) => (
-                  <th key={h} style={{ padding:'11px 18px', textAlign:'left', fontSize:11, fontWeight:700, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.08em', borderBottom:'1px solid #f0f2f5', whiteSpace:'nowrap' }}>{h}</th>
+                  <th key={h} style={{ padding:'11px 18px', textAlign:'left', fontSize:11, fontWeight:600, color:'#9ba8b5', textTransform:'uppercase', letterSpacing:'0.07em', borderBottom:'1px solid #eef0f4', whiteSpace:'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -381,53 +384,53 @@ export default function TenantList({ mode = 'tenant' }) {
                   onMouseLeave={e => (e.currentTarget).style.background = 'transparent'}>
 
                   {/* Name + Code + Company */}
-                  <td style={{ padding:'16px 18px' }}>
-                    <p style={{ fontSize:14, fontWeight:700, color:'#0f172a', margin:0, lineHeight:1.3 }}>{t.name || '—'}</p>
+                  <td style={{ padding:'13px 18px' }}>
+                    <p style={{ fontSize:13, fontWeight:500, color:'#1e293b', margin:0, lineHeight:1.3 }}>{t.name || '—'}</p>
                     {t.code && (
-                      <p style={{ fontSize:11, fontWeight:600, color:'#f97316', margin:'3px 0 0', display:'flex', alignItems:'center', gap:4 }}>
-                        <span style={{ width:6, height:6, borderRadius:'50%', background:'#f97316', display:'inline-block', flexShrink:0 }}/>
+                      <p style={{ fontSize:11, fontWeight:500, color:'#f97316', margin:'3px 0 0', display:'flex', alignItems:'center', gap:4 }}>
+                        <span style={{ width:5, height:5, borderRadius:'50%', background:'#f97316', display:'inline-block', flexShrink:0 }}/>
                         {t.code}
                       </p>
                     )}
-                    <p style={{ fontSize:11, color:'#94a3b8', margin:'2px 0 0' }}>{t.company || t.companyName || ''}</p>
+                    <p style={{ fontSize:11, color:'#9ba8b5', margin:'2px 0 0' }}>{t.company || t.companyName || ''}</p>
                   </td>
 
                   {/* Property / Address */}
-                  <td style={{ padding:'16px 18px' }}>
-                    <p style={{ fontSize:13, color:'#334155', margin:0, fontWeight:500 }}>{t.property || t.address || '—'}</p>
-                    {t.mobile && <p style={{ fontSize:11, color:'#94a3b8', margin:'3px 0 0' }}>{t.mobile}</p>}
+                  <td style={{ padding:'13px 18px' }}>
+                    <p style={{ fontSize:13, color:'#64748b', margin:0, fontWeight:400 }}>{t.property || t.address || '—'}</p>
+                    {t.mobile && <p style={{ fontSize:11, color:'#9ba8b5', margin:'3px 0 0' }}>{t.mobile}</p>}
                   </td>
 
                   {/* Lease End */}
-                  <td style={{ padding:'16px 18px' }}>
-                    <p style={{ fontSize:13, color:'#334155', margin:0 }}>{t.leaseEnd ? new Date(t.leaseEnd).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) : '—'}</p>
-                    {t.leaseStart && <p style={{ fontSize:11, color:'#94a3b8', margin:'3px 0 0' }}>From {new Date(t.leaseStart).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</p>}
+                  <td style={{ padding:'13px 18px' }}>
+                    <p style={{ fontSize:13, color:'#64748b', margin:0, fontWeight:400 }}>{t.leaseEnd ? new Date(t.leaseEnd).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) : '—'}</p>
+                    {t.leaseStart && <p style={{ fontSize:11, color:'#9ba8b5', margin:'3px 0 0' }}>From {new Date(t.leaseStart).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</p>}
                   </td>
 
                   {/* Rent */}
-                  <td style={{ padding:'16px 18px' }}>
-                    <p style={{ fontSize:14, fontWeight:700, color:'#0f172a', margin:0 }}>₹{(t.currentRent||0).toLocaleString('en-IN')}</p>
-                    <p style={{ fontSize:11, color:'#94a3b8', margin:'3px 0 0' }}>/month</p>
+                  <td style={{ padding:'13px 18px' }}>
+                    <p style={{ fontSize:13, fontWeight:600, color:'#1e293b', margin:0 }}>₹{(t.currentRent||0).toLocaleString('en-IN')}</p>
+                    <p style={{ fontSize:11, color:'#9ba8b5', margin:'3px 0 0' }}>/month</p>
                   </td>
 
                   {/* Status */}
-                  <td style={{ padding:'16px 18px' }}>
+                  <td style={{ padding:'13px 18px' }}>
                     {(() => {
                       const s = t.agreementStatus || 'Pending';
                       const cfg = s === 'Active' ? { bg:'#dcfce7', color:'#16a34a' } : s === 'Expired' ? { bg:'#fee2e2', color:'#dc2626' } : { bg:'#fef9c3', color:'#ca8a04' };
-                      return <span style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'4px 10px', borderRadius:20, fontSize:11, fontWeight:700, background:cfg.bg, color:cfg.color }}>
-                        <span style={{ width:6, height:6, borderRadius:'50%', background:cfg.color }}/>
+                      return <span style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'4px 10px', borderRadius:20, fontSize:11, fontWeight:600, background:cfg.bg, color:cfg.color }}>
+                        <span style={{ width:5, height:5, borderRadius:'50%', background:cfg.color }}/>
                         {s}
                       </span>;
                     })()}
                   </td>
 
                   {/* Actions */}
-                  <td style={{ padding:'16px 18px' }} onClick={e => e.stopPropagation()}>
+                  <td style={{ padding:'13px 18px' }} onClick={e => e.stopPropagation()}>
                     <div style={{ display:'flex', alignItems:'center', justifyContent:'flex-end', gap:2 }}>
                       {[
                         { icon: Eye,   show: true,     title:'View',   onClick: () => openView(t),                                          color:'#3b82f6', hbg:'#eff6ff' },
-                        { icon: Edit2, show: canEdit,  title:'Edit',   onClick: () => navigate(`${basePath}/edit/${t.id || t._id}`),         color:'#f97316', hbg:'#fff7ed' },
+                        { icon: Edit2, show: canEdit,  title:'Edit',   onClick: () => { setEditFormId(t.id || t._id); setShowForm(true); }, color:'#f97316', hbg:'#fff7ed' },
                         { icon: Trash2,show: canDelete,title:'Delete', onClick: () => { setTenantToDelete(t); setShowDeleteConfirm(true); }, color:'#ef4444', hbg:'#fff1f2' },
                       ].filter(b => b.show).map(({ icon: Ic, title, onClick, color, hbg }) => (
                         <button key={title} onClick={onClick} title={title}
@@ -501,6 +504,16 @@ export default function TenantList({ mode = 'tenant' }) {
           />
         )}
       </AnimatePresence>
+
+      {/* ── Tenant Form Panel (overlay on list) ── */}
+      {showForm && (
+        <TenantFormPage
+          mode={mode}
+          propId={editFormId}
+          onClose={() => { setShowForm(false); setEditFormId(null); }}
+          onSuccess={() => { setShowForm(false); setEditFormId(null); fetchTenants(); }}
+        />
+      )}
 
     </div>
     </div>

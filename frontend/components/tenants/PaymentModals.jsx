@@ -1,39 +1,36 @@
 import { useState, useEffect } from 'react';
-import { X, History, ShieldCheck, Loader2 } from 'lucide-react';
-import { motion } from 'motion/react';
+import { History, ShieldCheck, IndianRupee, CalendarDays, CreditCard, Hash, FileText } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
-import { cn } from '@/lib/utils';
-import { FormInput } from './TenantPrimitives.jsx';
 import { formatCurrency } from '../../src/utils/formatCurrency.js';
+import RightPanel, { PanelGrid, PanelField, PanelInput, PanelSelect, PanelTextarea, PanelDivider } from '../RightPanel.jsx';
 
-// ── Opening Balance Adjustment Modal ─────────────────────────────────────────
+// ── Opening Balance Adjustment ────────────────────────────────────────────────
 export function OpeningAdjustmentModal({ tenant, onClose, onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    date:          new Date().toISOString().split('T')[0],
-    amount:        0,
-    type:          'ADJUSTMENT',
-    adjustmentSide:'DEBIT',   // ← NEW: DEBIT or CREDIT
-    particular:    'Adjustment',
-    notes:         ''
+    date:           new Date().toISOString().split('T')[0],
+    amount:         0,
+    type:           'ADJUSTMENT',
+    adjustmentSide: 'DEBIT',
+    particular:     'Adjustment',
+    notes:          '',
   });
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const isDebit = formData.adjustmentSide === 'DEBIT';
+
+  const handleSubmit = async () => {
     if (formData.amount <= 0) { toast.error('Amount must be greater than 0'); return; }
     setLoading(true);
     try {
-      // Debit or Credit based on adjustmentSide
-      const isDebit  = formData.adjustmentSide === 'DEBIT';
-      const apiBase  = import.meta.env?.VITE_API_URL || '';
+      const apiBase = import.meta.env?.VITE_API_URL || '';
       await axios.post(`${apiBase}/api/ledger/entry`, {
         tenantId:   tenant.id,
         date:       formData.date,
         type:       formData.type,
         particular: formData.particular,
-        debit:      isDebit  ? formData.amount : 0,   // ← Debit column
-        credit:     !isDebit ? formData.amount : 0,   // ← Credit column
+        debit:      isDebit ? formData.amount : 0,
+        credit:     !isDebit ? formData.amount : 0,
         notes:      formData.notes,
       });
       toast.success(`${formData.adjustmentSide} Adjustment saved!`);
@@ -43,233 +40,205 @@ export function OpeningAdjustmentModal({ tenant, onClose, onSuccess }) {
     } finally { setLoading(false); }
   };
 
-  const isDebit = formData.adjustmentSide === 'DEBIT';
-
   return (
-    <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
-      className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <motion.div initial={{scale:0.9,opacity:0,y:20}} animate={{scale:1,opacity:1,y:0}} exit={{scale:0.9,opacity:0,y:20}}
-        className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <RightPanel
+      isOpen
+      onClose={onClose}
+      title="Ledger Adjustment"
+      subtitle="Add a manual debit or credit entry"
+      badge={tenant.name}
+      icon={<History size={20}/>}
+      iconBg="#fefce8"
+      iconColor="#eab308"
+      submitLabel={`Save ${formData.adjustmentSide} Adjustment`}
+      onSubmit={handleSubmit}
+      submitLoading={loading}
+    >
+      <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
 
-        {/* Header */}
-        <div className="p-6 md:p-8 bg-amber-50 border-b border-amber-100 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center shadow-inner">
-              <History size={20}/>
-            </div>
-            <div>
-              <h3 className="font-black text-slate-800 tracking-tight">Ledger Adjustment</h3>
-              <p className="text-[10px] font-bold text-amber-700 uppercase tracking-widest">{tenant.name}</p>
-            </div>
+        {/* Debit / Credit toggle */}
+        <PanelField label="Adjustment Side" required>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+            {['DEBIT','CREDIT'].map(s => {
+              const active = formData.adjustmentSide === s;
+              const color  = s === 'DEBIT' ? '#ef4444' : '#10b981';
+              return (
+                <button key={s} type="button"
+                  onClick={() => setFormData({ ...formData, adjustmentSide: s })}
+                  style={{
+                    padding: '14px 0', borderRadius: 10, fontFamily:'inherit', cursor:'pointer',
+                    border: active ? `2px solid ${color}` : '2px solid #f0f2f5',
+                    background: active ? (s==='DEBIT' ? '#fff1f2' : '#f0fdf4') : '#f8f9fb',
+                    color: active ? color : '#9ba8b5',
+                    fontWeight: 700, fontSize: 13,
+                    display:'flex', flexDirection:'column', alignItems:'center', gap:4,
+                    transition:'all 0.15s',
+                  }}>
+                  <span style={{ fontSize:20 }}>{s==='DEBIT' ? '📤' : '📥'}</span>
+                  <span>{s}</span>
+                  <span style={{ fontSize:10, fontWeight:500, opacity:0.7 }}>
+                    {s==='DEBIT' ? 'Debit column' : 'Credit column'}
+                  </span>
+                </button>
+              );
+            })}
           </div>
-          <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 transition-colors"><X size={20}/></button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="p-6 md:p-8 space-y-5 overflow-y-auto">
-
-          {/* ── Debit / Credit Toggle ── */}
-          <div>
-            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-1 block mb-2">
-              Adjustment Side *
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              {/* DEBIT */}
-              <button type="button"
-                onClick={() => setFormData({...formData, adjustmentSide:'DEBIT'})}
-                style={{
-                  padding:'14px 0',
-                  borderRadius:14,
-                  border: isDebit ? '2px solid #ef4444' : '2px solid #f1f5f9',
-                  background: isDebit ? '#fff1f2' : '#f8f9fb',
-                  color: isDebit ? '#ef4444' : '#94a3b8',
-                  fontWeight:800, fontSize:14, cursor:'pointer',
-                  fontFamily:'inherit', transition:'all 0.15s',
-                  display:'flex', flexDirection:'column', alignItems:'center', gap:4,
-                }}>
-                <span style={{fontSize:22}}>📤</span>
-                <span>DEBIT</span>
-                <span style={{fontSize:10, fontWeight:500, opacity:0.7}}>Goes to Debit col</span>
-              </button>
-
-              {/* CREDIT */}
-              <button type="button"
-                onClick={() => setFormData({...formData, adjustmentSide:'CREDIT'})}
-                style={{
-                  padding:'14px 0',
-                  borderRadius:14,
-                  border: !isDebit ? '2px solid #10b981' : '2px solid #f1f5f9',
-                  background: !isDebit ? '#f0fdf4' : '#f8f9fb',
-                  color: !isDebit ? '#10b981' : '#94a3b8',
-                  fontWeight:800, fontSize:14, cursor:'pointer',
-                  fontFamily:'inherit', transition:'all 0.15s',
-                  display:'flex', flexDirection:'column', alignItems:'center', gap:4,
-                }}>
-                <span style={{fontSize:22}}>📥</span>
-                <span>CREDIT</span>
-                <span style={{fontSize:10, fontWeight:500, opacity:0.7}}>Goes to Credit col</span>
-              </button>
-            </div>
-            {/* Live preview */}
-            <div style={{
-              marginTop:10, padding:'10px 14px', borderRadius:10,
-              background: isDebit ? '#fff1f2' : '#f0fdf4',
-              border: `1px solid ${isDebit ? '#fecdd3' : '#86efac'}`,
-              fontSize:12, fontWeight:600,
-              color: isDebit ? '#ef4444' : '#10b981',
-            }}>
-              {isDebit
-                ? '📤 This amount will appear in DEBIT column (amount going out / charge)'
-                : '📥 This amount will appear in CREDIT column (amount received / refund)'}
-            </div>
+          <div style={{
+            marginTop: 8, padding:'8px 12px', borderRadius:8, fontSize:11, fontWeight:600,
+            background: isDebit ? '#fff1f2' : '#f0fdf4',
+            border: `1px solid ${isDebit ? '#fecdd3' : '#86efac'}`,
+            color: isDebit ? '#ef4444' : '#10b981',
+          }}>
+            {isDebit ? '📤 Amount will appear in DEBIT column' : '📥 Amount will appear in CREDIT column'}
           </div>
+        </PanelField>
 
-          {/* Date + Amount */}
-          <div className="grid grid-cols-2 gap-4">
-            <FormInput label="Entry Date" type="date" value={formData.date}
-              onChange={(v)=>setFormData({...formData,date:v})} required/>
-            <FormInput label="Amount (₹)" type="number" value={formData.amount}
-              onChange={(v)=>setFormData({...formData,amount:parseFloat(v)||0})} required/>
-          </div>
+        <PanelGrid>
+          <PanelField label="Entry Date" required>
+            <PanelInput type="date" icon={CalendarDays} value={formData.date}
+              onChange={e => setFormData({ ...formData, date: e.target.value })}/>
+          </PanelField>
+          <PanelField label="Amount (₹)" required>
+            <PanelInput type="number" icon={IndianRupee} value={formData.amount}
+              onChange={e => setFormData({ ...formData, amount: parseFloat(e.target.value)||0 })}/>
+          </PanelField>
+        </PanelGrid>
 
-          {/* Particular */}
-          <FormInput label="Particular" value={formData.particular}
-            onChange={(v)=>setFormData({...formData,particular:v})} required/>
+        <PanelField label="Particular" required>
+          <PanelInput icon={FileText} value={formData.particular}
+            onChange={e => setFormData({ ...formData, particular: e.target.value })}/>
+        </PanelField>
 
-          {/* Notes */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-1">Notes</label>
-            <textarea className="form-input-saas min-h-[80px] py-3 h-auto"
-              value={formData.notes} onChange={e=>setFormData({...formData,notes:e.target.value})}
-              placeholder="Reason for adjustment..."/>
-          </div>
-
-          {/* Submit */}
-          <button type="submit" disabled={loading}
-            style={{
-              width:'100%', padding:'14px 0', borderRadius:16,
-              background: isDebit ? '#ef4444' : '#10b981',
-              color:'#fff', fontWeight:800, fontSize:15,
-              border:'none', cursor:loading?'wait':'pointer',
-              fontFamily:'inherit', display:'flex', alignItems:'center',
-              justifyContent:'center', gap:8, transition:'all 0.15s',
-            }}>
-            {loading ? <Loader2 size={18} className="animate-spin"/> : <ShieldCheck size={18}/>}
-            {loading ? 'Saving...' : `Save ${formData.adjustmentSide} Adjustment`}
-          </button>
-        </form>
-      </motion.div>
-    </motion.div>
+        <PanelField label="Notes">
+          <PanelTextarea value={formData.notes} placeholder="Reason for adjustment…"
+            onChange={e => setFormData({ ...formData, notes: e.target.value })}/>
+        </PanelField>
+      </div>
+    </RightPanel>
   );
 }
 
-// ── Payment Entry Modal ───────────────────────────────────────────────────────
+// ── Payment Entry ─────────────────────────────────────────────────────────────
 export function PaymentEntryModal({ invoice, onClose, onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    receivedAmount:      invoice.receivedAmount || invoice.received || 0,
-    tdsAmount:           invoice.tdsAmount || 0,
-    paymentDate:         invoice.paymentDate || new Date().toISOString().split('T')[0],
-    paymentMode:         invoice.paymentMode || 'NEFT',
-    transactionRef:      invoice.transactionRef || '',
+    receivedAmount:        invoice.receivedAmount || invoice.received || 0,
+    tdsAmount:             invoice.tdsAmount || 0,
+    paymentDate:           invoice.paymentDate || new Date().toISOString().split('T')[0],
+    paymentMode:           invoice.paymentMode || 'NEFT',
+    transactionRef:        invoice.transactionRef || '',
     latePenaltyPercentage: invoice.latePenaltyPercentage ?? 1.5,
-    latePenaltyAmount:   invoice.latePenaltyAmount || 0,
-    remarks:             invoice.remarks || ''
+    latePenaltyAmount:     invoice.latePenaltyAmount || 0,
+    remarks:               invoice.remarks || '',
   });
 
-  const rentBase = invoice.baseRent || invoice.totalInvoice;
+  const rentBase          = invoice.baseRent || invoice.totalInvoice;
   const calculatedPenalty = Number((rentBase * (formData.latePenaltyPercentage / 100)).toFixed(2));
 
   useEffect(() => {
-    if (calculatedPenalty !== formData.latePenaltyAmount) {
+    if (calculatedPenalty !== formData.latePenaltyAmount)
       setFormData(prev => ({ ...prev, latePenaltyAmount: calculatedPenalty }));
-    }
   }, [calculatedPenalty]);
 
   const remainingBalance = (invoice.totalInvoice + calculatedPenalty) - (formData.receivedAmount + formData.tdsAmount);
 
-  const handleSubmit = async (e) => {
-    e?.preventDefault();
+  const handleSubmit = async () => {
     setLoading(true);
     try {
       await axios.put(`/api/invoices/${String(invoice.id)}`, formData);
       onSuccess();
     } catch (err) {
       console.error(err);
-      alert('Error recording payment');
+      toast.error('Error recording payment');
     } finally { setLoading(false); }
   };
 
+  const settled = remainingBalance <= 0;
+
   return (
-    <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
-      className="fixed inset-0 z-[200] flex items-start md:items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto pt-10 md:pt-4">
-      <motion.div initial={{scale:0.95,y:20}} animate={{scale:1,y:0}} exit={{scale:0.95,y:20}}
-        className="bg-white w-full max-w-lg rounded-[24px] md:rounded-[32px] shadow-2xl overflow-hidden flex flex-col border border-slate-100 my-auto max-h-[90vh]">
+    <RightPanel
+      isOpen
+      onClose={onClose}
+      title="Record Payment"
+      subtitle="Update payment details for this invoice"
+      badge={`Invoice #${invoice.invoiceNo} · ${invoice.partyName}`}
+      icon={<ShieldCheck size={20}/>}
+      iconBg="#f0fdf4"
+      iconColor="#10b981"
+      submitLabel="Save Payment & Penalty"
+      onSubmit={handleSubmit}
+      submitLoading={loading}
+    >
+      <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
 
-        {/* Header */}
-        <div className="p-6 md:p-8 border-b border-slate-50 flex items-center justify-between sticky top-0 z-20 bg-white/95 backdrop-blur-sm">
+        {/* Summary cards */}
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+          <div style={{ padding:'12px 14px', background:'#f8f9fb', borderRadius:10, border:'1px solid #f0f2f5' }}>
+            <p style={{ fontSize:9, fontWeight:700, color:'#9ba8b5', textTransform:'uppercase', letterSpacing:'0.06em', margin:0 }}>Total Payable</p>
+            <p style={{ fontSize:16, fontWeight:800, color:'#1a1a2e', margin:'4px 0 0' }}>{formatCurrency(invoice.totalInvoice + calculatedPenalty)}</p>
+          </div>
+          <div style={{ padding:'12px 14px', background: settled ? '#f0fdf4' : '#fff1f2', borderRadius:10, border:`1px solid ${settled?'#bbf7d0':'#fecdd3'}` }}>
+            <p style={{ fontSize:9, fontWeight:700, color:'#9ba8b5', textTransform:'uppercase', letterSpacing:'0.06em', margin:0 }}>Balance Due</p>
+            <p style={{ fontSize:16, fontWeight:800, color: settled ? '#10b981' : '#ef4444', margin:'4px 0 0' }}>{formatCurrency(Math.max(0, Math.round(remainingBalance)))}</p>
+          </div>
+        </div>
+
+        {/* Penalty */}
+        <div style={{ padding:'12px 14px', background:'#fefce8', borderRadius:10, border:'1px solid #fef08a', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
           <div>
-            <h2 className="text-xl font-black text-slate-800 tracking-tight">Record Payment</h2>
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Invoice #{invoice.invoiceNo}</p>
-            <p className="text-[11px] text-primary font-black uppercase tracking-tight">{invoice.partyName}</p>
+            <p style={{ fontSize:9, fontWeight:700, color:'#a16207', textTransform:'uppercase', letterSpacing:'0.06em', margin:0 }}>Late Penalty %</p>
+            <input type="number" step="0.1" value={formData.latePenaltyPercentage}
+              onChange={e => setFormData({ ...formData, latePenaltyPercentage: parseFloat(e.target.value)||0 })}
+              style={{ background:'transparent', border:'none', borderBottom:'1px solid #fbbf24', fontSize:16, fontWeight:800, color:'#92400e', outline:'none', width:60, marginTop:4 }}/>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400"><X size={24}/></button>
-        </div>
-
-        {/* Summary row */}
-        <div className="px-6 md:px-8 py-4 bg-slate-50/50 border-b border-slate-50 grid grid-cols-2 gap-3 flex-shrink-0">
-          <div className="p-3 bg-white rounded-xl border border-slate-100 shadow-sm">
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Total Payable (+Penalty)</p>
-            <p className="text-base font-black text-slate-800">{formatCurrency(invoice.totalInvoice + calculatedPenalty)}</p>
-          </div>
-          <div className={cn('p-3 rounded-xl border shadow-sm', remainingBalance<=0?'bg-emerald-50 border-emerald-100':'bg-rose-50 border-rose-100')}>
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Final Balance Due</p>
-            <p className={cn('text-base font-black', remainingBalance<=0?'text-emerald-600':'text-rose-600')}>{formatCurrency(Math.max(0, Math.round(remainingBalance)))}</p>
+          <div style={{ textAlign:'right' }}>
+            <p style={{ fontSize:9, fontWeight:700, color:'#a16207', textTransform:'uppercase', letterSpacing:'0.06em', margin:0 }}>Penalty Charge</p>
+            <p style={{ fontSize:18, fontWeight:800, color:'#92400e', margin:'4px 0 0' }}>{formatCurrency(calculatedPenalty)}</p>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6">
-          {/* Penalty */}
-          <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 flex items-center justify-between">
-            <div className="flex flex-col">
-              <span className="text-[10px] font-bold text-amber-700 uppercase tracking-widest">Late Payment Penalty (%)</span>
-              <input type="number" step="0.1" value={formData.latePenaltyPercentage}
-                onChange={e=>setFormData({...formData,latePenaltyPercentage:parseFloat(e.target.value)||0})}
-                className="bg-transparent border-b border-amber-200 text-lg font-black text-amber-900 focus:border-amber-500 outline-none w-20"/>
-            </div>
-            <div className="text-right">
-              <span className="text-[10px] font-bold text-amber-700 uppercase tracking-widest block">Penalty Charge</span>
-              <span className="text-xl font-black text-amber-900">{formatCurrency(calculatedPenalty)}</span>
-            </div>
-          </div>
+        <PanelDivider label="Payment Details"/>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-            <FormInput label="Received Amount" type="number" value={formData.receivedAmount} onChange={(v)=>setFormData({...formData,receivedAmount:parseFloat(v)||0})} required/>
-            <FormInput label="TDS Amount"       type="number" value={formData.tdsAmount}      onChange={(v)=>setFormData({...formData,tdsAmount:parseFloat(v)||0})}/>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-            <FormInput label="Payment Date" type="date"   value={formData.paymentDate} onChange={(v)=>setFormData({...formData,paymentDate:v})}/>
-            <FormInput label="Payment Mode" type="select" options={['NEFT','IMPS','UPI','Cheque','Cash']} value={formData.paymentMode} onChange={(v)=>setFormData({...formData,paymentMode:v})}/>
-          </div>
-          <FormInput label="Transaction Reference" value={formData.transactionRef} onChange={(v)=>setFormData({...formData,transactionRef:v})} placeholder="UTR Number / Cheque No."/>
-          <FormInput label="Remarks"                value={formData.remarks}        onChange={(v)=>setFormData({...formData,remarks:v})}        placeholder="Internal notes..."/>
-        </form>
+        <PanelGrid>
+          <PanelField label="Received Amount" required>
+            <PanelInput type="number" icon={IndianRupee} value={formData.receivedAmount}
+              onChange={e => setFormData({ ...formData, receivedAmount: parseFloat(e.target.value)||0 })}/>
+          </PanelField>
+          <PanelField label="TDS Amount">
+            <PanelInput type="number" icon={IndianRupee} value={formData.tdsAmount}
+              onChange={e => setFormData({ ...formData, tdsAmount: parseFloat(e.target.value)||0 })}/>
+          </PanelField>
+        </PanelGrid>
 
-        <div className="sticky bottom-0 z-20 bg-white border-t border-slate-50 p-6 md:p-8">
-          <button type="button" onClick={handleSubmit} disabled={loading}
-            className="w-full py-4 bg-primary text-white rounded-2xl font-bold hover:bg-orange-600 transition-all shadow-xl shadow-primary/20 flex items-center justify-center gap-2">
-            {loading ? <Loader2 size={20} className="animate-spin"/> : <ShieldCheck size={20}/>}
-            {loading ? 'Processing...' : 'Save Payment & Penalty'}
-          </button>
-        </div>
-      </motion.div>
-    </motion.div>
+        <PanelGrid>
+          <PanelField label="Payment Date">
+            <PanelInput type="date" icon={CalendarDays} value={formData.paymentDate}
+              onChange={e => setFormData({ ...formData, paymentDate: e.target.value })}/>
+          </PanelField>
+          <PanelField label="Payment Mode">
+            <PanelSelect value={formData.paymentMode}
+              onChange={e => setFormData({ ...formData, paymentMode: e.target.value })}
+              options={['NEFT','IMPS','UPI','Cheque','Cash']}/>
+          </PanelField>
+        </PanelGrid>
+
+        <PanelField label="Transaction Reference">
+          <PanelInput icon={Hash} value={formData.transactionRef} placeholder="UTR / Cheque No."
+            onChange={e => setFormData({ ...formData, transactionRef: e.target.value })}/>
+        </PanelField>
+
+        <PanelField label="Remarks">
+          <PanelTextarea value={formData.remarks} placeholder="Internal notes…"
+            onChange={e => setFormData({ ...formData, remarks: e.target.value })}/>
+        </PanelField>
+      </div>
+    </RightPanel>
   );
 }
 
-// ── Edit Adjustment Modal ────────────────────────────────────────────────────
+// ── Edit Adjustment ───────────────────────────────────────────────────────────
 export function EditAdjustmentModal({ entry, onClose, onSuccess }) {
   const [loading, setLoading] = useState(false);
-  const isDebit = entry.debit > 0;
   const [form, setForm] = useState({
     date:           entry.date?.split('T')[0] || new Date().toISOString().split('T')[0],
     amount:         entry.debit > 0 ? entry.debit : entry.credit,
@@ -278,10 +247,9 @@ export function EditAdjustmentModal({ entry, onClose, onSuccess }) {
     notes:          entry.notes || '',
   });
 
-  const side = form.adjustmentSide === 'DEBIT';
+  const isDebit = form.adjustmentSide === 'DEBIT';
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     if (form.amount <= 0) { toast.error('Amount must be > 0'); return; }
     setLoading(true);
     try {
@@ -289,8 +257,8 @@ export function EditAdjustmentModal({ entry, onClose, onSuccess }) {
       await axios.put(`${apiBase}/api/ledger/entry/${entry.id}`, {
         date:       form.date,
         particular: form.particular,
-        debit:      side  ? form.amount : 0,
-        credit:     !side ? form.amount : 0,
+        debit:      isDebit  ? form.amount : 0,
+        credit:     !isDebit ? form.amount : 0,
         notes:      form.notes,
       });
       toast.success('Adjustment updated!');
@@ -301,71 +269,66 @@ export function EditAdjustmentModal({ entry, onClose, onSuccess }) {
   };
 
   return (
-    <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
-      className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <motion.div initial={{scale:0.9,opacity:0,y:20}} animate={{scale:1,opacity:1,y:0}} exit={{scale:0.9,opacity:0,y:20}}
-        className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden flex flex-col">
+    <RightPanel
+      isOpen
+      onClose={onClose}
+      title="Edit Adjustment"
+      subtitle="Modify this ledger entry"
+      icon={<History size={20}/>}
+      iconBg="#fefce8"
+      iconColor="#eab308"
+      submitLabel={`Update ${form.adjustmentSide} Adjustment`}
+      onSubmit={handleSubmit}
+      submitLoading={loading}
+    >
+      <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
 
-        <div className="p-6 bg-amber-50 border-b border-amber-100 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center">
-              <History size={20}/>
-            </div>
-            <div>
-              <h3 className="font-black text-slate-800">Edit Adjustment</h3>
-              <p className="text-[10px] font-bold text-amber-700 uppercase tracking-widest">Modify ledger entry</p>
-            </div>
-          </div>
-          <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600"><X size={20}/></button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto">
-
-          {/* Debit / Credit toggle */}
-          <div>
-            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-1 block mb-2">Adjustment Side *</label>
-            <div className="grid grid-cols-2 gap-3">
-              {(['DEBIT','CREDIT']).map(s => (
-                <button key={s} type="button" onClick={() => setForm({...form, adjustmentSide:s})}
+        <PanelField label="Adjustment Side" required>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+            {['DEBIT','CREDIT'].map(s => {
+              const active = form.adjustmentSide === s;
+              const color  = s === 'DEBIT' ? '#ef4444' : '#10b981';
+              return (
+                <button key={s} type="button"
+                  onClick={() => setForm({ ...form, adjustmentSide: s })}
                   style={{
-                    padding:'12px 0', borderRadius:14, fontFamily:'inherit', cursor:'pointer',
-                    border: form.adjustmentSide===s ? `2px solid ${s==='DEBIT'?'#ef4444':'#10b981'}` : '2px solid #f1f5f9',
-                    background: form.adjustmentSide===s ? (s==='DEBIT'?'#fff1f2':'#f0fdf4') : '#f8f9fb',
-                    color: form.adjustmentSide===s ? (s==='DEBIT'?'#ef4444':'#10b981') : '#94a3b8',
-                    fontWeight:800, fontSize:13, display:'flex', flexDirection:'column', alignItems:'center', gap:3,
+                    padding:'12px 0', borderRadius:10, fontFamily:'inherit', cursor:'pointer',
+                    border: active ? `2px solid ${color}` : '2px solid #f0f2f5',
+                    background: active ? (s==='DEBIT' ? '#fff1f2' : '#f0fdf4') : '#f8f9fb',
+                    color: active ? color : '#9ba8b5',
+                    fontWeight:700, fontSize:13,
+                    display:'flex', flexDirection:'column', alignItems:'center', gap:3,
+                    transition:'all 0.15s',
                   }}>
-                  <span style={{fontSize:20}}>{s==='DEBIT'?'📤':'📥'}</span>
+                  <span style={{ fontSize:18 }}>{s==='DEBIT' ? '📤' : '📥'}</span>
                   <span>{s}</span>
                 </button>
-              ))}
-            </div>
-            <div style={{
-              marginTop:8, padding:'8px 12px', borderRadius:10, fontSize:11, fontWeight:600,
-              background: side ? '#fff1f2' : '#f0fdf4',
-              border: `1px solid ${side ? '#fecdd3' : '#86efac'}`,
-              color: side ? '#ef4444' : '#10b981',
-            }}>
-              {side ? '📤 Will appear in DEBIT column' : '📥 Will appear in CREDIT column'}
-            </div>
+              );
+            })}
           </div>
+        </PanelField>
 
-          <div className="grid grid-cols-2 gap-4">
-            <FormInput label="Entry Date"  type="date"   value={form.date}   onChange={(v)=>setForm({...form,date:v})} required/>
-            <FormInput label="Amount (₹)"  type="number" value={form.amount} onChange={(v)=>setForm({...form,amount:parseFloat(v)||0})} required/>
-          </div>
-          <FormInput label="Particular" value={form.particular} onChange={(v)=>setForm({...form,particular:v})} required/>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-1">Notes</label>
-            <textarea className="form-input-saas min-h-[70px] py-3 h-auto"
-              value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} placeholder="Reason..."/>
-          </div>
-          <button type="submit" disabled={loading}
-            style={{ width:'100%', padding:'13px 0', borderRadius:14, background: side ? '#ef4444' : '#10b981', color:'#fff', fontWeight:800, fontSize:14, border:'none', cursor:loading?'wait':'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
-            {loading ? <Loader2 size={17} className="animate-spin"/> : <ShieldCheck size={17}/>}
-            {loading ? 'Saving...' : `Update ${form.adjustmentSide} Adjustment`}
-          </button>
-        </form>
-      </motion.div>
-    </motion.div>
+        <PanelGrid>
+          <PanelField label="Entry Date" required>
+            <PanelInput type="date" icon={CalendarDays} value={form.date}
+              onChange={e => setForm({ ...form, date: e.target.value })}/>
+          </PanelField>
+          <PanelField label="Amount (₹)" required>
+            <PanelInput type="number" icon={IndianRupee} value={form.amount}
+              onChange={e => setForm({ ...form, amount: parseFloat(e.target.value)||0 })}/>
+          </PanelField>
+        </PanelGrid>
+
+        <PanelField label="Particular" required>
+          <PanelInput icon={FileText} value={form.particular}
+            onChange={e => setForm({ ...form, particular: e.target.value })}/>
+        </PanelField>
+
+        <PanelField label="Notes">
+          <PanelTextarea value={form.notes} placeholder="Reason…"
+            onChange={e => setForm({ ...form, notes: e.target.value })}/>
+        </PanelField>
+      </div>
+    </RightPanel>
   );
 }

@@ -38,8 +38,8 @@ export default function OverviewTab({ tenant, paymentSummary = {}, analytics = {
             <div style={{ width:36, height:36, borderRadius:10, background:s.bg, display:'flex', alignItems:'center', justifyContent:'center', marginBottom:12 }}>
               <s.Icon size={17} color={s.color}/>
             </div>
-            <div style={{ fontSize:10, color:'#94a3b8', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.09em', marginBottom:4 }}>{s.label}</div>
-            <div style={{ fontSize:24, fontWeight:800, color:'#0f172a', letterSpacing:'-0.6px', lineHeight:1.2 }}>
+            <div style={{ fontSize:10, color:'#9ba8b5', fontWeight:500, textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:4 }}>{s.label}</div>
+            <div style={{ fontSize:22, fontWeight:700, color:'#1e293b', letterSpacing:'-0.4px', lineHeight:1.2 }}>
               {fmt(s.val)}
             </div>
           </div>
@@ -53,14 +53,14 @@ export default function OverviewTab({ tenant, paymentSummary = {}, analytics = {
         <div style={{ ...SC, padding:22 }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:16 }}>
             <div>
-              <p style={{ fontSize:15, fontWeight:800, color:'#0f172a', margin:0 }}>Financial Analytics</p>
+              <p style={{ fontSize:15, fontWeight:600, color:'#1e293b', margin:0 }}>Financial Analytics</p>
               <p style={{ fontSize:11, color:'#94a3b8', marginTop:3 }}>Planned vs Actual — last 6 months</p>
             </div>
             {/* Toggle buttons */}
             <div style={{ display:'flex', gap:3, background:'#f1f5f9', borderRadius:10, padding:3 }}>
               {[{ k:'combined', l:'Combined' }, { k:'bar', l:'Bar' }, { k:'line', l:'Line' }].map(t => (
                 <button key={t.k} onClick={() => setChartType(t.k)}
-                  style={{ padding:'5px 11px', borderRadius:7, border:'none', cursor:'pointer', fontSize:11, fontWeight:700, fontFamily:'inherit', transition:'all 0.15s',
+                  style={{ padding:'5px 11px', borderRadius:7, border:'none', cursor:'pointer', fontSize:11, fontWeight:600, fontFamily:'inherit', transition:'all 0.15s',
                     background: chartType === t.k ? '#1e3a5f' : 'transparent',
                     color:      chartType === t.k ? '#fff'    : '#64748b',
                   }}>
@@ -104,15 +104,15 @@ export default function OverviewTab({ tenant, paymentSummary = {}, analytics = {
         {/* Contact + GST */}
         <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
           <div style={{ ...SC, padding:16 }}>
-            <p style={{ fontSize:12, fontWeight:800, color:'#1a1a2e', margin:'0 0 10px' }}>Contact Dossier</p>
+            <p style={{ fontSize:12, fontWeight:600, color:'#1e293b', margin:'0 0 10px' }}>Contact Dossier</p>
             {CONTACT_FIELDS(tenant).map((f, i) => (
               <div key={i} style={{ display:'flex', gap:8, padding:'7px 0', borderBottom: i < 4 ? '1px solid #f8f9fb' : 'none' }}>
                 <div style={{ width:24, height:24, borderRadius:6, background:'#f8f9fb', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                   <f.Icon size={11} color="#9ba8b5"/>
                 </div>
                 <div style={{ minWidth:0 }}>
-                  <p style={{ fontSize:8, fontWeight:700, color:'#c5cdd6', textTransform:'uppercase', letterSpacing:'0.08em', margin:0 }}>{f.label}</p>
-                  <p style={{ fontSize:11, fontWeight:600, color:'#1a1a2e', margin:'1px 0 0', wordBreak:'break-word' }}>{f.val || '—'}</p>
+                  <p style={{ fontSize:9, fontWeight:500, color:'#9ba8b5', textTransform:'uppercase', letterSpacing:'0.06em', margin:0 }}>{f.label}</p>
+                  <p style={{ fontSize:12, fontWeight:400, color:'#1e293b', margin:'2px 0 0', wordBreak:'break-word' }}>{f.val || '—'}</p>
                 </div>
               </div>
             ))}
@@ -121,12 +121,12 @@ export default function OverviewTab({ tenant, paymentSummary = {}, analytics = {
           <div style={{ ...SC, padding:14, background:'rgba(249,115,22,0.03)', border:'1px solid rgba(249,115,22,0.1)' }}>
             <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:8 }}>
               <ShieldCheck size={12} color="#f97316"/>
-              <p style={{ fontSize:9, fontWeight:800, color:'#f97316', textTransform:'uppercase', letterSpacing:'0.1em', margin:0 }}>GST Compliance</p>
+              <p style={{ fontSize:9, fontWeight:600, color:'#f97316', textTransform:'uppercase', letterSpacing:'0.08em', margin:0 }}>GST Compliance</p>
             </div>
-            <p style={{ fontSize:11, fontWeight:700, color:'#1a1a2e', margin:'0 0 8px' }}>{tenant.legalName || tenant.name}</p>
+            <p style={{ fontSize:12, fontWeight:500, color:'#1e293b', margin:'0 0 8px' }}>{tenant.legalName || tenant.name}</p>
             <div style={{ background:'#fff', padding:'4px 10px', borderRadius:7, border:'1px solid rgba(249,115,22,0.12)', display:'inline-block' }}>
-              <p style={{ fontSize:8, color:'#9ba8b5', fontWeight:700, textTransform:'uppercase', margin:0 }}>GSTIN</p>
-              <p style={{ fontSize:11, fontWeight:800, color:'#f97316', margin:0 }}>{tenant.gstNo || 'Not Provided'}</p>
+              <p style={{ fontSize:9, color:'#9ba8b5', fontWeight:500, textTransform:'uppercase', margin:0 }}>GSTIN</p>
+              <p style={{ fontSize:12, fontWeight:600, color:'#f97316', margin:0 }}>{tenant.gstNo || 'Not Provided'}</p>
             </div>
           </div>
         </div>

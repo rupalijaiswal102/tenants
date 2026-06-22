@@ -29,7 +29,7 @@ export function LeaseTab({ tenant, lockInExpiry }) {
           <div style={{ width:32, height:32, borderRadius:9, background:'#fff7ed', display:'flex', alignItems:'center', justifyContent:'center' }}>
             <Clock size={15} color="#f97316"/>
           </div>
-          <p style={{ fontSize:14, fontWeight:800, color:'#1a1a2e', margin:0 }}>Lease Roadmap</p>
+          <p style={{ fontSize:14, fontWeight:600, color:'#1e293b', margin:0 }}>Lease Roadmap</p>
         </div>
         <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
           <TimelineItemLarge label="Lease Commencement" date={tenant.leaseStart} desc="Initial move-in and rent start date" active/>
@@ -44,7 +44,7 @@ export function LeaseTab({ tenant, lockInExpiry }) {
           <div style={{ width:32, height:32, borderRadius:9, background:'#f0fdf4', display:'flex', alignItems:'center', justifyContent:'center' }}>
             <IndianRupee size={15} color="#10b981"/>
           </div>
-          <p style={{ fontSize:14, fontWeight:800, color:'#1a1a2e', margin:0 }}>Financial Configuration</p>
+          <p style={{ fontSize:14, fontWeight:600, color:'#1e293b', margin:0 }}>Financial Configuration</p>
         </div>
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
           {configs.map(([l, v, h]) => <ConfigBlock key={l} label={l} value={v} highlight={h}/>)}
@@ -105,7 +105,7 @@ export function DocumentsTab({ tenant, onRefresh }) {
             <FileCheck size={26} color="#10b981"/>
           </div>
           <div>
-            <p style={{ fontSize:14, fontWeight:800, color:'#1a1a2e', margin:0 }}>Lease Agreement</p>
+            <p style={{ fontSize:14, fontWeight:600, color:'#1e293b', margin:0 }}>Lease Agreement</p>
             <p style={{ fontSize:11, color:'#9ba8b5', marginTop:4 }}>Digital scanned copy of original contract</p>
           </div>
           <div style={{ display:'flex', gap:10, width:'100%' }}>
@@ -134,9 +134,9 @@ export function DocumentsTab({ tenant, onRefresh }) {
             <div style={{ width:32, height:32, borderRadius:9, background:'#fefce8', display:'flex', alignItems:'center', justifyContent:'center' }}>
               <Zap size={15} color="#eab308"/>
             </div>
-            <p style={{ fontSize:14, fontWeight:800, color:'#1a1a2e', margin:0 }}>Electricity Bills</p>
+            <p style={{ fontSize:14, fontWeight:600, color:'#1e293b', margin:0 }}>Electricity Bills</p>
           </div>
-          <label style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', background:'#f97316', color:'#fff', borderRadius:8, fontWeight:700, fontSize:12, cursor: uploading ? 'not-allowed' : 'pointer', opacity: uploading ? 0.7 : 1 }}>
+          <label style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', background:'#f97316', color:'#fff', borderRadius:8, fontWeight:600, fontSize:12, cursor: uploading ? 'not-allowed' : 'pointer', opacity: uploading ? 0.7 : 1 }}>
             <Upload size={13}/>
             {uploading ? 'Uploading…' : 'Upload Bill'}
             <input ref={fileRef} type="file" accept=".pdf,image/*" style={{ display:'none' }} onChange={handleUpload} disabled={uploading}/>
@@ -156,7 +156,7 @@ export function DocumentsTab({ tenant, onRefresh }) {
                 <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                   <FileText size={18} color="#eab308"/>
                   <div>
-                    <p style={{ fontSize:12, fontWeight:700, color:'#1a1a2e', margin:0 }}>{bill.name || `Bill ${idx+1}`}</p>
+                    <p style={{ fontSize:12, fontWeight:500, color:'#1e293b', margin:0 }}>{bill.name || `Bill ${idx+1}`}</p>
                     <p style={{ fontSize:10, color:'#9ba8b5', margin:0 }}>{fmt(bill.uploadedAt)}</p>
                   </div>
                 </div>

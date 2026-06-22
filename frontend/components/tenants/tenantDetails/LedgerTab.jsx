@@ -26,7 +26,7 @@ export default function LedgerTab({
               style={{ width:36, height:36, borderRadius:8, objectFit:'contain', border:'1px solid #f0f2f5' }}/>
           )}
           <div>
-            <p style={{ fontSize:14, fontWeight:800, color:'#1a1a2e', margin:0 }}>Financial Ledger</p>
+            <p style={{ fontSize:14, fontWeight:600, color:'#1e293b', margin:0 }}>Financial Ledger</p>
             <p style={{ fontSize:11, color:'#9ba8b5', margin:0 }}>Statement for {tenant.name} | {tenant.company}</p>
           </div>
         </div>
@@ -36,8 +36,8 @@ export default function LedgerTab({
             { label: summary.closingBalance < 0 ? 'Advance Bal' : 'Closing Bal', val: fmt(Math.abs(summary.closingBalance || 0)), style:{ background: summary.closingBalance < 0 ? '#f0fdf4' : '#fff7ed', borderRadius:10, padding:'8px 14px', color: summary.closingBalance < 0 ? '#15803d' : '#b45309' }},
           ].map((b, i) => (
             <div key={i} style={{ textAlign:'center', ...b.style }}>
-              <p style={{ fontSize:9, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', margin:0 }}>{b.label}</p>
-              <p style={{ fontSize:13, fontWeight:800, margin:0 }}>{b.val}</p>
+              <p style={{ fontSize:9, fontWeight:500, textTransform:'uppercase', letterSpacing:'0.07em', margin:0, color:'inherit' }}>{b.label}</p>
+              <p style={{ fontSize:13, fontWeight:600, margin:0 }}>{b.val}</p>
             </div>
           ))}
         </div>
@@ -55,9 +55,9 @@ export default function LedgerTab({
             <thead style={{ position:'sticky', top:0, background:'#f8f9fb', zIndex:5 }}>
               <tr>
                 {['Date','Particular','Ref No.','Debit','Credit','TDS','Running Balance'].map((h, i) => (
-                  <th key={h} style={{ padding:'10px 16px', fontSize:9, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.08em', borderBottom:'2px solid #f0f2f5', whiteSpace:'nowrap',
+                  <th key={h} style={{ padding:'10px 16px', fontSize:11, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.07em', borderBottom:'1px solid #eef0f4', whiteSpace:'nowrap',
                     textAlign: i >= 3 ? 'right' : 'left',
-                    color: ['#9ba8b5','#9ba8b5','#9ba8b5','#1a1a2e','#10b981','#8b5cf6','#1a1a2e'][i],
+                    color: ['#9ba8b5','#9ba8b5','#9ba8b5','#64748b','#10b981','#8b5cf6','#64748b'][i],
                   }}>{h}</th>
                 ))}
               </tr>
@@ -70,19 +70,19 @@ export default function LedgerTab({
                   <tr key={e.id} style={{ borderBottom:'1px solid #f8f9fb', transition:'background 0.1s' }}
                     onMouseEnter={el => el.currentTarget.style.background = '#fafbfc'}
                     onMouseLeave={el => el.currentTarget.style.background = 'transparent'}>
-                    <td style={{ padding:'11px 16px', fontSize:12, fontWeight:600, color:'#9ba8b5', whiteSpace:'nowrap' }}>
+                    <td style={{ padding:'12px 16px', fontSize:13, fontWeight:400, color:'#64748b', whiteSpace:'nowrap' }}>
                       {new Date(e.date).toLocaleDateString('en-GB')}
                     </td>
-                    <td style={{ padding:'11px 16px' }}>
-                      <p style={{ fontSize:12, fontWeight:700, color:'#1a1a2e', margin:0 }}>{e.particular}</p>
+                    <td style={{ padding:'12px 16px' }}>
+                      <p style={{ fontSize:13, fontWeight:500, color:'#1e293b', margin:0 }}>{e.particular}</p>
                       <TypeBadge type={e.type}/>
                       {e.notes && <span style={{ fontSize:10, color:'#9ba8b5', fontStyle:'italic' }}> "{e.notes}"</span>}
                     </td>
-                    <td style={{ padding:'11px 16px', fontSize:11, color:'#9ba8b5' }}>{e.refNo ? `#${e.refNo}` : '-'}</td>
-                    <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#1a1a2e', textAlign:'right' }}>{e.debit  > 0 ? `₹${Math.round(e.debit).toLocaleString('en-IN')}`  : '-'}</td>
-                    <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#10b981', textAlign:'right' }}>{e.credit > 0 ? `₹${Math.round(e.credit).toLocaleString('en-IN')}` : '-'}</td>
-                    <td style={{ padding:'11px 16px', fontSize:12, fontWeight:700, color:'#8b5cf6', textAlign:'right' }}>{e.tds    > 0 ? `₹${Math.round(e.tds).toLocaleString('en-IN')}`    : '-'}</td>
-                    <td style={{ padding:'11px 16px', fontSize:12, fontWeight:800, textAlign:'right', color: e.runningBalance < 0 ? '#3b82f6' : '#1a1a2e' }}>
+                    <td style={{ padding:'12px 16px', fontSize:12, fontWeight:400, color:'#9ba8b5' }}>{e.refNo ? `#${e.refNo}` : '-'}</td>
+                    <td style={{ padding:'12px 16px', fontSize:13, fontWeight:600, color:'#1e293b', textAlign:'right' }}>{e.debit  > 0 ? `₹${Math.round(e.debit).toLocaleString('en-IN')}`  : '-'}</td>
+                    <td style={{ padding:'12px 16px', fontSize:13, fontWeight:600, color:'#10b981', textAlign:'right' }}>{e.credit > 0 ? `₹${Math.round(e.credit).toLocaleString('en-IN')}` : '-'}</td>
+                    <td style={{ padding:'12px 16px', fontSize:13, fontWeight:600, color:'#8b5cf6', textAlign:'right' }}>{e.tds    > 0 ? `₹${Math.round(e.tds).toLocaleString('en-IN')}`    : '-'}</td>
+                    <td style={{ padding:'12px 16px', fontSize:13, fontWeight:600, textAlign:'right', color: e.runningBalance < 0 ? '#3b82f6' : '#1e293b' }}>
                       ₹{Math.round(Math.abs(e.runningBalance || 0)).toLocaleString('en-IN')} {e.runningBalance < 0 ? 'Cr' : 'Dr'}
                     </td>
                   </tr>
@@ -103,8 +103,8 @@ export default function LedgerTab({
             { l:'Balance',  v: Math.abs(summary.closingBalance || 0),     c:'#f97316' },
           ].map((s, i) => (
             <div key={i}>
-              <p style={{ fontSize:9, color:'#9ba8b5', fontWeight:700, textTransform:'uppercase', margin:0 }}>{s.l}</p>
-              <p style={{ fontSize:13, fontWeight:800, color:s.c, margin:0 }}>₹{Math.round(s.v || 0).toLocaleString('en-IN')}</p>
+              <p style={{ fontSize:9, color:'#9ba8b5', fontWeight:500, textTransform:'uppercase', margin:0 }}>{s.l}</p>
+              <p style={{ fontSize:13, fontWeight:600, color:s.c, margin:0 }}>₹{Math.round(s.v || 0).toLocaleString('en-IN')}</p>
             </div>
           ))}
         </div>

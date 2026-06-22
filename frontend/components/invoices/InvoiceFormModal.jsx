@@ -16,6 +16,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { PDFDocument } from 'pdf-lib';
 import imageCompression from 'browser-image-compression';
+import RightPanel from '../RightPanel.jsx';
 //import { ApproveSignatureModal } from './ApproveSignatureModal.jsx';
 
 // ── Invoice Form Modal ───────────────────────────────────────────────────────
@@ -253,22 +254,20 @@ export function InvoiceFormModal({ tenants = [], companies, otherParties = [], o
   const watchCompany = watch("company");
 
   return (
-    <motion.div 
-      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+    <RightPanel
+      isOpen
+      onClose={onClose}
+      title={initialData ? 'Edit Invoice' : 'Generate Invoice'}
+      subtitle={initialData ? 'Update invoice details' : 'Create a new invoice'}
+      icon={<ReceiptIndianRupee size={20}/>}
+      iconBg="#fff7ed"
+      iconColor="#f97316"
+      width="950px"
+      submitLabel={loading ? 'Processing…' : (initialData ? 'Update & Finalize' : 'Generate & Save Invoice')}
+      onSubmit={handleSubmit(onFormSubmit)}
+      submitLoading={loading}
     >
-      <motion.div 
-        initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
-        className="bg-white w-full max-w-5xl max-h-[90vh] overflow-hidden rounded-2xl shadow-2xl flex flex-col"
-      >
-        <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-slate-800">{initialData ? 'Edit Invoice' : 'Generate Invoice'}</h2>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400">
-            <X size={20} />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit(onFormSubmit)} className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
+        <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4">
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="flex flex-col gap-1.5">
@@ -548,73 +547,77 @@ export function InvoiceFormModal({ tenants = [], companies, otherParties = [], o
                 </div>
              </div>
 
-             <div className="bg-slate-900 rounded-[28px] p-8 text-white shadow-2xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 blur-[60px] rounded-full -mr-16 -mt-16"></div>
-                <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-6">Financial Summary</h3>
-                
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center text-slate-400 text-sm">
-                    <span>SubTotal (All Items)</span>
-                    <span className="font-bold text-white">₹{watchBaseRent.toLocaleString()}</span>
+             <div style={{ background:'#fff', borderRadius:20, border:'1.5px solid #f0f2f5', boxShadow:'0 4px 24px rgba(0,0,0,0.06)', overflow:'hidden', display:'flex', flexDirection:'column' }}>
+                {/* Header */}
+                <div style={{ background:'linear-gradient(135deg,#fff7ed 0%,#fff 100%)', borderBottom:'1.5px solid #f0f2f5', padding:'16px 20px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                    <div style={{ width:32, height:32, borderRadius:10, background:'#fff7ed', border:'1.5px solid rgba(249,115,22,0.2)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                      <IndianRupee size={16} color="#f97316" />
+                    </div>
+                    <span style={{ fontSize:11, fontWeight:800, color:'#1a1a2e', textTransform:'uppercase', letterSpacing:'0.1em' }}>Financial Summary</span>
                   </div>
-                  
+                  <span className={cn(
+                    "px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider",
+                    watchPaymentStatus === 'Paid'    ? "bg-emerald-50 text-emerald-600 border border-emerald-200" :
+                    watchPaymentStatus === 'Partial' ? "bg-amber-50 text-amber-600 border border-amber-200" :
+                                                       "bg-rose-50 text-rose-500 border border-rose-200"
+                  )}>{watchPaymentStatus}</span>
+                </div>
+
+                <div style={{ padding:'18px 20px', display:'flex', flexDirection:'column', gap:0, flex:1 }}>
+                  {/* Subtotal */}
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 0', borderBottom:'1px solid #f5f6f8' }}>
+                    <span style={{ fontSize:12, color:'#6b7280' }}>SubTotal (All Items)</span>
+                    <span style={{ fontSize:13, fontWeight:700, color:'#1a1a2e' }}>₹{watchBaseRent.toLocaleString('en-IN')}</span>
+                  </div>
+
+                  {/* GST rows */}
                   {watchedTaxOption === 'GST' && (
                     <>
-                      <div className="flex justify-between items-center text-slate-400 text-xs">
-                        <span>CGST (9%)</span>
-                        <span className="font-bold text-white">₹{watchCgst.toLocaleString()}</span>
+                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 0', borderBottom:'1px dashed #f0f2f5' }}>
+                        <span style={{ fontSize:11, color:'#9ba8b5' }}>CGST (9%)</span>
+                        <span style={{ fontSize:12, fontWeight:600, color:'#475569' }}>₹{watchCgst.toLocaleString('en-IN')}</span>
                       </div>
-                      <div className="flex justify-between items-center text-slate-400 text-xs">
-                        <span>SGST (9%)</span>
-                        <span className="font-bold text-white">₹{watchSgst.toLocaleString()}</span>
+                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 0', borderBottom:'1px solid #f5f6f8' }}>
+                        <span style={{ fontSize:11, color:'#9ba8b5' }}>SGST (9%)</span>
+                        <span style={{ fontSize:12, fontWeight:600, color:'#475569' }}>₹{watchSgst.toLocaleString('en-IN')}</span>
                       </div>
                     </>
                   )}
-                  
-                  <div className="h-px bg-white/10 my-4"></div>
-                  
-                  <div className="flex justify-between items-end">
+
+                  {/* Total Payable */}
+                  <div style={{ margin:'12px 0', padding:'14px 16px', background:'#fff7ed', borderRadius:12, border:'1.5px solid rgba(249,115,22,0.18)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                     <div>
-                      <p className="text-[10px] text-primary font-black uppercase tracking-wider">Total Payable</p>
-                      <p className="text-3xl font-black">₹{watchTotalInvoice.toLocaleString()}</p>
+                      <p style={{ fontSize:9, fontWeight:800, color:'#f97316', textTransform:'uppercase', letterSpacing:'0.08em', margin:0 }}>Total Payable</p>
+                      <p style={{ fontSize:26, fontWeight:900, color:'#f97316', margin:'2px 0 0', lineHeight:1 }}>₹{watchTotalInvoice.toLocaleString('en-IN')}</p>
                     </div>
-                    <div className="text-right">
-                       <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Received</p>
-                       <input 
-                         type="number" 
-                         {...register("receivedAmount", { valueAsNumber: true })}
-                         className="w-24 bg-white/10 border border-white/20 rounded px-2 py-1 text-right text-sm font-bold focus:bg-white/20 outline-none transition-all"
-                       />
+                    <CheckCircle2 size={28} color="#f97316" strokeWidth={1.5} style={{ opacity:0.4 }}/>
+                  </div>
+
+                  {/* Received & TDS */}
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
+                    <div style={{ background:'#f8f9fb', borderRadius:10, padding:'10px 12px', border:'1px solid #f0f2f5' }}>
+                      <p style={{ fontSize:9, fontWeight:700, color:'#9ba8b5', textTransform:'uppercase', letterSpacing:'0.06em', margin:'0 0 6px' }}>Received (₹)</p>
+                      <input
+                        type="number"
+                        {...register("receivedAmount", { valueAsNumber: true })}
+                        style={{ width:'100%', background:'#fff', border:'1.5px solid #e8eaed', borderRadius:8, padding:'6px 10px', fontSize:13, fontWeight:700, color:'#1a1a2e', outline:'none', textAlign:'right' }}
+                      />
+                    </div>
+                    <div style={{ background:'#f8f9fb', borderRadius:10, padding:'10px 12px', border:'1px solid #f0f2f5' }}>
+                      <p style={{ fontSize:9, fontWeight:700, color:'#9ba8b5', textTransform:'uppercase', letterSpacing:'0.06em', margin:'0 0 6px' }}>TDS Deducted (₹)</p>
+                      <input
+                        type="number"
+                        {...register("tdsAmount", { valueAsNumber: true })}
+                        style={{ width:'100%', background:'#fff', border:'1.5px solid #e8eaed', borderRadius:8, padding:'6px 10px', fontSize:13, fontWeight:700, color:'#1a1a2e', outline:'none', textAlign:'right' }}
+                      />
                     </div>
                   </div>
 
-                  <div className="flex justify-between items-center pt-2">
-                    <div className="flex flex-col">
-                      <span className="text-[10px] text-slate-400 font-bold uppercase">TDS Deducted</span>
-                      <input 
-                         type="number" 
-                         {...register("tdsAmount", { valueAsNumber: true })}
-                         className="w-24 bg-white/10 border border-white/20 rounded px-2 py-1 text-right text-xs font-bold focus:bg-white/20 outline-none transition-all mt-1"
-                       />
-                    </div>
-                    <div className="text-right">
-                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Balance Due</span>
-                      <p className={cn("text-lg font-black", watchBalance > 0 ? "text-rose-400" : "text-emerald-400")}>
-                        ₹{watchBalance.toLocaleString()}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 flex items-center gap-2">
-                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Status:</span>
-                    <span className={cn(
-                      "px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest",
-                      watchPaymentStatus === 'Paid' ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" :
-                      watchPaymentStatus === 'Partial' ? "bg-amber-500/20 text-amber-400 border border-amber-500/30" :
-                      "bg-rose-500/20 text-rose-400 border border-rose-500/30"
-                    )}>
-                      {watchPaymentStatus}
-                    </span>
+                  {/* Balance Due */}
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 16px', background: watchBalance > 0 ? '#fff5f5' : '#f0fdf4', borderRadius:12, border: `1.5px solid ${watchBalance > 0 ? '#fecaca' : '#bbf7d0'}` }}>
+                    <span style={{ fontSize:11, fontWeight:700, color: watchBalance > 0 ? '#ef4444' : '#16a34a', textTransform:'uppercase', letterSpacing:'0.06em' }}>Balance Due</span>
+                    <span style={{ fontSize:20, fontWeight:900, color: watchBalance > 0 ? '#ef4444' : '#16a34a' }}>₹{watchBalance.toLocaleString('en-IN')}</span>
                   </div>
                 </div>
              </div>
@@ -629,20 +632,7 @@ export function InvoiceFormModal({ tenants = [], companies, otherParties = [], o
             />
           </div>
         </form>
-
-        <div className="p-6 border-t border-slate-100 flex items-center justify-end gap-3 bg-slate-50/50">
-          <button type="button" onClick={onClose} className="px-6 py-2.5 rounded-md font-bold text-slate-500 hover:bg-slate-200 transition-colors">Cancel</button>
-          <button 
-            onClick={handleSubmit(onFormSubmit)}
-            disabled={loading}
-            className="px-10 py-3 bg-primary text-white rounded-xl font-bold hover:bg-orange-600 transition-all shadow-[0_10px_20px_-10px_rgba(249,115,22,0.5)] disabled:opacity-50 flex items-center gap-2"
-          >
-            {loading ? <Loader2 size={18} className="animate-spin" /> : <ShieldCheck size={18} />}
-            {loading ? 'Processing...' : (initialData ? 'Update & Finalize' : 'Generate & Save Invoice')}
-          </button>
-        </div>
-      </motion.div>
-    </motion.div>
+    </RightPanel>
   );
 }
 

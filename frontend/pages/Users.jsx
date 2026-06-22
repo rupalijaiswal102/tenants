@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
-import { motion, AnimatePresence } from 'motion/react';
 import {
   Plus, Edit2, Trash2, X, Eye, EyeOff,
   CheckCircle2, XCircle, Search, Loader2, Key, Shield,
-  Users, CheckCircle, UserX, Layers
+  Users, CheckCircle, UserX, Layers, UserCog, Lock
 } from 'lucide-react';
+import RightPanel, { PanelGrid, PanelField, PanelDivider } from '../components/RightPanel.jsx';
 
 // ── Shared input style ────────────────────────────────────────────────────────
 const inp = {
@@ -57,7 +57,7 @@ function RoleBadge({ role }) {
   );
 }
 
-// ── Add / Edit Modal ──────────────────────────────────────────────────────────
+// ── Add / Edit Panel ──────────────────────────────────────────────────────────
 function UserModal({ user, onClose, onSuccess }) {
   const isEdit = !!user;
   const [form, setForm] = useState({
@@ -100,138 +100,157 @@ function UserModal({ user, onClose, onSuccess }) {
     } finally { setSaving(false); }
   };
 
+  const selectedRole = ROLES_DEFAULT.find(r => r.value === form.role);
+
   return (
-    <div style={{ position:'fixed', inset:0, zIndex:100, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
-      <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
-        onClick={onClose} style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.5)', backdropFilter:'blur(4px)' }}/>
-      <motion.div initial={{ scale:0.95, opacity:0, y:20 }} animate={{ scale:1, opacity:1, y:0 }}
-        style={{ position:'relative', background:'#fff', width:'100%', maxWidth:680, borderRadius:24, boxShadow:'0 20px 60px rgba(0,0,0,0.15)', overflow:'hidden' }}>
+    <RightPanel
+      isOpen
+      onClose={onClose}
+      title={isEdit ? 'Edit User' : 'Add New User'}
+      subtitle={isEdit ? `Update details for ${user.name}` : 'Create a new team member account'}
+      badge={isEdit ? form.role : undefined}
+      icon={<UserCog size={20}/>}
+      iconBg="#fff7ed"
+      iconColor="#f97316"
+      width="680px"
+      submitLabel={saving ? 'Saving…' : (isEdit ? 'Save Changes' : 'Create User')}
+      onSubmit={handleSubmit}
+      submitLoading={saving}
+    >
+      <div style={{ display:'flex', flexDirection:'column', gap:18 }}>
 
-        {/* Header */}
-        <div style={{ padding:'20px 24px', borderBottom:'1px solid #f0f2f5', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-          <div>
-            <h2 style={{ fontSize:18, fontWeight:900, color:'#1a1a2e', margin:0 }}>{isEdit ? 'Edit User' : 'Add New User'}</h2>
-            <p style={{ fontSize:11, color:'#9ba8b5', margin:'2px 0 0' }}>Set user details and access role</p>
+        <PanelDivider label="Basic Information"/>
+
+        {/* Name + Email */}
+        <PanelGrid cols={2}>
+          <PanelField label="Full Name" required>
+            <input value={form.name} onChange={e => set('name', e.target.value)}
+              style={inp} placeholder="e.g. Simran Singh"
+              onFocus={e => e.target.style.borderColor='#f97316'}
+              onBlur={e => e.target.style.borderColor='#f0f2f5'}/>
+          </PanelField>
+          <PanelField label="Email Address" required>
+            <input value={form.email} onChange={e => set('email', e.target.value)}
+              type="email" style={inp} placeholder="user@neoteric.in"
+              onFocus={e => e.target.style.borderColor='#f97316'}
+              onBlur={e => e.target.style.borderColor='#f0f2f5'}/>
+          </PanelField>
+        </PanelGrid>
+
+        {/* Password */}
+        <PanelField label={isEdit ? 'New Password (blank = keep existing)' : 'Password'} required={!isEdit}>
+          <div style={{ position:'relative' }}>
+            <input value={form.password} onChange={e => set('password', e.target.value)}
+              type={showPass ? 'text' : 'password'}
+              style={{ ...inp, paddingRight:44 }} placeholder="Min 6 characters"
+              onFocus={e => e.target.style.borderColor='#f97316'}
+              onBlur={e => e.target.style.borderColor='#f0f2f5'}/>
+            <button onClick={() => setShowPass(v => !v)} type="button"
+              style={{ position:'absolute', right:12, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', color:'#9ba8b5' }}>
+              {showPass ? <EyeOff size={16}/> : <Eye size={16}/>}
+            </button>
           </div>
-          <button onClick={onClose} style={{ width:34, height:34, borderRadius:'50%', border:'none', background:'#f8f9fb', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#9ba8b5' }}>
-            <X size={16}/>
-          </button>
-        </div>
+        </PanelField>
 
-        {/* Form */}
-        <div style={{ padding:24, display:'flex', flexDirection:'column', gap:16, maxHeight:'70vh', overflowY:'auto' }}>
+        {/* Phone + Department */}
+        <PanelGrid cols={2}>
+          <PanelField label="Phone">
+            <input value={form.phone} onChange={e => set('phone', e.target.value)}
+              style={inp} placeholder="+91 98765 43210"
+              onFocus={e => e.target.style.borderColor='#f97316'}
+              onBlur={e => e.target.style.borderColor='#f0f2f5'}/>
+          </PanelField>
+          <PanelField label="Department">
+            <input value={form.department} onChange={e => set('department', e.target.value)}
+              style={inp} placeholder="e.g. Accounts"
+              onFocus={e => e.target.style.borderColor='#f97316'}
+              onBlur={e => e.target.style.borderColor='#f0f2f5'}/>
+          </PanelField>
+        </PanelGrid>
 
-          {/* Name + Email */}
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-            <div>
-              <label style={{ fontSize:10, fontWeight:800, color:'#9ba8b5', textTransform:'uppercase', letterSpacing:'0.08em', display:'block', marginBottom:6 }}>Full Name *</label>
-              <input value={form.name} onChange={e => set('name', e.target.value)}
-                style={inp} placeholder="e.g. Simran Singh"
-                onFocus={e => e.target.style.borderColor='#f97316'}
-                onBlur={e => e.target.style.borderColor='#f0f2f5'}/>
-            </div>
-            <div>
-              <label style={{ fontSize:10, fontWeight:800, color:'#9ba8b5', textTransform:'uppercase', letterSpacing:'0.08em', display:'block', marginBottom:6 }}>Email *</label>
-              <input value={form.email} onChange={e => set('email', e.target.value)}
-                type="email" style={inp} placeholder="user@neoteric.in"
-                onFocus={e => e.target.style.borderColor='#f97316'}
-                onBlur={e => e.target.style.borderColor='#f0f2f5'}/>
-            </div>
-          </div>
-
-          {/* Password */}
-          <div>
-            <label style={{ fontSize:10, fontWeight:800, color:'#9ba8b5', textTransform:'uppercase', letterSpacing:'0.08em', display:'block', marginBottom:6 }}>
-              {isEdit ? 'New Password (blank = keep existing)' : 'Password *'}
-            </label>
-            <div style={{ position:'relative' }}>
-              <input value={form.password} onChange={e => set('password', e.target.value)}
-                type={showPass ? 'text' : 'password'}
-                style={{ ...inp, paddingRight:44 }} placeholder="Min 6 characters"
-                onFocus={e => e.target.style.borderColor='#f97316'}
-                onBlur={e => e.target.style.borderColor='#f0f2f5'}/>
-              <button onClick={() => setShowPass(v => !v)} type="button"
-                style={{ position:'absolute', right:12, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', color:'#9ba8b5' }}>
-                {showPass ? <EyeOff size={16}/> : <Eye size={16}/>}
-              </button>
-            </div>
-          </div>
-
-          {/* Role selector */}
-          <div>
-            <label style={{ fontSize:10, fontWeight:800, color:'#9ba8b5', textTransform:'uppercase', letterSpacing:'0.08em', display:'block', marginBottom:8 }}>Role & Permissions *</label>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
-              {ROLES_DEFAULT.map(r => (
-                <button key={r.value} type="button" onClick={() => set('role', r.value)}
-                  style={{ padding:'10px 12px', borderRadius:12, border:`2px solid ${form.role===r.value ? r.color : '#f0f2f5'}`, background: form.role===r.value ? r.bg : '#fff', cursor:'pointer', textAlign:'left', transition:'all 0.15s' }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:3 }}>
-                    <span style={{ width:8, height:8, borderRadius:'50%', background:r.color, flexShrink:0 }}/>
-                    <span style={{ fontSize:12, fontWeight:800, color: form.role===r.value ? r.color : '#1a1a2e' }}>{r.label}</span>
-                  </div>
-                  <p style={{ fontSize:10, color:'#9ba8b5', margin:0, lineHeight:1.4 }}>{r.description}</p>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Permission Matrix — hidden for Super Admin */}
-          {form.role !== 'Super Admin' && (
-            <div>
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
-                <label style={{ fontSize:10, fontWeight:800, color:'#9ba8b5', textTransform:'uppercase', letterSpacing:'0.08em' }}>Module Permissions</label>
-                <div style={{ display:'flex', gap:6 }}>
-                  <button type="button" onClick={() => set('permissions', Object.fromEntries(MODULES.map(m => [m.key, Object.fromEntries(m.actions.map(a => [a, true]))])))}
-                    style={{ fontSize:10, fontWeight:700, padding:'3px 10px', borderRadius:6, border:'1px solid #e2e8f0', background:'#f8fafc', color:'#64748b', cursor:'pointer', fontFamily:'inherit' }}>
-                    Select All
-                  </button>
-                  <button type="button" onClick={() => set('permissions', Object.fromEntries(MODULES.map(m => [m.key, Object.fromEntries(m.actions.map(a => [a, false]))])))}
-                    style={{ fontSize:10, fontWeight:700, padding:'3px 10px', borderRadius:6, border:'1px solid #e2e8f0', background:'#f8fafc', color:'#64748b', cursor:'pointer', fontFamily:'inherit' }}>
-                    Clear All
-                  </button>
-                </div>
+        {/* Active toggle (edit only) */}
+        {isEdit && (
+          <PanelField label="Account Status">
+            <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+              <div onClick={() => set('isActive', !form.isActive)}
+                style={{ width:44, height:24, borderRadius:12, background: form.isActive?'#f97316':'#e2e8f0', position:'relative', cursor:'pointer', transition:'background 0.2s', flexShrink:0 }}>
+                <div style={{ position:'absolute', top:2, left: form.isActive?20:2, width:20, height:20, borderRadius:'50%', background:'#fff', boxShadow:'0 1px 3px rgba(0,0,0,0.2)', transition:'left 0.2s' }}/>
               </div>
-              <div style={{ border:'1px solid #f0f2f5', borderRadius:12, overflow:'hidden' }}>
-                {/* Header — max 6 action columns */}
-                <div style={{ display:'grid', gridTemplateColumns:'140px repeat(6, 1fr)', background:'#f8fafc', borderBottom:'1px solid #f0f2f5', padding:'8px 14px', gap:4 }}>
-                  <span style={{ fontSize:10, fontWeight:800, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.08em' }}>Module</span>
+              <span style={{ fontSize:13, fontWeight:700, color: form.isActive ? '#10b981' : '#ef4444' }}>
+                {form.isActive ? 'Active Account' : 'Inactive Account'}
+              </span>
+            </div>
+          </PanelField>
+        )}
+
+        <PanelDivider label="Role & Access"/>
+
+        {/* Role selector */}
+        <PanelField label="Select Role" required>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+            {ROLES_DEFAULT.map(r => (
+              <button key={r.value} type="button" onClick={() => set('role', r.value)}
+                style={{ padding:'10px 12px', borderRadius:12, border:`2px solid ${form.role===r.value ? r.color : '#f0f2f5'}`, background: form.role===r.value ? r.bg : '#fff', cursor:'pointer', textAlign:'left', transition:'all 0.15s' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:3 }}>
+                  <span style={{ width:8, height:8, borderRadius:'50%', background:r.color, flexShrink:0 }}/>
+                  <span style={{ fontSize:12, fontWeight:800, color: form.role===r.value ? r.color : '#1a1a2e' }}>{r.label}</span>
+                </div>
+                <p style={{ fontSize:10, color:'#9ba8b5', margin:0, lineHeight:1.4 }}>{r.description}</p>
+              </button>
+            ))}
+          </div>
+        </PanelField>
+
+        {/* Permission Matrix — hidden for Super Admin */}
+        {form.role !== 'Super Admin' && (
+          <>
+            <PanelDivider label="Module Permissions"/>
+            <div>
+              <div style={{ display:'flex', justifyContent:'flex-end', gap:6, marginBottom:8 }}>
+                <button type="button" onClick={() => set('permissions', Object.fromEntries(MODULES.map(m => [m.key, Object.fromEntries(m.actions.map(a => [a, true]))])))}
+                  style={{ fontSize:10, fontWeight:700, padding:'4px 12px', borderRadius:7, border:'1px solid #e2e8f0', background:'#f8fafc', color:'#64748b', cursor:'pointer', fontFamily:'inherit' }}>
+                  Select All
+                </button>
+                <button type="button" onClick={() => set('permissions', Object.fromEntries(MODULES.map(m => [m.key, Object.fromEntries(m.actions.map(a => [a, false]))])))}
+                  style={{ fontSize:10, fontWeight:700, padding:'4px 12px', borderRadius:7, border:'1px solid #e2e8f0', background:'#f8fafc', color:'#64748b', cursor:'pointer', fontFamily:'inherit' }}>
+                  Clear All
+                </button>
+              </div>
+              <div style={{ border:'1.5px solid #f0f2f5', borderRadius:12, overflow:'hidden' }}>
+                <div style={{ display:'grid', gridTemplateColumns:'140px repeat(6, 1fr)', background:'#f8fafc', borderBottom:'1px solid #f0f2f5', padding:'9px 14px', gap:4 }}>
+                  <span style={{ fontSize:9, fontWeight:800, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.08em' }}>Module</span>
                   {['View','Add','Edit','Delete','Payment','Approve / Adjust'].map(a => (
                     <span key={a} style={{ fontSize:9, fontWeight:800, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'center', lineHeight:1.3 }}>{a}</span>
                   ))}
                 </div>
-                {/* Rows */}
                 {MODULES.map((mod, mi) => {
                   const defEmpty = Object.fromEntries(mod.actions.map(a => [a, false]));
                   const p = form.permissions?.[mod.key] || defEmpty;
                   const allOn = mod.actions.every(a => p[a]);
-                  // Map each column to the right action key for this module
                   const colActions = ['view','add','edit','delete',
                     mod.key === 'invoices' ? 'payment'    : null,
                     mod.key === 'invoices' ? 'approve'    : mod.key === 'ledger' ? 'adjustment' : null,
                   ];
                   return (
-                    <div key={mod.key} style={{ display:'grid', gridTemplateColumns:'140px repeat(6, 1fr)', padding:'10px 14px', gap:4, borderBottom: mi < MODULES.length-1 ? '1px solid #f8f9fb' : 'none', alignItems:'center',
-                      background: mi % 2 === 0 ? '#fff' : '#fafbfc' }}>
-                      {/* Module name + toggle */}
+                    <div key={mod.key} style={{ display:'grid', gridTemplateColumns:'140px repeat(6, 1fr)', padding:'10px 14px', gap:4, borderBottom: mi < MODULES.length-1 ? '1px solid #f8f9fb' : 'none', alignItems:'center', background: mi % 2 === 0 ? '#fff' : '#fafbfc' }}>
                       <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                         <div onClick={() => {
                           const newVal = !allOn;
-                          const next = Object.fromEntries(mod.actions.map(a => [a, newVal]));
-                          set('permissions', { ...form.permissions, [mod.key]: next });
+                          set('permissions', { ...form.permissions, [mod.key]: Object.fromEntries(mod.actions.map(a => [a, newVal])) });
                         }} style={{ width:28, height:16, borderRadius:8, background: allOn ? '#f97316' : '#e2e8f0', position:'relative', cursor:'pointer', transition:'background 0.2s', flexShrink:0 }}>
                           <div style={{ position:'absolute', top:2, left: allOn ? 12 : 2, width:12, height:12, borderRadius:'50%', background:'#fff', boxShadow:'0 1px 2px rgba(0,0,0,0.15)', transition:'left 0.2s' }}/>
                         </div>
                         <span style={{ fontSize:12, fontWeight:700, color:'#1a1a2e' }}>{mod.label}</span>
                       </div>
-                      {/* Checkboxes per column */}
                       {colActions.map((action, ci) => (
                         <div key={ci} style={{ display:'flex', justifyContent:'center' }}>
                           {action && mod.actions.includes(action) ? (
                             <div onClick={() => set('permissions', { ...form.permissions, [mod.key]: { ...p, [action]: !p[action] } })}
-                              style={{ width:18, height:18, borderRadius:4, border:`2px solid ${p[action] ? '#f97316' : '#d1d5db'}`, background: p[action] ? '#f97316' : '#fff', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', transition:'all 0.15s', flexShrink:0 }}>
+                              style={{ width:18, height:18, borderRadius:5, border:`2px solid ${p[action] ? '#f97316' : '#d1d5db'}`, background: p[action] ? '#f97316' : '#fff', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', transition:'all 0.15s', flexShrink:0 }}>
                               {p[action] && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                             </div>
                           ) : (
-                            <span style={{ width:18, height:18, display:'block', background:'#f1f5f9', borderRadius:4 }}/>
+                            <span style={{ width:18, height:18, display:'block', background:'#f1f5f9', borderRadius:5 }}/>
                           )}
                         </div>
                       ))}
@@ -241,55 +260,15 @@ function UserModal({ user, onClose, onSuccess }) {
               </div>
               <p style={{ fontSize:10, color:'#94a3b8', marginTop:6 }}>Toggle row to set all permissions at once. Super Admin always has full access.</p>
             </div>
-          )}
+          </>
+        )}
 
-          {/* Phone + Department */}
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-            <div>
-              <label style={{ fontSize:10, fontWeight:800, color:'#9ba8b5', textTransform:'uppercase', letterSpacing:'0.08em', display:'block', marginBottom:6 }}>Phone</label>
-              <input value={form.phone} onChange={e => set('phone', e.target.value)}
-                style={inp} placeholder="+91 98765 43210"
-                onFocus={e => e.target.style.borderColor='#f97316'}
-                onBlur={e => e.target.style.borderColor='#f0f2f5'}/>
-            </div>
-            <div>
-              <label style={{ fontSize:10, fontWeight:800, color:'#9ba8b5', textTransform:'uppercase', letterSpacing:'0.08em', display:'block', marginBottom:6 }}>Department</label>
-              <input value={form.department} onChange={e => set('department', e.target.value)}
-                style={inp} placeholder="e.g. Accounts"
-                onFocus={e => e.target.style.borderColor='#f97316'}
-                onBlur={e => e.target.style.borderColor='#f0f2f5'}/>
-            </div>
-          </div>
-
-          {/* Active toggle (edit only) */}
-          {isEdit && (
-            <label style={{ display:'flex', alignItems:'center', gap:12, cursor:'pointer' }}>
-              <div onClick={() => set('isActive', !form.isActive)}
-                style={{ width:44, height:24, borderRadius:12, background: form.isActive?'#f97316':'#e2e8f0', position:'relative', cursor:'pointer', transition:'background 0.2s', flexShrink:0 }}>
-                <div style={{ position:'absolute', top:2, left: form.isActive?20:2, width:20, height:20, borderRadius:'50%', background:'#fff', boxShadow:'0 1px 3px rgba(0,0,0,0.2)', transition:'left 0.2s' }}/>
-              </div>
-              <span style={{ fontSize:13, fontWeight:700, color:'#1a1a2e' }}>Active Account</span>
-            </label>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div style={{ padding:'16px 24px', borderTop:'1px solid #f0f2f5', display:'flex', justifyContent:'flex-end', gap:10 }}>
-          <button onClick={onClose} style={{ padding:'9px 20px', borderRadius:10, border:'1.5px solid #f0f2f5', background:'#fff', fontSize:13, fontWeight:600, color:'#5a6474', cursor:'pointer', fontFamily:'inherit' }}>
-            Cancel
-          </button>
-          <button onClick={handleSubmit} disabled={saving}
-            style={{ padding:'9px 24px', borderRadius:10, border:'none', background:'#f97316', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', gap:7, opacity: saving?0.7:1, boxShadow:'0 4px 12px rgba(249,115,22,0.3)' }}>
-            {saving ? <Loader2 size={14} style={{ animation:'spin 1s linear infinite' }}/> : <CheckCircle2 size={14}/>}
-            {isEdit ? 'Save Changes' : 'Create User'}
-          </button>
-        </div>
-      </motion.div>
-    </div>
+      </div>
+    </RightPanel>
   );
 }
 
-// ── Reset Password Modal ──────────────────────────────────────────────────────
+// ── Reset Password Panel ──────────────────────────────────────────────────────
 function ResetPassModal({ user, onClose }) {
   const [pass, setPass]     = useState('');
   const [show, setShow]     = useState(false);
@@ -307,32 +286,51 @@ function ResetPassModal({ user, onClose }) {
   };
 
   return (
-    <div style={{ position:'fixed', inset:0, zIndex:100, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
-      <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
-        onClick={onClose} style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.5)', backdropFilter:'blur(4px)' }}/>
-      <motion.div initial={{ scale:0.95, opacity:0 }} animate={{ scale:1, opacity:1 }}
-        style={{ position:'relative', background:'#fff', width:'100%', maxWidth:380, borderRadius:20, padding:24, boxShadow:'0 20px 60px rgba(0,0,0,0.15)' }}>
-        <h3 style={{ fontSize:16, fontWeight:900, color:'#1a1a2e', margin:'0 0 4px' }}>Reset Password</h3>
-        <p style={{ fontSize:12, color:'#9ba8b5', margin:'0 0 20px' }}>for <strong style={{ color:'#1a1a2e' }}>{user.name}</strong></p>
-        <div style={{ position:'relative', marginBottom:16 }}>
-          <input value={pass} onChange={e => setPass(e.target.value)} type={show?'text':'password'}
-            style={{ ...inp, paddingRight:44 }} placeholder="New password (min 6 chars)"
-            onFocus={e => e.target.style.borderColor='#f97316'}
-            onBlur={e => e.target.style.borderColor='#f0f2f5'}/>
-          <button onClick={() => setShow(v=>!v)} type="button"
-            style={{ position:'absolute', right:12, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', color:'#9ba8b5' }}>
-            {show ? <EyeOff size={16}/> : <Eye size={16}/>}
-          </button>
+    <RightPanel
+      isOpen
+      onClose={onClose}
+      title="Reset Password"
+      subtitle={`Set a new password for ${user.name}`}
+      badge={user.role}
+      icon={<Lock size={20}/>}
+      iconBg="#eff6ff"
+      iconColor="#3b82f6"
+      width="420px"
+      submitLabel={saving ? 'Resetting…' : 'Reset Password'}
+      onSubmit={handleReset}
+      submitLoading={saving}
+    >
+      <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+
+        {/* User info card */}
+        <div style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 16px', background:'#f8f9fb', borderRadius:12, border:'1px solid #f0f2f5' }}>
+          <div style={{ width:44, height:44, borderRadius:12, background: (ROLES_DEFAULT.find(r=>r.value===user.role)?.color || '#94a3b8'), display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, fontWeight:900, color:'#fff', flexShrink:0 }}>
+            {user.name?.charAt(0)?.toUpperCase() || '?'}
+          </div>
+          <div>
+            <p style={{ fontSize:14, fontWeight:800, color:'#1a1a2e', margin:0 }}>{user.name}</p>
+            <p style={{ fontSize:11, color:'#9ba8b5', margin:'2px 0 0' }}>{user.email}</p>
+          </div>
         </div>
-        <div style={{ display:'flex', gap:10 }}>
-          <button onClick={onClose} style={{ flex:1, padding:10, borderRadius:10, border:'1.5px solid #f0f2f5', background:'#fff', fontSize:13, fontWeight:600, color:'#5a6474', cursor:'pointer', fontFamily:'inherit' }}>Cancel</button>
-          <button onClick={handleReset} disabled={saving}
-            style={{ flex:1, padding:10, borderRadius:10, border:'none', background:'#f97316', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit', opacity: saving?0.7:1 }}>
-            {saving ? 'Resetting...' : 'Reset'}
-          </button>
-        </div>
-      </motion.div>
-    </div>
+
+        <PanelField label="New Password" required>
+          <div style={{ position:'relative' }}>
+            <input value={pass} onChange={e => setPass(e.target.value)} type={show?'text':'password'}
+              style={{ ...inp, paddingRight:44 }} placeholder="Min 6 characters"
+              onFocus={e => e.target.style.borderColor='#3b82f6'}
+              onBlur={e => e.target.style.borderColor='#f0f2f5'}/>
+            <button onClick={() => setShow(v=>!v)} type="button"
+              style={{ position:'absolute', right:12, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', color:'#9ba8b5' }}>
+              {show ? <EyeOff size={16}/> : <Eye size={16}/>}
+            </button>
+          </div>
+        </PanelField>
+
+        <p style={{ fontSize:11, color:'#9ba8b5', margin:0, padding:'10px 12px', background:'#fffbeb', borderRadius:8, border:'1px solid #fde68a' }}>
+          ⚠️ User will need to log in again after password reset.
+        </p>
+      </div>
+    </RightPanel>
   );
 }
 
@@ -525,11 +523,9 @@ export default function UsersPage() {
         </div>
       </div>
 
-      {/* Modals */}
-      <AnimatePresence>
-        {modal && <UserModal user={modal === 'add' ? null : modal} onClose={() => setModal(null)} onSuccess={fetchUsers}/>}
-        {resetting && <ResetPassModal user={resetting} onClose={() => setResetting(null)}/>}
-      </AnimatePresence>
+      {/* Panels */}
+      {modal && <UserModal user={modal === 'add' ? null : modal} onClose={() => setModal(null)} onSuccess={fetchUsers}/>}
+      {resetting && <ResetPassModal user={resetting} onClose={() => setResetting(null)}/>}
     </div>
   );
 }
