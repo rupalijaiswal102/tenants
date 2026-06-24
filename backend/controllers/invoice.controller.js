@@ -70,6 +70,7 @@ export const getInvoices = async (req, res) => {
       return res.json(mockStorage.invoices);
     }
     const invoices = await Invoice.find()
+      .select('-signatureImage')
       .sort({ createdAt: -1 })
       .lean()
       .exec();

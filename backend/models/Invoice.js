@@ -24,4 +24,5 @@ const invoiceSchema = new mongoose.Schema({
   approvedBy: String, approvedAt: String, signatureImage: String,
 }, { timestamps: true });
 invoiceSchema.index({ companyId: 1, invoiceNo: 1 }, { unique: true, sparse: true, name: 'company_invoice_unique' });
+invoiceSchema.index({ createdAt: -1 });
 export const Invoice = mongoose.model('Invoice', invoiceSchema);

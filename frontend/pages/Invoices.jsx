@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus, Search, ReceiptIndianRupee, Edit2, Trash2,
@@ -75,12 +75,12 @@ export default function InvoiceList() {
   };
 
   // ── Derived data ──────────────────────────────────────────────────────────
-  const allTypes = Array.from(new Set([
+  const allTypes = useMemo(() => Array.from(new Set([
     ...DEFAULT_PARTICULARS,
     ...(invoices.flatMap(i => i.items?.map((it) => it.particular).filter(Boolean) || []))
-  ])).sort();
+  ])).sort(), [invoices]);
 
-  const filtered = invoices.filter(inv => {
+  const filtered = useMemo(() => invoices.filter(inv => {
     const q  = search.toLowerCase();
     const sOk = !search || inv.invoiceNo?.toLowerCase().includes(q) || inv.partyName?.toLowerCase().includes(q) || inv.company?.toLowerCase().includes(q);
     const stOk= statusFilter === 'All' || inv.paymentStatus === statusFilter;
@@ -90,13 +90,13 @@ export default function InvoiceList() {
     const resolvedPartyType = inv.otherPartyId ? 'OtherParty' : inv.tenantId ? 'Tenant' : (inv.partyType || 'Tenant');
     const ptOk= partyTypeFilter === 'All' || resolvedPartyType === partyTypeFilter;
     return sOk && stOk && cOk && tOk && mOk && ptOk;
-  });
+  }), [invoices, search, statusFilter, companyFilter, typeFilter, monthFilter, partyTypeFilter]);
 
-  const totalInvoiced    = filtered.reduce((s, i) => s + (i.totalInvoice || 0), 0);
-  const totalReceived    = filtered.reduce((s, i) => s + (i.receivedAmount || i.received || 0), 0);
-  const totalOutstanding = filtered.reduce((s, i) => s + (i.balanceAmount || i.balance || 0), 0);
-  const paidCount        = filtered.filter(i => i.paymentStatus === 'Paid').length;
-  const pendingCount     = filtered.filter(i => i.paymentStatus === 'Pending').length;
+  const totalInvoiced    = useMemo(() => filtered.reduce((s, i) => s + (i.totalInvoice || 0), 0), [filtered]);
+  const totalReceived    = useMemo(() => filtered.reduce((s, i) => s + (i.receivedAmount || i.received || 0), 0), [filtered]);
+  const totalOutstanding = useMemo(() => filtered.reduce((s, i) => s + (i.balanceAmount || i.balance || 0), 0), [filtered]);
+  const paidCount        = useMemo(() => filtered.filter(i => i.paymentStatus === 'Paid').length, [filtered]);
+  const pendingCount     = useMemo(() => filtered.filter(i => i.paymentStatus === 'Pending').length, [filtered]);
 
   const activeFilters = [statusFilter, companyFilter, typeFilter, monthFilter, partyTypeFilter].filter(f => f !== 'All').length;
 
@@ -390,12 +390,26 @@ export default function InvoiceList() {
       <AnimatePresence>
         {showForm && (
           <InvoiceFormModal tenants={tenants} otherParties={otherParties} companies={companies}
-            onClose={() => setShowForm(false)} onSuccess={() => { setShowForm(false); refetch(); }}/>
+            onClose={() => setShowForm(false)}
+            onSuccess={(saved) => {
+              setShowForm(false);
+              if (saved) setInvoices(prev => [{ ...saved, id: saved._id || saved.id }, ...prev]);
+              refetch();
+            }}/>
         )}
         {editingInvoice && (
           <InvoiceFormModal tenants={tenants} otherParties={otherParties} companies={companies}
             initialData={editingInvoice} onClose={() => setEditingInvoice(null)}
-            onSuccess={() => { setEditingInvoice(null); refetch(); }}/>
+            onSuccess={(saved) => {
+              setEditingInvoice(null);
+              if (saved) {
+                const freshId = String(saved.id || saved._id);
+                setInvoices(prev => prev.map(inv =>
+                  String(inv.id || inv._id) === freshId ? { ...saved, id: freshId } : inv
+                ));
+              }
+              refetch();
+            }}/>
         )}
         {selectedInvoice && (
           <ViewInvoiceModal invoice={selectedInvoice}

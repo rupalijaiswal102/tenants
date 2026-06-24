@@ -232,7 +232,7 @@ export function InvoiceFormModal({ tenants = [], companies, otherParties = [], o
           const tenant  = tenants?.find(t  => (t._id  || t.id)  === String(savedInvoice.tenantId  || data.tenantId));
           sendInvoicePDFToSlack(savedInvoice, tenant, company).catch(() => {});
         }
-        onSuccess();
+        onSuccess(res.data);
       } else toast.error('Failed to save invoice');
     } catch (err) {
       const msg = err?.response?.data?.error || err?.response?.data?.message || err?.message || 'Error saving invoice';
