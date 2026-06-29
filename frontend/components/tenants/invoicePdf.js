@@ -353,11 +353,11 @@ export async function generateInvoicePDF(invoice, tenant, company, { download = 
   const forText = `For :${compFull}`;
   pdf.text(forText, sigX, yS, { align:'right' });
   const centX = sigX - pdf.getTextWidth(forText) / 2; // center x under "For :Company"
-  yS += 12;
+  yS += 2;
 
   if(invoice.approved){
-    if(sealB64){ try{ pdf.addImage(sealB64,imgFmt(sealB64),centX-18,yS,36,36,undefined,'FAST'); yS+=38; }catch{ yS+=4; } }
-    else { yS+=4; }
+    if(sealB64){ try{ pdf.addImage(sealB64,imgFmt(sealB64),centX-22.5,yS,45,36,undefined,'FAST'); yS+=36; }catch{ yS+=2; } }
+    else { yS+=2; }
   } else {
     yS+=9;
   }
