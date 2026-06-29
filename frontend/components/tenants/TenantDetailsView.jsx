@@ -24,6 +24,7 @@ export function TenantDetailsView({ tenant, onClose, companies, allTenants, apiB
   const authData = JSON.parse(localStorage.getItem('neoteric_auth') || 'null');
 
   // ── State ──────────────────────────────────────────────────────────────────
+  const [tenantProfile,   setTenantProfile]   = useState(tenant); // full profile (may be thin initially)
   const [details,         setDetails]         = useState(null);
   const [ledgerData,      setLedgerData]      = useState(null);
   const [loading,         setLoading]         = useState(true);
@@ -41,20 +42,27 @@ export function TenantDetailsView({ tenant, onClose, companies, allTenants, apiB
 
   // ── Derived ────────────────────────────────────────────────────────────────
   const tenantId    = String(tenant.id || tenant._id || '');
-  const company     = companies?.find(c => c.companyName === tenant.company);
+  const company     = companies?.find(c => c.companyName === tenantProfile.company);
   const { invoices = [], paymentSummary = {}, analytics = {} } = details || {};
 
-  const lockInExpiry = tenant.leaseStart ? (() => {
-    const d = new Date(tenant.leaseStart);
-    d.setMonth(d.getMonth() + (tenant.lockIn || 0));
+  const lockInExpiry = tenantProfile.leaseStart ? (() => {
+    const d = new Date(tenantProfile.leaseStart);
+    d.setMonth(d.getMonth() + (tenantProfile.lockIn || 0));
     return d.toISOString().split('T')[0];
   })() : '';
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
   const fetchDetails = () => {
     setLoading(true);
-    axios.get(`${apiBase}/${tenantId}/details`)
-      .then(r => { setDetails(r.data); setLoading(false); })
+    Promise.all([
+      axios.get(`${apiBase}/${tenantId}/details`),
+      axios.get(`${apiBase}/${tenantId}`),
+    ])
+      .then(([detailsRes, profileRes]) => {
+        setDetails(detailsRes.data);
+        setTenantProfile(prev => ({ ...prev, ...profileRes.data }));
+        setLoading(false);
+      })
       .catch(err => { console.error('fetchDetails:', err.message); setLoading(false); });
   };
 
@@ -132,7 +140,7 @@ export function TenantDetailsView({ tenant, onClose, companies, allTenants, apiB
 
       {/* Sticky header + tabs */}
       <TenantDetailHeader
-        tenant={tenant}
+        tenant={tenantProfile}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onClose={onClose}
@@ -146,7 +154,7 @@ export function TenantDetailsView({ tenant, onClose, companies, allTenants, apiB
 
           {activeTab === 'overview' && (
             <OverviewTab
-              tenant={tenant}
+              tenant={tenantProfile}
               paymentSummary={paymentSummary}
               analytics={analytics}
             />
@@ -154,7 +162,7 @@ export function TenantDetailsView({ tenant, onClose, companies, allTenants, apiB
 
           {activeTab === 'ledger' && (
             <LedgerTab
-              tenant={tenant}
+              tenant={tenantProfile}
               company={company}
               ledgerData={ledgerData}
               ledgerLoading={ledgerLoading}
@@ -179,11 +187,11 @@ export function TenantDetailsView({ tenant, onClose, companies, allTenants, apiB
           )}
 
           {activeTab === 'lease' && (
-            <LeaseTab tenant={tenant} lockInExpiry={lockInExpiry}/>
+            <LeaseTab tenant={tenantProfile} lockInExpiry={lockInExpiry}/>
           )}
 
           {activeTab === 'documents' && (
-            <DocumentsTab tenant={tenant}/>
+            <DocumentsTab tenant={tenantProfile}/>
           )}
 
           {activeTab === 'workflow' && workflowInvoice && (
@@ -218,7 +226,7 @@ export function TenantDetailsView({ tenant, onClose, companies, allTenants, apiB
         {selectedInvoice && (
           <ViewInvoiceModal
             invoice={selectedInvoice}
-            tenant={tenant}
+            tenant={tenantProfile}
             company={companies?.find(c => c.id === selectedInvoice.companyId || c.companyName === selectedInvoice.company)}
             onClose={() => setSelectedInvoice(null)}
           />
@@ -227,9 +235,9 @@ export function TenantDetailsView({ tenant, onClose, companies, allTenants, apiB
           <InvoiceFormModal
             initialData={editingInvoice}
             tenants={isOtherParty ? [] : allTenants}
-            otherParties={isOtherParty ? [tenant] : []}
+            otherParties={isOtherParty ? [tenantProfile] : []}
             initialPartyType={isOtherParty ? 'OtherParty' : 'Tenant'}
-            initialOtherPartyId={isOtherParty ? (tenant.id || tenant._id) : undefined}
+            initialOtherPartyId={isOtherParty ? (tenantProfile.id || tenantProfile._id) : undefined}
             companies={companies}
             onClose={() => setEditingInvoice(null)}
             onSuccess={() => { setEditingInvoice(null); fetchDetails(); }}
@@ -237,7 +245,7 @@ export function TenantDetailsView({ tenant, onClose, companies, allTenants, apiB
         )}
         {showOpeningAdj && (
           <OpeningAdjustmentModal
-            tenant={tenant}
+            tenant={tenantProfile}
             onClose={() => setShowOpeningAdj(false)}
             onSuccess={() => { setShowOpeningAdj(false); fetchLedger(); fetchDetails(); }}
           />
