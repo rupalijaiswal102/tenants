@@ -378,7 +378,8 @@ export async function sendInvoicePDFToSlack(invoice, tenant, company) {
   try {
     const pdfBase64 = await generateInvoicePDF(invoice, tenant, company, { download: false });
     if (!pdfBase64) return;
-    await fetch('/api/slack/upload-pdf', {
+    const apiUrl = import.meta.env.VITE_API_URL || '';
+    await fetch(`${apiUrl}/api/slack/upload-pdf`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

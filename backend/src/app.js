@@ -10,7 +10,8 @@ import ledgerRoutes     from '../routes/ledger.routes.js';
 import otherPartyRoutes  from '../routes/otherParty.routes.js';
 import workflowRoutes    from '../routes/workflow.routes.js';
 import userRoutes        from '../routes/user.routes.js';
-import slackRoutes       from '../routes/slack.routes.js';
+import slackRoutes          from '../routes/slack.routes.js';
+import reportRemarkRoutes   from '../routes/reportRemark.routes.js';
 import { isUsingMockData } from './mockData.js';
 
 export async function createApp() {
@@ -52,7 +53,8 @@ export async function createApp() {
   app.use('/api/other-parties', otherPartyRoutes);
   app.use('/api/workflow',      workflowRoutes);
   app.use('/api/users',         userRoutes);
-  app.use('/api/slack',         slackRoutes);
+  app.use('/api/slack',          slackRoutes);
+  app.use('/api/report-remarks', reportRemarkRoutes);
 
   app.use((err, req, res, next) => {
     console.error('SERVER ERROR:', err);

@@ -4,13 +4,15 @@ import {
   ReceiptIndianRupee, ShieldCheck, FileDown,
   CalendarDays, ChevronDown, Building2, X,
   CheckCircle2, AlertCircle, Loader2, IndianRupee,
-  Users, AlertTriangle, CheckCircle, FileText
+  Users, AlertTriangle, CheckCircle, FileText,
+  MessageSquarePlus, Trash2, Send, Eye
 } from 'lucide-react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'motion/react';
 import { exportToExcel } from '../src/lib/exportUtils.js';
 import { toast } from 'react-hot-toast';
 import jsPDF from 'jspdf';
+import { TenantDetailsView } from '../components/tenants/TenantDetailsView.jsx';
 // jspdf-autotable not installed — using manual table
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -268,15 +270,74 @@ export default function Reports() {
   const [selYear,        setSelYear]        = useState('All');
   const [exporting,      setExporting]      = useState(false);
   const [pdfLoading,     setPdfLoading]     = useState(false);
+  const [companies,      setCompanies]      = useState([]);
+  const [viewTenant,     setViewTenant]     = useState(null); // { id, name, partyType }
+  const [remarkCounts,   setRemarkCounts]   = useState({});  // { [invoiceId]: count }
+  const [remarkModal,    setRemarkModal]    = useState(null);
+  const [modalRemarks,   setModalRemarks]   = useState([]);
+  const [modalInput,     setModalInput]     = useState('');
+  const [modalAdding,    setModalAdding]    = useState(false);
+  const [modalLoading,   setModalLoading]   = useState(false);
+
+  // Load remark counts once data is ready
+  useEffect(() => {
+    if (loading) return;
+    const invoiceIds = invoices.map(inv => String(inv._id)).filter(Boolean);
+    const tenantIds  = outstandingDues.map(d => String(d.tenantId || d.tenantName)).filter(Boolean);
+    const allIds     = [...new Set([...invoiceIds, ...tenantIds])];
+    if (!allIds.length) return;
+    axios.post('/api/report-remarks/counts', { invoiceIds: allIds })
+      .then(r => setRemarkCounts(r.data))
+      .catch(() => {});
+  }, [loading]);
+
+  // Fetch remarks for the opened row
+  useEffect(() => {
+    if (!remarkModal) return;
+    setModalLoading(true);
+    setModalRemarks([]);
+    axios.get(`/api/report-remarks?invoiceId=${encodeURIComponent(remarkModal.invoiceId)}`)
+      .then(r => setModalRemarks(r.data))
+      .catch(() => {})
+      .finally(() => setModalLoading(false));
+  }, [remarkModal?.invoiceId]);
+
+  const fmtRemarkDate = (iso) => {
+    const d = new Date(iso);
+    return d.toLocaleString('en-IN', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit', hour12:true });
+  };
+
+  const handleModalAdd = async () => {
+    const text = modalInput.trim();
+    if (!remarkModal || !text) return;
+    setModalAdding(true);
+    try {
+      const res = await axios.post('/api/report-remarks', { invoiceId: remarkModal.invoiceId, text });
+      setModalRemarks(prev => [res.data, ...prev]);
+      setRemarkCounts(prev => ({ ...prev, [remarkModal.invoiceId]: (prev[remarkModal.invoiceId] || 0) + 1 }));
+      setModalInput('');
+    } catch { toast.error('Failed to add remark'); }
+    finally { setModalAdding(false); }
+  };
+
+  const handleModalDelete = async (id) => {
+    try {
+      await axios.delete(`/api/report-remarks/${id}`);
+      setModalRemarks(prev => prev.filter(r => r._id !== id));
+      setRemarkCounts(prev => ({ ...prev, [remarkModal.invoiceId]: Math.max(0, (prev[remarkModal.invoiceId] || 1) - 1) }));
+    } catch { toast.error('Failed to delete remark'); }
+  };
 
   useEffect(() => {
     Promise.allSettled([
       axios.get('/api/invoices'),
       axios.get('/api/ledger/outstanding-dues'),
+      axios.get('/api/companies'),
     ])
-      .then(([invResult, duesResult]) => {
-        if (invResult.status === 'fulfilled')  setInvoices(invResult.value.data);
+      .then(([invResult, duesResult, compResult]) => {
+        if (invResult.status  === 'fulfilled') setInvoices(invResult.value.data);
         if (duesResult.status === 'fulfilled') setOutstandingDues(duesResult.value.data);
+        if (compResult.status === 'fulfilled') setCompanies(compResult.value.data);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -358,7 +419,104 @@ export default function Reports() {
     </div>
   );
 
+  if (viewTenant) {
+    return (
+      <TenantDetailsView
+        tenant={{ id: viewTenant.id, _id: viewTenant.id, name: viewTenant.name }}
+        onClose={() => setViewTenant(null)}
+        companies={companies}
+        allTenants={[]}
+        apiBase={viewTenant.partyType === 'OtherParty' ? '/api/other-parties' : '/api/tenants'}
+      />
+    );
+  }
+
   return (
+    <>
+    {/* ── Per-row Remark Modal ── */}
+    <AnimatePresence>
+      {remarkModal && (
+        <motion.div
+          initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
+          style={{ position:'fixed', inset:0, zIndex:999, background:'rgba(15,23,42,0.5)', display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}
+          onClick={() => setRemarkModal(null)}>
+          <motion.div
+            initial={{ scale:0.95, y:10 }} animate={{ scale:1, y:0 }} exit={{ scale:0.95, y:10 }}
+            style={{ background:'#fff', borderRadius:16, width:'100%', maxWidth:480, maxHeight:'80vh', display:'flex', flexDirection:'column', overflow:'hidden', boxShadow:'0 20px 60px rgba(0,0,0,0.25)' }}
+            onClick={e => e.stopPropagation()}>
+
+            {/* Header */}
+            <div style={{ padding:'16px 20px', borderBottom:'1px solid #f0f2f5', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                <div style={{ width:32, height:32, borderRadius:9, background:'#fff7ed', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                  <MessageSquarePlus size={16} color="#f97316"/>
+                </div>
+                <div>
+                  <p style={{ fontSize:14, fontWeight:800, color:'#0f172a', margin:0 }}>Remarks</p>
+                  <p style={{ fontSize:11, color:'#94a3b8', margin:'1px 0 0', fontWeight:500, maxWidth:280, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{remarkModal.label}</p>
+                </div>
+              </div>
+              <button onClick={() => setRemarkModal(null)} style={{ background:'none', border:'none', cursor:'pointer', color:'#94a3b8', padding:4, borderRadius:6 }}>
+                <X size={18}/>
+              </button>
+            </div>
+
+            {/* Remarks list */}
+            <div style={{ flex:1, overflowY:'auto', minHeight:0 }}>
+              {modalLoading ? (
+                <div style={{ textAlign:'center', padding:'32px 0' }}>
+                  <Loader2 size={20} className="animate-spin" color="#f97316" style={{ display:'block', margin:'0 auto' }}/>
+                </div>
+              ) : modalRemarks.length === 0 ? (
+                <div style={{ textAlign:'center', padding:'36px 0', color:'#cbd5e1' }}>
+                  <MessageSquarePlus size={26} strokeWidth={1.5} style={{ display:'block', margin:'0 auto 8px' }}/>
+                  <p style={{ fontSize:13, fontWeight:600, margin:0 }}>No remarks yet — add the first one</p>
+                </div>
+              ) : modalRemarks.map((r, idx) => (
+                <div key={r._id}
+                  style={{ padding:'12px 20px', borderBottom:'1px solid #f8fafc', display:'flex', gap:10, alignItems:'flex-start', transition:'background 0.1s' }}
+                  onMouseEnter={e => e.currentTarget.style.background='#fafbff'}
+                  onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                  <div style={{ width:28, height:28, borderRadius:'50%', background:'#fff7ed', border:'1.5px solid #fed7aa', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, marginTop:2 }}>
+                    <MessageSquarePlus size={11} color="#f97316"/>
+                  </div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <p style={{ fontSize:13, color:'#1e293b', margin:'0 0 3px', lineHeight:1.55, wordBreak:'break-word' }}>{r.text}</p>
+                    <p style={{ fontSize:11, color:'#94a3b8', margin:0, fontWeight:500 }}>{fmtRemarkDate(r.createdAt)}</p>
+                  </div>
+                  <button onClick={() => handleModalDelete(r._id)}
+                    style={{ background:'none', border:'none', cursor:'pointer', color:'#cbd5e1', padding:'2px 3px', borderRadius:5, flexShrink:0, transition:'color 0.15s' }}
+                    onMouseEnter={e => e.currentTarget.style.color='#ef4444'}
+                    onMouseLeave={e => e.currentTarget.style.color='#cbd5e1'}>
+                    <Trash2 size={13}/>
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Input */}
+            <div style={{ padding:'12px 20px', borderTop:'1px solid #f0f2f5', display:'flex', gap:8, alignItems:'flex-end', flexShrink:0 }}>
+              <textarea
+                value={modalInput}
+                onChange={e => setModalInput(e.target.value)}
+                onKeyDown={e => { if (e.key==='Enter' && (e.ctrlKey||e.metaKey)) handleModalAdd(); }}
+                placeholder="Add a remark… (Ctrl+Enter to save)"
+                rows={2}
+                style={{ flex:1, padding:'9px 12px', border:'1px solid #e2e8f0', borderRadius:9, fontSize:12, color:'#1e293b', outline:'none', resize:'none', fontFamily:'inherit', lineHeight:1.5, background:'#f8fafc', boxSizing:'border-box' }}
+              />
+              <button onClick={handleModalAdd} disabled={modalAdding || !modalInput.trim()}
+                style={{ display:'flex', alignItems:'center', gap:5, padding:'9px 15px', background: modalInput.trim() ? '#f97316' : '#f1f5f9', border:'none', borderRadius:9, fontSize:12, fontWeight:700, color: modalInput.trim() ? '#fff' : '#94a3b8', cursor: modalInput.trim() ? 'pointer' : 'not-allowed', height:40, transition:'all 0.15s' }}>
+                {modalAdding ? <Loader2 size={12} className="animate-spin"/> : <Send size={12}/>}
+                Add
+              </button>
+            </div>
+
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+
+
     <div style={{ padding:'24px', minHeight:'100vh', background:'#f8fafc' }}>
 
       {/* ── Header ── */}
@@ -487,6 +645,8 @@ export default function Reports() {
                   {['#', 'Tenant Name', 'Closing Balance', 'Status'].map((h, i) => (
                     <th key={h} style={{ padding:'11px 16px', fontSize:11, fontWeight:600, color:'#9ba8b5', textTransform:'uppercase', letterSpacing:'0.07em', textAlign: i >= 2 ? 'right' : 'left', whiteSpace:'nowrap', borderBottom:'1px solid #eef0f4' }}>{h}</th>
                   ))}
+                  <th style={{ padding:'11px 16px', fontSize:11, fontWeight:600, color:'#9ba8b5', textTransform:'uppercase', letterSpacing:'0.07em', textAlign:'center', whiteSpace:'nowrap', borderBottom:'1px solid #eef0f4' }}>Remarks</th>
+                  <th style={{ padding:'11px 16px', fontSize:11, fontWeight:600, color:'#9ba8b5', textTransform:'uppercase', letterSpacing:'0.07em', textAlign:'center', whiteSpace:'nowrap', borderBottom:'1px solid #eef0f4' }}>View</th>
                 </tr>
               </thead>
               <tbody>
@@ -511,12 +671,43 @@ export default function Reports() {
                         <td style={{ padding:'13px 16px', textAlign:'right' }}>
                           <span style={{ display:'inline-block', padding:'4px 10px', borderRadius:20, background:statusBg, color:statusColor, fontSize:11, fontWeight:600 }}>{statusLabel}</span>
                         </td>
+                        <td style={{ padding:'10px 16px', textAlign:'center' }}>
+                          {(() => {
+                            const tid = String(d.tenantId || d.tenantName);
+                            const cnt = remarkCounts[tid] || 0;
+                            return (
+                              <button
+                                onClick={() => setRemarkModal({ invoiceId: tid, label: d.tenantName })}
+                                title={cnt > 0 ? `${cnt} remark${cnt !== 1 ? 's' : ''}` : 'Add remark'}
+                                style={{ position:'relative', background:'none', border:'none', cursor:'pointer', color: cnt > 0 ? '#f97316' : '#cbd5e1', padding:'5px 7px', borderRadius:8, transition:'all 0.15s', display:'inline-flex', alignItems:'center', justifyContent:'center' }}
+                                onMouseEnter={e => { e.currentTarget.style.color='#f97316'; e.currentTarget.style.background='#fff7ed'; }}
+                                onMouseLeave={e => { e.currentTarget.style.color = cnt > 0 ? '#f97316' : '#cbd5e1'; e.currentTarget.style.background='none'; }}>
+                                <MessageSquarePlus size={16}/>
+                                {cnt > 0 && (
+                                  <span style={{ position:'absolute', top:-3, right:-3, background:'#f97316', color:'#fff', borderRadius:'50%', width:15, height:15, fontSize:9, display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, lineHeight:1 }}>
+                                    {cnt > 9 ? '9+' : cnt}
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })()}
+                        </td>
+                        <td style={{ padding:'10px 16px', textAlign:'center' }}>
+                          <button
+                            onClick={() => setViewTenant({ id: String(d.tenantId), name: d.tenantName, partyType: 'Tenant' })}
+                            title="View tenant details"
+                            style={{ background:'none', border:'none', cursor:'pointer', color:'#94a3b8', padding:'5px 7px', borderRadius:8, transition:'all 0.15s', display:'inline-flex', alignItems:'center', justifyContent:'center' }}
+                            onMouseEnter={e => { e.currentTarget.style.color='#3b82f6'; e.currentTarget.style.background='#eff6ff'; }}
+                            onMouseLeave={e => { e.currentTarget.style.color='#94a3b8'; e.currentTarget.style.background='none'; }}>
+                            <Eye size={16}/>
+                          </button>
+                        </td>
                       </motion.tr>
                     );
                   })}
                 </AnimatePresence>
                 {filteredOutstanding.length === 0 && (
-                  <tr><td colSpan={4} style={{ textAlign:'center', padding:'48px 0', color:'#cbd5e1' }}>
+                  <tr><td colSpan={6} style={{ textAlign:'center', padding:'48px 0', color:'#cbd5e1' }}>
                     <AlertCircle size={28} strokeWidth={1.5} style={{ display:'block', margin:'0 auto 8px' }}/>
                     <p style={{ fontSize:13, fontWeight:600, margin:0 }}>No tenants found</p>
                   </td></tr>
@@ -527,6 +718,8 @@ export default function Reports() {
                   <tr style={{ background:'#0f172a', borderTop:'2px solid #0f172a' }}>
                     <td colSpan={2} style={{ padding:'12px 16px', fontSize:11, fontWeight:800, color:'#fff', textTransform:'uppercase', letterSpacing:'0.08em' }}>TOTAL ({filteredOutstanding.length} tenants)</td>
                     <td style={{ padding:'12px 16px', fontSize:12, fontWeight:800, color:'#fca5a5', textAlign:'right' }}>₹{fmt(totalOutstandingBalance)}</td>
+                    <td/>
+                    <td/>
                     <td/>
                   </tr>
                 </tfoot>
@@ -547,6 +740,8 @@ export default function Reports() {
                 ].map((h,i) => (
                   <th key={h+i} style={{ padding:'11px 16px', fontSize:11, fontWeight:600, color:'#9ba8b5', textTransform:'uppercase', letterSpacing:'0.07em', textAlign:i>3?'right':'left', whiteSpace:'nowrap', borderBottom:'1px solid #eef0f4' }}>{h}</th>
                 ))}
+                <th style={{ padding:'11px 16px', fontSize:11, fontWeight:600, color:'#9ba8b5', textTransform:'uppercase', letterSpacing:'0.07em', textAlign:'center', whiteSpace:'nowrap', borderBottom:'1px solid #eef0f4' }}>Remarks</th>
+                <th style={{ padding:'11px 16px', fontSize:11, fontWeight:600, color:'#9ba8b5', textTransform:'uppercase', letterSpacing:'0.07em', textAlign:'center', whiteSpace:'nowrap', borderBottom:'1px solid #eef0f4' }}>View</th>
               </tr>
             </thead>
             <tbody>
@@ -582,6 +777,43 @@ export default function Reports() {
                       <td style={{ padding:'13px 16px', textAlign:'right' }}>
                         <span style={{ display:'inline-block', padding:'4px 10px', borderRadius:20, background:st.bg, color:st.color, fontSize:11, fontWeight:600 }}>{inv.paymentStatus}</span>
                       </td>
+                      <td style={{ padding:'10px 16px', textAlign:'center' }}>
+                        {(() => {
+                          const invId = String(inv._id);
+                          const cnt   = remarkCounts[invId] || 0;
+                          return (
+                            <button
+                              onClick={() => setRemarkModal({ invoiceId: invId, label: `${inv.partyName} · #${inv.invoiceNo}` })}
+                              title={cnt > 0 ? `${cnt} remark${cnt !== 1 ? 's' : ''}` : 'Add remark'}
+                              style={{ position:'relative', background:'none', border:'none', cursor:'pointer', color: cnt > 0 ? '#f97316' : '#cbd5e1', padding:'5px 7px', borderRadius:8, transition:'all 0.15s', display:'inline-flex', alignItems:'center', justifyContent:'center' }}
+                              onMouseEnter={e => { e.currentTarget.style.color='#f97316'; e.currentTarget.style.background='#fff7ed'; }}
+                              onMouseLeave={e => { e.currentTarget.style.color = cnt > 0 ? '#f97316' : '#cbd5e1'; e.currentTarget.style.background='none'; }}>
+                              <MessageSquarePlus size={16}/>
+                              {cnt > 0 && (
+                                <span style={{ position:'absolute', top:-3, right:-3, background:'#f97316', color:'#fff', borderRadius:'50%', width:15, height:15, fontSize:9, display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, lineHeight:1 }}>
+                                  {cnt > 9 ? '9+' : cnt}
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })()}
+                      </td>
+                      <td style={{ padding:'10px 16px', textAlign:'center' }}>
+                        {(inv.tenantId || inv.otherPartyId) && (
+                          <button
+                            onClick={() => setViewTenant({
+                              id:         String(inv.tenantId || inv.otherPartyId),
+                              name:       inv.partyName,
+                              partyType:  inv.partyType || 'Tenant',
+                            })}
+                            title="View tenant details"
+                            style={{ background:'none', border:'none', cursor:'pointer', color:'#94a3b8', padding:'5px 7px', borderRadius:8, transition:'all 0.15s', display:'inline-flex', alignItems:'center', justifyContent:'center' }}
+                            onMouseEnter={e => { e.currentTarget.style.color='#3b82f6'; e.currentTarget.style.background='#eff6ff'; }}
+                            onMouseLeave={e => { e.currentTarget.style.color='#94a3b8'; e.currentTarget.style.background='none'; }}>
+                            <Eye size={16}/>
+                          </button>
+                        )}
+                      </td>
                     </motion.tr>
                   );
                 })}
@@ -607,6 +839,8 @@ export default function Reports() {
                   {reportType==='gst'        && <><td/><td/><td style={{ padding:'12px 16px', fontSize:12, fontWeight:800, color:'#c7d2fe', textAlign:'right' }}>₹{fmt(sum.totalGst)}</td></>}
                   {reportType==='tds'        && <><td style={{ padding:'12px 16px', fontSize:12, fontWeight:800, color:'#fde68a', textAlign:'right' }}>₹{fmt(sum.totalTds)}</td><td/></>}
                   <td/>
+                  <td/>
+                  <td/>
                 </tr>
               </tfoot>
             )}
@@ -614,6 +848,8 @@ export default function Reports() {
           )}
         </div>
       </div>
+
     </div>
+    </>
   );
 }
