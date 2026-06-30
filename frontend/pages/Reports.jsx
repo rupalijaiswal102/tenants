@@ -22,7 +22,7 @@ const MONTHS = [
 ];
 
 const REPORT_TYPES = [
-  { key: 'collection',  label: 'Rent Collection',   sub: 'Billing vs Recovery',    icon: TrendingUp,         color: '#10b981', bg: '#f0fdf4', border: '#bbf7d0' },
+  { key: 'collection',  label: 'Collection',         sub: 'Billing vs Recovery',    icon: TrendingUp,         color: '#10b981', bg: '#f0fdf4', border: '#bbf7d0' },
   { key: 'pending',     label: 'Pending Dues',       sub: 'Aging Receivables',       icon: Clock,              color: '#ef4444', bg: '#fff1f2', border: '#fecdd3' },
   { key: 'outstanding', label: 'Outstanding Dues',   sub: 'Tenant Wise Balance',     icon: IndianRupee,        color: '#dc2626', bg: '#fef2f2', border: '#fca5a5' },
   { key: 'gst',         label: 'GST Audit',          sub: 'Tax Filing Summary',      icon: ReceiptIndianRupee, color: '#6366f1', bg: '#eef2ff', border: '#c7d2fe' },
@@ -270,6 +270,7 @@ export default function Reports() {
   const [selYear,        setSelYear]        = useState('All');
   const [exporting,      setExporting]      = useState(false);
   const [pdfLoading,     setPdfLoading]     = useState(false);
+  const [partyFilter,    setPartyFilter]    = useState('All'); // 'All' | 'Tenant' | 'OtherParty'
   const [companies,      setCompanies]      = useState([]);
   const [viewTenant,     setViewTenant]     = useState(null); // { id, name, partyType }
   const [remarkCounts,   setRemarkCounts]   = useState({});  // { [invoiceId]: count }
@@ -347,15 +348,16 @@ export default function Reports() {
 
   // ── Filter ──
   const filtered = invoices.filter(inv => {
-    const d     = new Date(inv.billDate);
-    const mOk   = selMonth === 'All' || MONTHS[d.getMonth()] === selMonth;
-    const yOk   = selYear  === 'All' || d.getFullYear().toString() === selYear;
-    const sOk   = !searchTerm || inv.partyName?.toLowerCase().includes(searchTerm.toLowerCase()) || inv.invoiceNo?.toLowerCase().includes(searchTerm.toLowerCase());
-    const typeOk = reportType === 'pending' ? inv.paymentStatus !== 'Paid'
-                 : reportType === 'gst'     ? (inv.cgst + inv.sgst) > 0
-                 : reportType === 'tds'     ? (inv.tdsAmount || 0) > 0
-                 : true;
-    return mOk && yOk && sOk && typeOk;
+    const d       = new Date(inv.billDate);
+    const mOk     = selMonth === 'All' || MONTHS[d.getMonth()] === selMonth;
+    const yOk     = selYear  === 'All' || d.getFullYear().toString() === selYear;
+    const sOk     = !searchTerm || inv.partyName?.toLowerCase().includes(searchTerm.toLowerCase()) || inv.invoiceNo?.toLowerCase().includes(searchTerm.toLowerCase());
+    const typeOk  = reportType === 'pending' ? inv.paymentStatus !== 'Paid'
+                  : reportType === 'gst'     ? (inv.cgst + inv.sgst) > 0
+                  : reportType === 'tds'     ? (inv.tdsAmount || 0) > 0
+                  : true;
+    const partyOk = partyFilter === 'All' || (inv.partyType || 'Tenant') === partyFilter;
+    return mOk && yOk && sOk && typeOk && partyOk;
   });
 
   const sum = computeSummary(filtered, reportType);
@@ -374,9 +376,12 @@ export default function Reports() {
         return Object.values(map).sort((a, b) => b.closingBalance - a.closingBalance);
       })();
 
-  const filteredOutstanding = outstandingSource.filter(d =>
-    !searchTerm || d.tenantName?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredOutstanding = outstandingSource.filter(d => {
+    const sOk     = !searchTerm || d.tenantName?.toLowerCase().includes(searchTerm.toLowerCase());
+    const effectiveParty = d.partyType || 'Tenant';
+    const partyOk = partyFilter === 'All' || effectiveParty === partyFilter;
+    return sOk && partyOk;
+  });
   const totalOutstandingBalance = filteredOutstanding.reduce((s, d) => s + (d.closingBalance || 0), 0);
 
   const handleExcel = () => {
@@ -620,9 +625,21 @@ export default function Reports() {
           <ChevronDown size={12} color="#94a3b8"/>
         </div>
 
+        {/* Party Type */}
+        <div style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 12px', border:`1px solid ${partyFilter !== 'All' ? '#fed7aa' : '#f0f2f5'}`, borderRadius:9, background: partyFilter !== 'All' ? '#fff7ed' : '#f8fafc', cursor:'pointer', minWidth:140 }}>
+          <Users size={13} color={partyFilter !== 'All' ? '#f97316' : '#94a3b8'}/>
+          <select value={partyFilter} onChange={e => setPartyFilter(e.target.value)}
+            style={{ border:'none', background:'transparent', fontSize:12, fontWeight:600, color: partyFilter !== 'All' ? '#f97316' : '#0f172a', outline:'none', cursor:'pointer', fontFamily:'inherit', appearance:'none', width:'100%' }}>
+            <option value="All">All Parties</option>
+            <option value="Tenant">Tenants Only</option>
+            <option value="OtherParty">Other Parties Only</option>
+          </select>
+          <ChevronDown size={12} color="#94a3b8"/>
+        </div>
+
         {/* Active filter chips */}
-        {(selMonth !== 'All' || selYear !== 'All') && (
-          <button onClick={() => { setSelMonth('All'); setSelYear('All'); }}
+        {(selMonth !== 'All' || selYear !== 'All' || partyFilter !== 'All') && (
+          <button onClick={() => { setSelMonth('All'); setSelYear('All'); setPartyFilter('All'); }}
             style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:9, background:'#fff7ed', border:'1px solid #fed7aa', fontSize:11, fontWeight:700, color:'#f97316', cursor:'pointer' }}>
             <X size={11}/> Clear Filters
           </button>
