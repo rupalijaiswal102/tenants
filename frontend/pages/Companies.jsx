@@ -116,8 +116,9 @@ export default function CompanyList() {
         />
       )}
 
-      {viewOpen && selected && (
+      {viewOpen && (
         <CompanyViewModal
+          isOpen={viewOpen}
           company={selected}
           onClose={() => setViewOpen(false)}
           onEdit={openEdit}

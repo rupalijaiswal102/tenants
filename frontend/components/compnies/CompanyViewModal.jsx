@@ -1,104 +1,112 @@
-import { Building2, MapPin, Mail, Phone, FileText, Edit, X } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { Building2, MapPin, Mail, Phone, FileText, Edit } from 'lucide-react';
 import { usePermission } from '../../src/hooks/usePermission.js';
+import RightPanel, { PanelDivider } from '../RightPanel.jsx';
 
-export default function CompanyViewModal({ company, onClose, onEdit }) {
+export default function CompanyViewModal({ isOpen, company, onClose, onEdit }) {
   const { canEdit } = usePermission();
   if (!company) return null;
 
   const DetailRow = ({ label, value }) => (
-    <div className="flex justify-between items-center border-b border-white pb-3 gap-2">
-      <span className="text-[10px] font-bold text-slate-400 uppercase shrink-0">{label}</span>
-      <span className="text-xs font-bold text-slate-700 text-right break-all">{value || '--'}</span>
+    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', borderBottom:'1px solid #f0f2f5', paddingBottom:10, gap:8 }}>
+      <span style={{ fontSize:10, fontWeight:700, color:'#9ba8b5', textTransform:'uppercase', letterSpacing:'0.06em', flexShrink:0 }}>{label}</span>
+      <span style={{ fontSize:12, fontWeight:700, color:'#1e293b', textAlign:'right', wordBreak:'break-all' }}>{value || '--'}</span>
     </div>
   );
 
-  const ContactItem = ({ icon, label, value }) => (
-    <div className="flex items-start gap-4">
-      <div className="w-9 h-9 rounded-xl bg-orange-50 flex items-center justify-center text-orange-500 shrink-0">
-        {icon}
+  const ContactRow = ({ icon, label, value }) => (
+    <div style={{ display:'flex', alignItems:'flex-start', gap:12 }}>
+      <div style={{ width:36, height:36, borderRadius:10, background:'#fff7ed', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+        <span style={{ color:'#f97316', display:'flex' }}>{icon}</span>
       </div>
-      <div className="min-w-0">
-        <div className="text-xs font-bold text-slate-400 uppercase tracking-tighter mb-0.5">{label}</div>
-        <div className="text-sm font-bold text-slate-700 break-words">{value || '--'}</div>
+      <div>
+        <p style={{ fontSize:10, fontWeight:700, color:'#9ba8b5', textTransform:'uppercase', letterSpacing:'0.06em', margin:'0 0 2px' }}>{label}</p>
+        <p style={{ fontSize:13, fontWeight:600, color:'#1e293b', margin:0, wordBreak:'break-word' }}>{value || '--'}</p>
       </div>
     </div>
   );
 
   return (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-        <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
-          onClick={onClose} className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" />
+    <RightPanel
+      isOpen={isOpen}
+      onClose={onClose}
+      title={company.companyName}
+      subtitle="Company Profile"
+      icon={
+        company.logoUrl
+          ? <img src={company.logoUrl} alt="Logo" style={{ width:28, height:28, objectFit:'contain' }} referrerPolicy="no-referrer"/>
+          : <Building2 size={20}/>
+      }
+      iconBg="#f8fafc"
+      iconColor="#1a1a2e"
+      badge={company.state || 'India'}
+      width="540px"
+      submitLabel="Edit Profile"
+      onSubmit={canEdit ? () => { onClose(); onEdit(company); } : undefined}
+    >
+      <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
 
-        <motion.div initial={{ scale:0.95, opacity:0 }} animate={{ scale:1, opacity:1 }} exit={{ scale:0.95, opacity:0 }}
-          className="relative bg-[#F8FAFC] w-full md:w-[95vw] max-w-5xl rounded-none md:rounded-3xl shadow-2xl flex flex-col max-h-[92vh] overflow-y-auto border border-white">
-
-          {/* Dark Header */}
-          <div className="bg-[#1A1A2E] p-6 md:p-12 text-white relative flex-shrink-0">
-            <button onClick={onClose} className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center">
-              <X size={20} />
-            </button>
-            <div className="flex flex-col md:flex-row items-center md:items-start gap-6 md:gap-10">
-              <div className="w-24 h-24 md:w-32 md:h-32 rounded-3xl bg-white p-4 flex items-center justify-center shadow-2xl shrink-0">
-                {company.logoUrl
-                  ? <img src={company.logoUrl} alt="Logo" className="max-w-full max-h-full object-contain" referrerPolicy="no-referrer" />
-                  : <Building2 size={40} className="text-[#1A1A2E]" />}
-              </div>
-              <div className="text-center md:text-left space-y-3">
-                <span className="px-3 py-1 bg-orange-500 rounded-full text-[10px] font-black uppercase tracking-widest">Registered Entity</span>
-                <h2 className="text-2xl md:text-5xl font-black tracking-tight leading-tight break-words">{company.companyName}</h2>
-                <div className="flex flex-wrap items-center justify-center md:justify-start gap-5 text-white/50 text-xs font-bold uppercase tracking-widest pt-1">
-                  <div className="flex items-center gap-2"><MapPin size={14} className="text-orange-500" /> {company.state || 'India'}</div>
-                  <div className="flex items-center gap-2"><FileText size={14} className="text-orange-500" /> {company.gstNumber || 'NO GSTIN'}</div>
-                </div>
-              </div>
-            </div>
+        {/* Company identity strip */}
+        <div style={{ background:'#1a1a2e', borderRadius:14, padding:'16px 18px', display:'flex', alignItems:'center', gap:14 }}>
+          <div style={{ width:52, height:52, borderRadius:12, background:'#fff', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, overflow:'hidden' }}>
+            {company.logoUrl
+              ? <img src={company.logoUrl} alt="Logo" style={{ maxWidth:'100%', maxHeight:'100%', objectFit:'contain' }} referrerPolicy="no-referrer"/>
+              : <Building2 size={24} color="#1a1a2e"/>}
           </div>
-
-          {/* Body */}
-          <div className="p-4 md:p-10 -mt-6">
-            <div className="bg-white rounded-[24px] md:rounded-[32px] shadow-xl p-4 md:p-8 space-y-10">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 gap-y-8">
-
-                {/* Contact */}
-                <div>
-                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Contact Details</h4>
-                  <div className="space-y-4">
-                    <ContactItem icon={<Mail size={16} />} label="Primary Email" value={company.email} />
-                    <ContactItem icon={<Phone size={16} />} label="Business Phone" value={company.phoneNumber} />
-                    <ContactItem icon={<MapPin size={16} />} label="Office Address" value={company.address} />
-                  </div>
-                </div>
-
-                {/* Bank */}
-                <div>
-                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Settlement Details</h4>
-                  <div className="bg-slate-50 border border-slate-100 rounded-2xl p-5 space-y-4">
-                    <DetailRow label="Bank Name"      value={company.bankName} />
-                    <DetailRow label="Account No"     value={company.accountNumber} />
-                    <DetailRow label="IFSC"           value={company.ifscCode} />
-                    <div className="flex flex-col gap-1 pt-1">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase">Account Holder</span>
-                      <span className="text-xs font-bold text-slate-700 break-words">{company.accountHolderName || '--'}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Edit button */}
-              {canEdit && (
-                <div className="pt-6 flex items-center justify-center">
-                  <button onClick={() => { onClose(); onEdit(company); }}
-                    className="w-full md:w-auto px-10 py-4 bg-[#1A1A2E] text-white rounded-2xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-slate-800 transition-all shadow-xl">
-                    <Edit size={16} /> Full Edit Profile
-                  </button>
-                </div>
+          <div>
+            <p style={{ fontSize:14, fontWeight:800, color:'#fff', margin:0, lineHeight:1.3 }}>{company.companyName}</p>
+            <div style={{ display:'flex', flexWrap:'wrap', gap:12, marginTop:6 }}>
+              {company.state && (
+                <span style={{ display:'flex', alignItems:'center', gap:4, fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.08em' }}>
+                  <MapPin size={11} color="#f97316"/> {company.state}
+                </span>
+              )}
+              {company.gstNumber && (
+                <span style={{ display:'flex', alignItems:'center', gap:4, fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.08em' }}>
+                  <FileText size={11} color="#f97316"/> {company.gstNumber}
+                </span>
               )}
             </div>
           </div>
-        </motion.div>
+          <span style={{ marginLeft:'auto', padding:'3px 10px', background:'#f97316', borderRadius:20, fontSize:9, fontWeight:800, color:'#fff', textTransform:'uppercase', letterSpacing:'0.1em', flexShrink:0 }}>
+            Registered Entity
+          </span>
+        </div>
+
+        {/* Contact */}
+        <PanelDivider label="Contact Details"/>
+        <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+          <ContactRow icon={<Mail size={15}/>}  label="Primary Email"   value={company.email}/>
+          <ContactRow icon={<Phone size={15}/>} label="Business Phone"  value={company.phoneNumber}/>
+          <ContactRow icon={<MapPin size={15}/>} label="Office Address" value={company.address}/>
+        </div>
+
+        {/* Bank */}
+        <PanelDivider label="Settlement Details"/>
+        <div style={{ background:'#f8fafc', border:'1px solid #f0f2f5', borderRadius:12, padding:'14px 16px', display:'flex', flexDirection:'column', gap:10 }}>
+          <DetailRow label="Bank Name"       value={company.bankName}/>
+          <DetailRow label="Account No"      value={company.accountNumber}/>
+          <DetailRow label="IFSC"            value={company.ifscCode}/>
+          <DetailRow label="Branch"          value={company.branchName}/>
+          <div style={{ paddingTop:4 }}>
+            <p style={{ fontSize:10, fontWeight:700, color:'#9ba8b5', textTransform:'uppercase', letterSpacing:'0.06em', margin:'0 0 3px' }}>Account Holder</p>
+            <p style={{ fontSize:13, fontWeight:700, color:'#1e293b', margin:0 }}>{company.accountHolderName || '--'}</p>
+          </div>
+        </div>
+
+        {/* Seal preview if present */}
+        {company.sealUrl && (
+          <>
+            <PanelDivider label="Company Seal"/>
+            <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+              <div style={{ width:72, height:72, borderRadius:'50%', border:'2px dashed #e5e7eb', overflow:'hidden', flexShrink:0 }}>
+                <img src={company.sealUrl} alt="Seal" style={{ width:'100%', height:'100%', objectFit:'contain' }}/>
+              </div>
+              <p style={{ fontSize:11, color:'#94a3b8', fontWeight:500 }}>Company seal on file</p>
+            </div>
+          </>
+        )}
+
       </div>
-    </AnimatePresence>
+    </RightPanel>
   );
 }

@@ -1,17 +1,18 @@
 import { X, Download, Clock, Building, FileText, Loader2,
-         PieChart, Receipt, Calendar, FileCheck, GitBranch } from 'lucide-react';
+         PieChart, Receipt, Calendar, FileCheck, GitBranch, StickyNote } from 'lucide-react';
 import { StatusBadge } from '../TenantPrimitives.jsx';
 
 const TABS = [
-  { id:'overview',  label:'Overview',   icon: PieChart  },
-  { id:'ledger',    label:'Ledger',     icon: FileText  },
-  { id:'invoices',  label:'Billing',    icon: Receipt   },
-  { id:'lease',     label:'Lease',      icon: Calendar  },
-  { id:'documents', label:'Documents',  icon: FileCheck },
-  { id:'workflow',  label:'Workflow',   icon: GitBranch },
+  { id:'overview',  label:'Overview',   icon: PieChart   },
+  { id:'ledger',    label:'Ledger',     icon: FileText   },
+  { id:'invoices',  label:'Billing',    icon: Receipt    },
+  { id:'lease',     label:'Lease',      icon: Calendar   },
+  { id:'documents', label:'Documents',  icon: FileCheck  },
+  { id:'workflow',  label:'Workflow',   icon: GitBranch  },
+  { id:'notes',     label:'Notes',      icon: StickyNote },
 ];
 
-export default function TenantDetailHeader({ tenant, activeTab, setActiveTab, onClose, exportingPDF, onExportPDF }) {
+export default function TenantDetailHeader({ tenant, activeTab, setActiveTab, onClose, exportingPDF, onExportPDF, notesCount = 0 }) {
   return (
     <div style={{ position:'sticky', top:0, zIndex:30, background:'#fff', borderBottom:'2px solid #f0f2f5', borderLeft:'4px solid #f97316', boxShadow:'0 4px 12px rgba(0,0,0,0.06)' }}>
       <div style={{ width:'100%', padding:'0 20px' }}>
@@ -67,13 +68,18 @@ export default function TenantDetailHeader({ tenant, activeTab, setActiveTab, on
             const Icon = t.icon;
             return (
               <button key={t.id} onClick={() => setActiveTab(t.id)}
-                style={{ display:'flex', alignItems:'center', gap:5, padding:'9px 16px', background:'none', border:'none', cursor:'pointer', fontSize:12, fontFamily:'inherit', whiteSpace:'nowrap', transition:'all 0.15s',
+                style={{ display:'flex', alignItems:'center', gap:5, padding:'9px 16px', background:'none', border:'none', cursor:'pointer', fontSize:12, fontFamily:'inherit', whiteSpace:'nowrap', transition:'all 0.15s', position:'relative',
                   fontWeight:    activeTab === t.id ? 600 : 400,
                   color:         activeTab === t.id ? '#f97316' : '#9ba8b5',
                   borderBottom:  activeTab === t.id ? '2px solid #f97316' : '2px solid transparent',
                   marginBottom: -2,
                 }}>
                 <Icon size={12}/> {t.label}
+                {t.id === 'notes' && notesCount > 0 && (
+                  <span style={{ marginLeft:2, background:'#f97316', color:'#fff', borderRadius:10, fontSize:9, fontWeight:800, padding:'1px 5px', lineHeight:'14px' }}>
+                    {notesCount > 99 ? '99+' : notesCount}
+                  </span>
+                )}
               </button>
             );
           })}

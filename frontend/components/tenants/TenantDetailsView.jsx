@@ -15,6 +15,7 @@ import OverviewTab         from './tenantDetails/OverviewTab.jsx';
 import LedgerTab           from './tenantDetails/LedgerTab.jsx';
 import BillingTab          from './tenantDetails/BillingTab.jsx';
 import { LeaseTab, DocumentsTab } from './tenantDetails/LeaseDocsTab.jsx';
+import NotesTab            from './tenantDetails/NotesTab.jsx';
 import DeleteInvoiceModal  from './tenantDetails/DeleteInvoiceModal.jsx';
 import InvoiceWorkflowTab  from '../invoices/InvoiceWorkflowTab.jsx';
 
@@ -38,6 +39,9 @@ export function TenantDetailsView({ tenant, onClose, companies, allTenants, apiB
   const [payingInvoice,   setPayingInvoice]   = useState(null);
   const [exportingExcel,  setExportingExcel]  = useState(false);
   const [exportingPDF,    setExportingPDF]    = useState(false);
+  const [notes,           setNotes]           = useState([]);
+  const [notesLoading,    setNotesLoading]    = useState(false);
+  const [notesFetched,    setNotesFetched]    = useState(false);
   const ledgerRef = useRef(null);
 
   // ── Derived ────────────────────────────────────────────────────────────────
@@ -77,9 +81,22 @@ export function TenantDetailsView({ tenant, onClose, companies, allTenants, apiB
       .catch(() => setLedgerLoading(false));
   };
 
+  const fetchNotes = () => {
+    setNotesLoading(true);
+    axios.get(`/api/report-remarks/by-tenant/${tenantId}`)
+      .then(r => { setNotes(r.data); setNotesFetched(true); })
+      .catch(() => {})
+      .finally(() => setNotesLoading(false));
+  };
+
   useEffect(() => {
     if (tenantId) { fetchDetails(); fetchLedger(); }
   }, [tenantId]);
+
+  // Lazy-fetch notes when tab is first opened
+  useEffect(() => {
+    if (activeTab === 'notes' && !notesFetched && tenantId) fetchNotes();
+  }, [activeTab]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleDeleteInvoice = async (id) => {
@@ -147,6 +164,7 @@ export function TenantDetailsView({ tenant, onClose, companies, allTenants, apiB
         onClose={onClose}
         exportingPDF={exportingPDF}
         onExportPDF={handleExportPDF}
+        notesCount={notes.length}
       />
 
       {/* Tab content */}
@@ -210,6 +228,14 @@ export function TenantDetailsView({ tenant, onClose, companies, allTenants, apiB
               <p style={{ fontSize:13, fontWeight:600, margin:0 }}>No invoice selected</p>
               <p style={{ fontSize:11, margin:0 }}>Go to <strong>Billing</strong> tab → click <strong>Flow</strong> button on any invoice</p>
             </div>
+          )}
+
+          {activeTab === 'notes' && (
+            <NotesTab
+              notes={notes}
+              notesLoading={notesLoading}
+              onDelete={(id) => setNotes(prev => prev.filter(n => n._id !== id))}
+            />
           )}
 
         </AnimatePresence>

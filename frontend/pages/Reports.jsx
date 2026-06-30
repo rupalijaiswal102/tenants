@@ -5,7 +5,7 @@ import {
   CalendarDays, ChevronDown, Building2, X,
   CheckCircle2, AlertCircle, Loader2, IndianRupee,
   Users, AlertTriangle, CheckCircle, FileText,
-  MessageSquarePlus, Trash2, Send, Eye
+  MessageSquarePlus, Send, Eye
 } from 'lucide-react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'motion/react';
@@ -321,14 +321,6 @@ export default function Reports() {
     finally { setModalAdding(false); }
   };
 
-  const handleModalDelete = async (id) => {
-    try {
-      await axios.delete(`/api/report-remarks/${id}`);
-      setModalRemarks(prev => prev.filter(r => r._id !== id));
-      setRemarkCounts(prev => ({ ...prev, [remarkModal.invoiceId]: Math.max(0, (prev[remarkModal.invoiceId] || 1) - 1) }));
-    } catch { toast.error('Failed to delete remark'); }
-  };
-
   useEffect(() => {
     Promise.allSettled([
       axios.get('/api/invoices'),
@@ -489,12 +481,6 @@ export default function Reports() {
                     <p style={{ fontSize:13, color:'#1e293b', margin:'0 0 3px', lineHeight:1.55, wordBreak:'break-word' }}>{r.text}</p>
                     <p style={{ fontSize:11, color:'#94a3b8', margin:0, fontWeight:500 }}>{fmtRemarkDate(r.createdAt)}</p>
                   </div>
-                  <button onClick={() => handleModalDelete(r._id)}
-                    style={{ background:'none', border:'none', cursor:'pointer', color:'#cbd5e1', padding:'2px 3px', borderRadius:5, flexShrink:0, transition:'color 0.15s' }}
-                    onMouseEnter={e => e.currentTarget.style.color='#ef4444'}
-                    onMouseLeave={e => e.currentTarget.style.color='#cbd5e1'}>
-                    <Trash2 size={13}/>
-                  </button>
                 </div>
               ))}
             </div>
