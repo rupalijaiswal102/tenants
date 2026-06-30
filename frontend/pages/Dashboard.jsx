@@ -7,6 +7,7 @@ import {
 import { useResponsive } from '../src/hooks/useResponsive.js';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { TenantDetailsView } from '../components/tenants/TenantDetailsView.jsx';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, PieChart, Pie, Cell
@@ -15,21 +16,25 @@ import {
 export default function Dashboard() {
   const navigate  = useNavigate();
   const { isMobile } = useResponsive();
-  const [tenants,  setTenants]  = useState([]);
-  const [invoices, setInvoices] = useState([]);
-  const [loading,  setLoading]  = useState(true);
-  const [error,    setError]    = useState(null);
-  const [tenantQ,  setTenantQ]  = useState('');
+  const [tenants,    setTenants]    = useState([]);
+  const [invoices,   setInvoices]   = useState([]);
+  const [companies,  setCompanies]  = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [error,      setError]      = useState(null);
+  const [tenantQ,    setTenantQ]    = useState('');
+  const [viewTenant, setViewTenant] = useState(null);
 
   const load = async () => {
     try {
       setError(null); setLoading(true);
-      const [tR, iR] = await Promise.all([
+      const [tR, iR, cR] = await Promise.all([
         axios.get('/api/tenants'),
         axios.get('/api/invoices'),
+        axios.get('/api/companies'),
       ]);
       setTenants(Array.isArray(tR.data) ? tR.data : []);
       setInvoices(Array.isArray(iR.data) ? iR.data : []);
+      setCompanies(Array.isArray(cR.data) ? cR.data : []);
     } catch (e) {
       setError(e.response?.data?.error || e.message || 'Connection failed');
     } finally { setLoading(false); }
@@ -125,6 +130,18 @@ export default function Dashboard() {
       </button>
     </div>
   );
+
+  if (viewTenant) {
+    return (
+      <TenantDetailsView
+        tenant={viewTenant}
+        onClose={() => setViewTenant(null)}
+        companies={companies}
+        allTenants={tenants}
+        apiBase="/api/tenants"
+      />
+    );
+  }
 
   return (
     <div style={{ padding: isMobile ? 12 : 28, width:'100%', background:'#f8f9fb', minHeight:'100vh' }}>
@@ -292,7 +309,7 @@ export default function Dashboard() {
                     return (
                       <tr key={t.id || i}
                         style={{ borderBottom:'1px solid #f5f6f8', transition:'background 0.12s', cursor:'pointer' }}
-                        onClick={() => navigate(`/tenants/${t.id || t._id}`)}
+                        onClick={() => setViewTenant(t)}
                         onMouseEnter={e => e.currentTarget.style.background = '#fafbff'}
                         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                         <td style={{ padding:'13px 20px' }}>
@@ -323,7 +340,7 @@ export default function Dashboard() {
                           </span>
                         </td>
                         <td style={{ padding:'13px 20px', textAlign:'center' }}>
-                          <button onClick={e => { e.stopPropagation(); navigate(`/tenants/${t.id || t._id}`); }}
+                          <button onClick={e => { e.stopPropagation(); setViewTenant(t); }}
                             style={{ padding:'5px 14px', background:'rgba(249,115,22,0.08)', border:'1px solid rgba(249,115,22,0.2)', borderRadius:8, fontSize:12, fontWeight:600, color:'#f97316', cursor:'pointer', fontFamily:'inherit' }}>
                             View
                           </button>
@@ -432,7 +449,7 @@ export default function Dashboard() {
                   const ub = daysLeft <= 7 ? '#fff1f2' : daysLeft <= 15 ? '#fff7ed' : '#fffbeb';
                   const ac = ['#f97316','#3b82f6','#10b981','#8b5cf6','#ec4899','#06b6d4'][i%6];
                   return (
-                    <tr key={i} onClick={() => navigate(`/tenants/${t.id||t._id}`)}
+                    <tr key={i} onClick={() => setViewTenant(t)}
                       style={{ borderBottom:'1px solid #f8f9fb', cursor:'pointer', transition:'background 0.1s' }}
                       onMouseEnter={e => e.currentTarget.style.background='#fafbfc'}
                       onMouseLeave={e => e.currentTarget.style.background='transparent'}>

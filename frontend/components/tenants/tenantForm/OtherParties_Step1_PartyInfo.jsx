@@ -1,9 +1,8 @@
 import Select from 'react-select';
 import { Controller } from 'react-hook-form';
-import { Loader2, CheckCircle2 } from 'lucide-react';
 import { Field, inp, SELECT_STYLES } from './OtherParties_formUtils.jsx';
 
-export default function Step1_PartyInfo({ register, control, errors, watch, companies, gstLoading, gstSuccess, onGstBlur }) {
+export default function Step1_PartyInfo({ register, control, errors, watch, companies }) {
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
@@ -53,13 +52,8 @@ export default function Step1_PartyInfo({ register, control, errors, watch, comp
         </div>
 
         {/* GST */}
-        <Field label="GST Number" hint="Address will autofill on valid GSTIN">
-          <div style={{ position:'relative' }}>
-            <input {...register('gstNo')} className={inp} placeholder="e.g. 27AABCA1234Z1Z5" onBlur={onGstBlur}/>
-            <div style={{ position:'absolute', right:12, top:'50%', transform:'translateY(-50%)' }}>
-              {gstLoading ? <Loader2 size={14} color="#f97316" style={{ animation:'spin 1s linear infinite' }}/> : gstSuccess ? <CheckCircle2 size={14} color="#10b981"/> : null}
-            </div>
-          </div>
+        <Field label="GST Number">
+          <input {...register('gstNo')} className={inp} placeholder="e.g. 27AABCA1234Z1Z5"/>
         </Field>
 
         <Field label="PAN Number">

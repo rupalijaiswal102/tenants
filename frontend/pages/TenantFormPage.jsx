@@ -45,8 +45,6 @@ export default function TenantFormPage({ mode = 'tenant', propId, onClose: propO
   const [loading,        setLoading]        = useState(false);
   const [initialLoading, setInitialLoading] = useState(!!id);
   const [compressing,    setCompressing]    = useState(false);
-  const [gstLoading,     setGstLoading]     = useState(false);
-  const [gstSuccess,     setGstSuccess]     = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadSpeed,    setUploadSpeed]    = useState('0 KB/s');
   const [agreementFile,  setAgreementFile]  = useState(null);
@@ -115,19 +113,6 @@ export default function TenantFormPage({ mode = 'tenant', propId, onClose: propO
     }
   };
 
-  const handleGstFetch = async (gstNo) => {
-    if (!gstNo || !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][A-Z0-9]{3}$/.test(gstNo)) return;
-    setGstLoading(true); setGstSuccess(false);
-    try {
-      const r = await fetch(`/api/gst/${gstNo}`);
-      if (!r.ok) throw new Error();
-      const d = await r.json();
-      if (d.billingAddress || d.address) {
-        setValue('billingAddress', d.billingAddress || d.address);
-        setGstSuccess(true); toast.success('Address autofilled');
-      }
-    } catch {} finally { setGstLoading(false); }
-  };
 
   const onFormSubmit = async (data) => {
     setLoading(true);
@@ -266,8 +251,7 @@ export default function TenantFormPage({ mode = 'tenant', propId, onClose: propO
                 {step === 1 && (
                   <Step1_PartyInfo
                     register={register} control={control} errors={errors} watch={watch}
-                    companies={companies} gstLoading={gstLoading} gstSuccess={gstSuccess}
-                    onGstBlur={e => handleGstFetch(e.target.value)}
+                    companies={companies}
                   />
                 )}
                 {step === 2 && (
