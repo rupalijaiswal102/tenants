@@ -84,21 +84,39 @@ export const getOtherPartyById = async (req, res) => {
 export const getOtherPartyDetails = async (req, res) => {
   try {
     const { id } = req.params;
-    const party = await OtherParty.findById(id);
-    if (!party) return res.status(404).json({ error: 'Other Party not found' });
 
-    const invoices      = await Invoice.find({
+    let party = null;
+    try { party = await OtherParty.findById(id); } catch (_) {}
+
+    // Fetch invoices by otherPartyId OR tenantId (covers both field conventions)
+    const invoices = await Invoice.find({
       $or: [{ otherPartyId: id }, { tenantId: id }]
     }).sort({ billDate: -1 });
-    const ledgerEntries = await Ledger.find({ tenantId: id }).sort({ date: 1 });
 
-    const totalInvoiced  = ledgerEntries.reduce((s, e) => s + (e.debit  || 0), 0);
-    const totalReceived  = ledgerEntries.reduce((s, e) => s + (e.credit || 0), 0);
-    const totalTds       = ledgerEntries.reduce((s, e) => s + (e.tds    || 0), 0);
+    // If party not in OtherParty collection, derive name from invoices
+    const partyDoc = party
+      ? { ...party.toObject(), id: party._id }
+      : { _id: id, id, name: invoices[0]?.partyName || 'Unknown' };
+
+    const ledgerEntries = await Ledger.find({
+      $or: [{ otherPartyId: id }, { tenantId: id }]
+    }).sort({ date: 1 });
+
+    // Prefer ledger-based totals; fall back to invoice fields if ledger is empty
+    let totalInvoiced = ledgerEntries.reduce((s, e) => s + (e.debit  || 0), 0);
+    let totalReceived = ledgerEntries.reduce((s, e) => s + (e.credit || 0), 0);
+    let totalTds      = ledgerEntries.reduce((s, e) => s + (e.tds    || 0), 0);
+
+    if (totalInvoiced === 0 && invoices.length > 0) {
+      totalInvoiced = invoices.reduce((s, i) => s + (i.totalInvoice   || 0), 0);
+      totalReceived = invoices.reduce((s, i) => s + (i.receivedAmount || i.received || 0), 0);
+      totalTds      = invoices.reduce((s, i) => s + (i.tdsAmount      || 0), 0);
+    }
+
     const closingBalance = totalInvoiced - (totalReceived + totalTds);
 
     res.json({
-      tenant:         { ...party.toObject(), id: party._id },
+      tenant:         partyDoc,
       invoices:       invoices.map(i => ({ ...i.toObject(), id: i._id })),
       paymentSummary: { totalInvoiced, totalReceived, totalTds, pendingBalance: closingBalance },
       analytics: {

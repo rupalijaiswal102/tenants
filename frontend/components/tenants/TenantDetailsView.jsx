@@ -54,16 +54,17 @@ export function TenantDetailsView({ tenant, onClose, companies, allTenants, apiB
   // ── Fetch ─────────────────────────────────────────────────────────────────
   const fetchDetails = () => {
     setLoading(true);
-    Promise.all([
+    Promise.allSettled([
       axios.get(`${apiBase}/${tenantId}/details`),
       axios.get(`${apiBase}/${tenantId}`),
     ])
-      .then(([detailsRes, profileRes]) => {
-        setDetails(detailsRes.data);
-        setTenantProfile(prev => ({ ...prev, ...profileRes.data }));
+      .then(([detailsResult, profileResult]) => {
+        if (detailsResult.status === 'fulfilled') setDetails(detailsResult.value.data);
+        if (profileResult.status === 'fulfilled')
+          setTenantProfile(prev => ({ ...prev, ...profileResult.value.data }));
         setLoading(false);
       })
-      .catch(err => { console.error('fetchDetails:', err.message); setLoading(false); });
+      .catch(() => setLoading(false));
   };
 
   const fetchLedger = () => {

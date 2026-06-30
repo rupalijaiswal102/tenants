@@ -818,11 +818,14 @@ export default function Reports() {
                       <td style={{ padding:'10px 16px', textAlign:'center' }}>
                         {(inv.tenantId || inv.otherPartyId) && (
                           <button
-                            onClick={() => setViewTenant({
-                              id:         String(inv.tenantId || inv.otherPartyId),
-                              name:       inv.partyName,
-                              partyType:  inv.partyType || 'Tenant',
-                            })}
+                            onClick={() => {
+                              const isOther = (inv.partyType || 'Tenant') === 'OtherParty';
+                              setViewTenant({
+                                id:        String(isOther ? (inv.otherPartyId || inv.tenantId) : (inv.tenantId || inv.otherPartyId)),
+                                name:      inv.partyName,
+                                partyType: inv.partyType || 'Tenant',
+                              });
+                            }}
                             title="View tenant details"
                             style={{ background:'none', border:'none', cursor:'pointer', color:'#94a3b8', padding:'5px 7px', borderRadius:8, transition:'all 0.15s', display:'inline-flex', alignItems:'center', justifyContent:'center' }}
                             onMouseEnter={e => { e.currentTarget.style.color='#3b82f6'; e.currentTarget.style.background='#eff6ff'; }}
