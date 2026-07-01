@@ -290,7 +290,7 @@ export async function generateInvoicePDF(invoice, tenant, company, { download = 
     else     { fnt(9.5,false,...GR); }
     pdf.text(lbl, rightX, yR+5.5);
     if(dark) fnt(10.5,true,...WH); else fnt(9.5,true,...BLK);
-    pdf.text(val, rightX+rightW-pdf.getTextWidth(val), yR+5.5);
+    pdf.text(val, rightX+rightW-pdf.getTextWidth(val)-2, yR+5.5);
     yR += rowH;
   };
 
