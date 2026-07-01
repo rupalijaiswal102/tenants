@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { useState, useRef } from 'react';
 import axios from 'axios';
 import { TimelineItemLarge, ConfigBlock } from '../TenantPrimitives.jsx';
+import { fmtDate } from '../../../src/utils/formatCurrency.js';
 
 const SC = { background:'#fff', borderRadius:16, border:'1px solid #f0f2f5', boxShadow:'0 1px 3px rgba(0,0,0,0.04)' };
 
@@ -92,7 +93,7 @@ export function DocumentsTab({ tenant, onRefresh }) {
     }
   };
 
-  const fmt = (iso) => { try { return new Date(iso).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }); } catch { return '—'; } };
+  const fmt = fmtDate;
 
   return (
     <motion.div key="doc" initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-8 }}

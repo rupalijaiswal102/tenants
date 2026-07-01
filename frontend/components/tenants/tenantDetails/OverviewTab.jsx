@@ -3,9 +3,9 @@ import { TrendingUp, CheckCircle2, ShieldCheck, IndianRupee,
 import { useState } from 'react';
 import { motion } from 'motion/react';
 import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+import { fmtINR as fmt } from '../../../src/utils/formatCurrency.js';
 
 const SC = { background:'#fff', borderRadius:16, border:'1px solid #f0f2f5', boxShadow:'0 1px 3px rgba(0,0,0,0.04)' };
-const fmt = (v) => `₹${Math.round(v || 0).toLocaleString('en-IN')}`;
 
 const STAT_CARDS = (paymentSummary) => [
   { label:'Total Invoiced',  val: paymentSummary.totalInvoiced  || 0, color:'#6366f1', bg:'#eef2ff', Icon: IndianRupee  },

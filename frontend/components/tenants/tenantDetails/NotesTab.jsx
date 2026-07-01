@@ -3,23 +3,11 @@ import { MessageSquare, Trash2, Receipt, CalendarDays, Loader2, StickyNote } fro
 import { motion, AnimatePresence } from 'motion/react';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
-
-const fmt = n => Math.round(n || 0).toLocaleString('en-IN');
-
-function fmtDateTime(iso) {
-  const d = new Date(iso);
-  return d.toLocaleString('en-IN', {
-    day: '2-digit', month: 'short', year: 'numeric',
-    hour: '2-digit', minute: '2-digit', hour12: true,
-  });
-}
-
-function fmtDate(iso) {
-  if (!iso) return '';
-  return new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-}
+import { usePermission } from '../../../src/hooks/usePermission.js';
+import { fmtINR as fmt, fmtDate, fmtDateTime } from '../../../src/utils/formatCurrency.js';
 
 export default function NotesTab({ notes = [], notesLoading, onDelete }) {
+  const { canDelete } = usePermission();
   const [deletingId, setDeletingId] = useState(null);
 
   const handleDelete = async (id) => {
@@ -118,17 +106,19 @@ export default function NotesTab({ notes = [], notesLoading, onDelete }) {
                   </div>
                 </div>
 
-                {/* Delete */}
-                <button
-                  onClick={() => handleDelete(note._id)}
-                  disabled={deletingId === note._id}
-                  style={{ background:'none', border:'none', cursor:'pointer', color:'#cbd5e1', padding:'4px', borderRadius:7, flexShrink:0, transition:'all 0.15s', display:'flex', alignItems:'center', justifyContent:'center' }}
-                  onMouseEnter={e => e.currentTarget.style.color='#ef4444'}
-                  onMouseLeave={e => e.currentTarget.style.color='#cbd5e1'}>
-                  {deletingId === note._id
-                    ? <Loader2 size={14} style={{ animation:'spin 0.8s linear infinite' }}/>
-                    : <Trash2 size={14}/>}
-                </button>
+                {/* Delete — Admin / Super Admin only */}
+                {canDelete && (
+                  <button
+                    onClick={() => handleDelete(note._id)}
+                    disabled={deletingId === note._id}
+                    style={{ background:'none', border:'none', cursor:'pointer', color:'#cbd5e1', padding:'4px', borderRadius:7, flexShrink:0, transition:'all 0.15s', display:'flex', alignItems:'center', justifyContent:'center' }}
+                    onMouseEnter={e => e.currentTarget.style.color='#ef4444'}
+                    onMouseLeave={e => e.currentTarget.style.color='#cbd5e1'}>
+                    {deletingId === note._id
+                      ? <Loader2 size={14} style={{ animation:'spin 0.8s linear infinite' }}/>
+                      : <Trash2 size={14}/>}
+                  </button>
+                )}
 
               </motion.div>
             ))}

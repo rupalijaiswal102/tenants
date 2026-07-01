@@ -142,13 +142,12 @@ export const completeStep = async (req, res) => {
       }
     }
 
-    // Save meta fields
-    if (meta.tallyVoucherId) workflow.tallyVoucherId = meta.tallyVoucherId;
-    if (meta.emailSentTo)    workflow.emailSentTo    = meta.emailSentTo;
-    if (meta.dispatchMode)   workflow.dispatchMode   = meta.dispatchMode;
-    if (meta.dispatchRef)    workflow.dispatchRef    = meta.dispatchRef;
-    if (meta.paymentRef)     workflow.paymentRef     = meta.paymentRef;
-    if (meta.tallyReceiptId) workflow.tallyReceiptId = meta.tallyReceiptId;
+    // Save meta fields to workflow and collect per-step meta
+    const stepMetaKeys = ['tallyVoucherId', 'emailSentTo', 'dispatchMode', 'dispatchRef', 'paymentRef', 'tallyReceiptId'];
+    const stepMeta = {};
+    for (const key of stepMetaKeys) {
+      if (meta[key]) { stepMeta[key] = meta[key]; workflow[key] = meta[key]; }
+    }
     if (meta.signatureImage) workflow.signatureImage = meta.signatureImage;
 
     // Add to completed steps + audit log
@@ -160,6 +159,7 @@ export const completeStep = async (req, res) => {
       userRole:    user.role,
       notes,
       completedAt: new Date(),
+      meta:        stepMeta,
     };
     if (user.id) logEntry.completedBy = user.id;
     workflow.auditLog.push(logEntry);
@@ -218,6 +218,46 @@ export const undoStep = async (req, res) => {
 
     await workflow.save();
     res.json({ success: true, currentStatus: workflow.currentStatus });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+};
+
+// ── UPDATE meta for an already-completed step (Admin only) ───────────────────
+export const updateStepMeta = async (req, res) => {
+  try {
+    const { invoiceId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(invoiceId)) {
+      return res.status(400).json({ error: 'Invalid invoice ID' });
+    }
+    const user = getUser(req);
+    if (user.role !== 'Admin' && user.role !== 'Super Admin') {
+      return res.status(403).json({ error: 'Only Admin can update step details' });
+    }
+
+    const { step, ...meta } = req.body;
+    if (!WORKFLOW_STEPS[step]) return res.status(400).json({ error: 'Invalid step' });
+
+    const workflow = await InvoiceWorkflow.findOne({ invoiceId });
+    if (!workflow) return res.status(404).json({ error: 'Workflow not found' });
+
+    const stepMetaKeys = ['tallyVoucherId', 'emailSentTo', 'dispatchMode', 'dispatchRef', 'paymentRef', 'tallyReceiptId'];
+
+    // Update global workflow meta
+    for (const key of stepMetaKeys) {
+      if (meta[key] !== undefined && meta[key] !== '') workflow[key] = meta[key];
+    }
+
+    // Update meta in the specific audit log entry
+    const logEntry = workflow.auditLog.find(l => l.step === step && !l.undone);
+    if (logEntry) {
+      if (!logEntry.meta) logEntry.meta = {};
+      for (const key of stepMetaKeys) {
+        if (meta[key] !== undefined) logEntry.meta[key] = meta[key];
+      }
+    }
+    workflow.markModified('auditLog');
+    await workflow.save();
+
+    res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 };
 

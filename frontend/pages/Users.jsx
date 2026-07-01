@@ -7,6 +7,7 @@ import {
   Users, CheckCircle, UserX, Layers, UserCog, Lock
 } from 'lucide-react';
 import RightPanel, { PanelGrid, PanelField, PanelDivider } from '../components/RightPanel.jsx';
+import { ActionButtons } from '../src/components/ui/ActionButtons.jsx';
 
 // ── Shared input style ────────────────────────────────────────────────────────
 const inp = {
@@ -481,20 +482,11 @@ export default function UsersPage() {
                   {/* Actions */}
                   <td style={{ padding:'14px 16px' }}>
                     {isAdmin && (
-                      <div style={{ display:'flex', gap:2 }}>
-                        {[
-                          { icon: Edit2,  title:'Edit',           onClick: () => setModal(u),       color:'#f97316', hbg:'#fff7ed', show: true },
-                          { icon: Key,    title:'Reset Password', onClick: () => setResetting(u),   color:'#3b82f6', hbg:'#eff6ff', show: true },
-                          { icon: Trash2, title:'Deactivate',     onClick: () => handleDeactivate(u), color:'#ef4444', hbg:'#fff1f2', show: String(u.id || u._id) !== String(authData?.id) },
-                        ].filter(b => b.show).map(({ icon: Ic, title, onClick, color, hbg }) => (
-                          <button key={title} onClick={onClick} title={title}
-                            style={{ width:30, height:30, borderRadius:7, border:'none', background:'transparent', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'#94a3b8', transition:'all 0.15s' }}
-                            onMouseEnter={e => { e.currentTarget.style.background=hbg; e.currentTarget.style.color=color; }}
-                            onMouseLeave={e => { e.currentTarget.style.background='transparent'; e.currentTarget.style.color='#94a3b8'; }}>
-                            <Ic size={15}/>
-                          </button>
-                        ))}
-                      </div>
+                      <ActionButtons buttons={[
+                        { icon: Edit2,  title:'Edit',           onClick: () => setModal(u),           color:'#f97316', hbg:'#fff7ed' },
+                        { icon: Key,    title:'Reset Password', onClick: () => setResetting(u),       color:'#3b82f6', hbg:'#eff6ff' },
+                        { icon: Trash2, title:'Deactivate',     onClick: () => handleDeactivate(u),   color:'#ef4444', hbg:'#fff1f2', show: String(u.id || u._id) !== String(authData?.id) },
+                      ]}/>
                     )}
                   </td>
                 </tr>

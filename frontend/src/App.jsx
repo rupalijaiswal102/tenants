@@ -33,13 +33,14 @@ export default function App({ onLogout }) {
   const [isMobile,    setIsMobile]    = useState(window.innerWidth <= 768);
   const [dbStatus,    setDbStatus]    = useState(null);
   const [userMenuOpen,setUserMenuOpen]= useState(false);
-  const [teamUsers,   setTeamUsers]   = useState([]);
+
   const userMenuRef = useRef(null);
 
   const ROLE_COLORS = {
     'Super Admin': '#ef4444', 'Admin': '#f97316', 'MDO': '#6366f1',
     'Accounts': '#10b981', 'CRM': '#0ea5e9', 'Viewer': '#94a3b8',
   };
+
   const location  = useLocation();
   const navigate  = useNavigate();
 
@@ -78,14 +79,13 @@ export default function App({ onLogout }) {
   }, []);
 
   useEffect(() => {
-    const apiUrl = import.meta.env.VITE_API_URL || '';
-    fetch(`${apiUrl}/api/status`).then(r => r.json()).then(setDbStatus).catch(() => setDbStatus({ isDemo: true }));
     if (isMobile) setSidebarOpen(false);
   }, [location.pathname]);
 
   useEffect(() => {
     const apiUrl = import.meta.env.VITE_API_URL || '';
-    fetch(`${apiUrl}/api/users`).then(r => r.json()).then(d => setTeamUsers(Array.isArray(d) ? d : [])).catch(() => {});
+    // Check DB status once on mount
+    fetch(`${apiUrl}/api/status`).then(r => r.json()).then(setDbStatus).catch(() => setDbStatus({ isDemo: true }));
   }, []);
 
   const pageTitle = PAGE_TITLES[location.pathname]
@@ -152,66 +152,8 @@ export default function App({ onLogout }) {
             {/* ── Right ── */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
 
-              {/* Team Avatars */}
-              {!isMobile && teamUsers.length > 0 && (
-                <div style={{ display: 'flex', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center' }}>
-                    {teamUsers.slice(0, 5).map((u, i) => {
-                      const initials = u.name ? u.name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase() : 'U';
-                      const color = ROLE_COLORS[u.role] || '#94a3b8';
-                      return (
-                        <div key={u._id || i} title={`${u.name} (${u.role})`} style={{
-                          width: 30, height: 30, borderRadius: '50%',
-                          background: color, border: '2px solid #fff',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: 10, fontWeight: 800, color: '#fff',
-                          marginLeft: i === 0 ? 0 : -8, zIndex: 5 - i,
-                          position: 'relative', cursor: 'default',
-                          boxShadow: '0 1px 4px rgba(0,0,0,0.12)',
-                        }}>{initials}</div>
-                      );
-                    })}
-                    {teamUsers.length > 5 && (
-                      <div style={{
-                        width: 30, height: 30, borderRadius: '50%',
-                        background: '#f1f5f9', border: '2px solid #fff',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 9, fontWeight: 800, color: '#64748b',
-                        marginLeft: -8, zIndex: 0,
-                        boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
-                      }}>+{teamUsers.length - 5}</div>
-                    )}
-                  </div>
-                </div>
-              )}
 
-              {/* Divider */}
-              {!isMobile && teamUsers.length > 0 && (
-                <div style={{ width: 1, height: 22, background: '#f0f2f5' }} />
-              )}
-
-              {/* Sun / Mode icon */}
-              <button style={{ width: 34, height: 34, borderRadius: 9, border: '1px solid #f0f2f5', background: '#fafafa', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                <Sun size={15} color="#f59e0b" />
-              </button>
-
-              {/* Bell */}
-              <div style={{ position: 'relative' }}>
-                <button style={{ width: 34, height: 34, borderRadius: 9, border: '1px solid #f0f2f5', background: '#fafafa', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                  <Bell size={16} color="#9ba8b5" />
-                </button>
-                {teamUsers.length > 0 && (
-                  <div style={{
-                    position: 'absolute', top: -4, right: -4,
-                    minWidth: 16, height: 16, borderRadius: 8,
-                    background: '#f97316', color: '#fff',
-                    fontSize: 9, fontWeight: 800,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    border: '2px solid #fff', padding: '0 3px',
-                  }}>{teamUsers.length}</div>
-                )}
-              </div>
-
+             
               {/* User Avatar + Dropdown */}
               <div ref={userMenuRef} style={{ position: 'relative' }}>
                 <button

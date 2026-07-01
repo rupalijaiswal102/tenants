@@ -1,18 +1,20 @@
-import React, { useRef ,useState, useEffect  } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useResponsive } from '../src/hooks/useResponsive.js';
-
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Plus, Search, Eye, Edit2, Trash2, Users, IndianRupee, ShieldCheck, Download, FileDown } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { AnimatePresence } from 'motion/react';
 import { toast } from 'react-hot-toast';
-import { exportToExcel }          from '../src/lib/exportUtils.js';
-import { usePermission }          from '../src/hooks/usePermission.js';
-import { TenantDetailsView }      from '../components/tenants/TenantDetailsView.jsx';
-import { StatusBadge }            from '../components/tenants/TenantPrimitives.jsx';
-import { DeleteConfirmationModal } from '../components/tenants/DeleteConfirmationModal.jsx';
-import TenantFormPage             from './TenantFormPage.jsx';
+import { exportToExcel }           from '../src/lib/exportUtils.js';
+import { usePermission }           from '../src/hooks/usePermission.js';
+import { TenantDetailsView }       from '../components/tenants/TenantDetailsView.jsx';
+import { StatusBadge }             from '../components/tenants/TenantPrimitives.jsx';
+import { DeleteConfirmationModal }  from '../components/tenants/DeleteConfirmationModal.jsx';
+import TenantFormPage              from './TenantFormPage.jsx';
+import { fmtDateShort }            from '../src/utils/formatCurrency.js';
+import { ActionButtons }           from '../src/components/ui/ActionButtons.jsx';
+import { getCached, setCached, invalidate } from '../src/lib/apiCache.js';
 
 export default function TenantList({ mode = 'tenant' }) {
   const { id }   = useParams();
@@ -66,16 +68,20 @@ export default function TenantList({ mode = 'tenant' }) {
   }, [id, tenants, loading]);
 
   const fetchTenants = () => {
-    setLoading(true);
-    const apiBase = mode === 'otherParty' ? '/api/other-parties' : '/api/tenants';
+    const cacheKey = mode === 'otherParty' ? 'other-parties' : 'tenants';
+    const apiBase  = mode === 'otherParty' ? '/api/other-parties' : '/api/tenants';
+    const cached = getCached(cacheKey);
+    if (cached) { setTenants(cached); setLoading(false); }
     axios.get(apiBase)
-      .then(r => { setTenants(Array.isArray(r.data) ? r.data : []); setLoading(false); })
+      .then(r => { const d = Array.isArray(r.data) ? r.data : []; setTenants(d); setCached(cacheKey, d); setLoading(false); })
       .catch(() => setLoading(false));
   };
 
   const fetchCompanies = () => {
+    const cached = getCached('companies');
+    if (cached) { setCompanies(cached); }
     axios.get('/api/companies')
-      .then(r => setCompanies(Array.isArray(r.data) ? r.data : []))
+      .then(r => { const d = Array.isArray(r.data) ? r.data : []; setCompanies(d); setCached('companies', d); })
       .catch(() => {});
   };
 
@@ -87,6 +93,7 @@ export default function TenantList({ mode = 'tenant' }) {
       toast.success('Tenant deleted');
       setShowDeleteConfirm(false);
       setTenantToDelete(null);
+      invalidate(mode === 'otherParty' ? 'other-parties' : 'tenants');
       fetchTenants();
     } catch { toast.error('Delete failed'); }
   };
@@ -169,7 +176,7 @@ export default function TenantList({ mode = 'tenant' }) {
         cols.forEach(col => { doc.text(col.header, hx + 2, ty + 5.5); hx += col.width; });
         ty += 8;
 
-        const fmtDate = (d) => { try { return new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}); } catch { return d || '—'; } };
+        const fmtDate = fmtDateShort;
         const STATUS_COLOR = { Active:[16,185,129], Expired:[239,68,68], Pending:[245,158,11] };
 
         filtered.forEach((t, ri) => {
@@ -427,20 +434,11 @@ export default function TenantList({ mode = 'tenant' }) {
 
                   {/* Actions */}
                   <td style={{ padding:'13px 18px' }} onClick={e => e.stopPropagation()}>
-                    <div style={{ display:'flex', alignItems:'center', justifyContent:'flex-end', gap:2 }}>
-                      {[
-                        { icon: Eye,   show: true,     title:'View',   onClick: () => openView(t),                                          color:'#3b82f6', hbg:'#eff6ff' },
-                        { icon: Edit2, show: canEdit,  title:'Edit',   onClick: () => { setEditFormId(t.id || t._id); setShowForm(true); }, color:'#f97316', hbg:'#fff7ed' },
-                        { icon: Trash2,show: canDelete,title:'Delete', onClick: () => { setTenantToDelete(t); setShowDeleteConfirm(true); }, color:'#ef4444', hbg:'#fff1f2' },
-                      ].filter(b => b.show).map(({ icon: Ic, title, onClick, color, hbg }) => (
-                        <button key={title} onClick={onClick} title={title}
-                          style={{ width:30, height:30, borderRadius:7, border:'none', background:'transparent', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'#94a3b8', transition:'all 0.15s' }}
-                          onMouseEnter={e => { e.currentTarget.style.background=hbg; e.currentTarget.style.color=color; }}
-                          onMouseLeave={e => { e.currentTarget.style.background='transparent'; e.currentTarget.style.color='#94a3b8'; }}>
-                          <Ic size={15}/>
-                        </button>
-                      ))}
-                    </div>
+                    <ActionButtons buttons={[
+                      { icon: Eye,    title:'View',   onClick: () => openView(t),                                          color:'#3b82f6', hbg:'#eff6ff' },
+                      { icon: Edit2,  show: canEdit,  title:'Edit',   onClick: () => { setEditFormId(t.id || t._id); setShowForm(true); }, color:'#f97316', hbg:'#fff7ed' },
+                      { icon: Trash2, show: canDelete,title:'Delete', onClick: () => { setTenantToDelete(t); setShowDeleteConfirm(true); }, color:'#ef4444', hbg:'#fff1f2' },
+                    ]}/>
                   </td>
                 </tr>
               ))}

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Building2, Plus } from 'lucide-react';
 import axios from 'axios';
+import { getCached, setCached, invalidate } from '../src/lib/apiCache.js';
 import { usePermission } from '../src/hooks/usePermission.js';
 
 import CompanyCard       from '../components/compnies/CompanyCard.jsx';
@@ -20,9 +21,13 @@ export default function CompanyList() {
 
   const fetchCompanies = async () => {
     try {
-      setLoading(true);
+      const cached = getCached('companies');
+      if (cached) { setCompanies(cached); setLoading(false); }
+      else setLoading(true);
       const res = await axios.get('/api/companies');
-      setCompanies(Array.isArray(res.data) ? res.data : []);
+      const d = Array.isArray(res.data) ? res.data : [];
+      setCompanies(d);
+      setCached('companies', d);
     } catch (err) {
       console.error('Failed to fetch companies:', err);
       setCompanies([]);
@@ -39,7 +44,7 @@ export default function CompanyList() {
 
   const handleDelete = async (id) => {
     if (!confirm('Delete this company?')) return;
-    try { await axios.delete(`/api/companies/${id}`); fetchCompanies(); }
+    try { await axios.delete(`/api/companies/${id}`); invalidate('companies'); fetchCompanies(); }
     catch { alert('Failed to delete company'); }
   };
 

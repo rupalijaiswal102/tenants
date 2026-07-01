@@ -2,6 +2,7 @@ import { Download, Plus, FileText, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { TypeBadge } from '../TenantPrimitives.jsx';
 import { usePermission } from '../../../src/hooks/usePermission.js';
+import { fmtINR } from '../../../src/utils/formatCurrency.js';
 
 const SC = { background:'#fff', borderRadius:16, border:'1px solid #f0f2f5', boxShadow:'0 1px 3px rgba(0,0,0,0.04)' };
 
@@ -12,7 +13,7 @@ export default function LedgerTab({
 }) {
   const { can } = usePermission('ledger');
   const summary = ledgerData?.summary || {};
-  const fmt = (v) => `₹${Math.round(v || 0).toLocaleString('en-IN')}`;
+  const fmt = fmtINR;
 
   return (
     <motion.div key="ld" initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-8 }}

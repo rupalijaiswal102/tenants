@@ -43,6 +43,7 @@ const auditLogSchema = new mongoose.Schema({
   userRole:   { type: String },
   completedAt:{ type: Date, default: Date.now },
   notes:      { type: String, default: '' },
+  meta:       { type: mongoose.Schema.Types.Mixed, default: {} },
   undone:     { type: Boolean, default: false },
   undoneBy:   { type: String },
   undoneAt:   { type: Date },

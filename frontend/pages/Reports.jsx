@@ -1,13 +1,15 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Search, Download, TrendingUp, Clock,
   ReceiptIndianRupee, ShieldCheck, FileDown,
-  CalendarDays, ChevronDown, Building2, X,
-  CheckCircle2, AlertCircle, Loader2, IndianRupee,
+  CalendarDays, ChevronDown, X,
+  AlertCircle, Loader2, IndianRupee,
   Users, AlertTriangle, CheckCircle, FileText,
   MessageSquarePlus, Send, Eye
 } from 'lucide-react';
+import { MONTHS, PAYMENT_STATUS_STYLE as STATUS_STYLE } from '../src/constants/index.js';
 import axios from 'axios';
+import { getCached, setCached } from '../src/lib/apiCache.js';
 import { motion, AnimatePresence } from 'motion/react';
 import { exportToExcel } from '../src/lib/exportUtils.js';
 import { toast } from 'react-hot-toast';
@@ -16,10 +18,6 @@ import { TenantDetailsView } from '../components/tenants/TenantDetailsView.jsx';
 // jspdf-autotable not installed — using manual table
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-const MONTHS = [
-  'January','February','March','April','May','June',
-  'July','August','September','October','November','December'
-];
 
 const REPORT_TYPES = [
   { key: 'collection',  label: 'Collection',         sub: 'Billing vs Recovery',    icon: TrendingUp,         color: '#10b981', bg: '#f0fdf4', border: '#bbf7d0' },
@@ -29,17 +27,12 @@ const REPORT_TYPES = [
   { key: 'tds',         label: 'TDS Compliance',     sub: 'Withholding Summary',     icon: ShieldCheck,        color: '#f59e0b', bg: '#fffbeb', border: '#fde68a' },
 ];
 
-const STATUS_STYLE = {
-  Paid:    { color: '#059669', bg: '#d1fae5' },
-  Partial: { color: '#d97706', bg: '#fef3c7' },
-  Pending: { color: '#dc2626', bg: '#fee2e2' },
-};
 
 // ── Round & format amount ─────────────────────────────────────────────────────
 const fmt = n => Math.round(n || 0).toLocaleString('en-IN');
 
 // ── Summary compute ───────────────────────────────────────────────────────────
-function computeSummary(invoices, type) {
+function computeSummary(invoices) {
   const totalInvoiced  = invoices.reduce((s, i) => s + (i.totalInvoice || 0), 0);
   const totalReceived  = invoices.reduce((s, i) => s + (i.receivedAmount || (i).received || 0), 0);
   const totalBalance   = invoices.reduce((s, i) => s + (i.balanceAmount || (i).balance || 0), 0);
@@ -68,7 +61,6 @@ function generateOutstandingPDF(data, totalBalance) {
 
   // Summary cards
   const dueCount    = data.filter(d => d.closingBalance > 0).length;
-  const creditCount = data.filter(d => d.closingBalance < 0).length;
   const cards = [
     { label: 'Total Tenants',      value: `${data.length}`,               color: [220,38,38]   },
     { label: 'Total Outstanding',  value: `Rs ${fmt(totalBalance)}`,      color: [220,38,38]   },
@@ -141,7 +133,7 @@ function generatePDF(invoices, reportType, month, year) {
   const doc  = new jsPDF('l', 'mm', 'a4');
   const rt   = REPORT_TYPES.find(r => r.key === reportType);
   const now  = new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
-  const sum  = computeSummary(invoices, reportType);
+  const sum  = computeSummary(invoices);
 
   // ── Header band ──
   doc.setFillColor(15, 23, 42);
@@ -322,15 +314,19 @@ export default function Reports() {
   };
 
   useEffect(() => {
+    // Show cached data instantly on re-visit
+    const ci = getCached('invoices'), cd = getCached('outstanding-dues'), cc = getCached('companies');
+    if (ci) { setInvoices(ci); setOutstandingDues(cd || []); setCompanies(cc || []); setLoading(false); }
+
     Promise.allSettled([
       axios.get('/api/invoices'),
       axios.get('/api/ledger/outstanding-dues'),
       axios.get('/api/companies'),
     ])
       .then(([invResult, duesResult, compResult]) => {
-        if (invResult.status  === 'fulfilled') setInvoices(invResult.value.data);
-        if (duesResult.status === 'fulfilled') setOutstandingDues(duesResult.value.data);
-        if (compResult.status === 'fulfilled') setCompanies(compResult.value.data);
+        if (invResult.status  === 'fulfilled') { setInvoices(invResult.value.data);         setCached('invoices', invResult.value.data); }
+        if (duesResult.status === 'fulfilled') { setOutstandingDues(duesResult.value.data); setCached('outstanding-dues', duesResult.value.data); }
+        if (compResult.status === 'fulfilled') { setCompanies(compResult.value.data);       setCached('companies', compResult.value.data); }
       })
       .finally(() => setLoading(false));
   }, []);
@@ -352,7 +348,7 @@ export default function Reports() {
     return mOk && yOk && sOk && typeOk && partyOk;
   });
 
-  const sum = computeSummary(filtered, reportType);
+  const sum = computeSummary(filtered);
   const rt  = REPORT_TYPES.find(r => r.key === reportType);
 
   // If backend ledger API returned data use it; otherwise compute from invoices
@@ -469,7 +465,7 @@ export default function Reports() {
                   <MessageSquarePlus size={26} strokeWidth={1.5} style={{ display:'block', margin:'0 auto 8px' }}/>
                   <p style={{ fontSize:13, fontWeight:600, margin:0 }}>No remarks yet — add the first one</p>
                 </div>
-              ) : modalRemarks.map((r, idx) => (
+              ) : modalRemarks.map((r) => (
                 <div key={r._id}
                   style={{ padding:'12px 20px', borderBottom:'1px solid #f8fafc', display:'flex', gap:10, alignItems:'flex-start', transition:'background 0.1s' }}
                   onMouseEnter={e => e.currentTarget.style.background='#fafbff'}

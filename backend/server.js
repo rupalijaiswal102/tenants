@@ -93,16 +93,19 @@ async function startServer() {
  if (MONGODB_URI) {
  try {
  await mongoose.connect(MONGODB_URI, {
- serverSelectionTimeoutMS: 5000,
- connectTimeoutMS: 10000,
+ serverSelectionTimeoutMS: 8000,
+ connectTimeoutMS: 15000,
  });
  console.log('✅ Connected to MongoDB Atlas');
  isUsingMockData.value = false;
- await migrateInvoiceIndex(); // ← await so it runs before requests
+ await migrateInvoiceIndex();
  seedCompanies();
  seedAdminUser();
  } catch (err) {
- console.error('⚠️ MongoDB, Connection, Failed. Fallback, to, DEMO, MODE.');
+ console.error('⚠️  MongoDB connection failed:', err.message);
+ console.error('   → Check: IP whitelist in MongoDB Atlas Network Access');
+ console.error('   → Check: credentials in MONGODB_URI in .env');
+ console.error('   → Falling back to DEMO MODE (no data will be saved)');
  isUsingMockData.value = true;
  }
  } else {

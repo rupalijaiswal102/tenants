@@ -7,6 +7,7 @@ import {
 import { useResponsive } from '../src/hooks/useResponsive.js';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { getCached, setCached } from '../src/lib/apiCache.js';
 import { TenantDetailsView } from '../components/tenants/TenantDetailsView.jsx';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
@@ -26,15 +27,23 @@ export default function Dashboard() {
 
   const load = async () => {
     try {
-      setError(null); setLoading(true);
+      setError(null);
+      // Show cached data instantly — no spinner on re-visit
+      const ct = getCached('tenants'), ci = getCached('invoices'), cc = getCached('companies');
+      if (ct && ci && cc) {
+        setTenants(ct); setInvoices(ci); setCompanies(cc); setLoading(false);
+      } else { setLoading(true); }
+
       const [tR, iR, cR] = await Promise.all([
         axios.get('/api/tenants'),
         axios.get('/api/invoices'),
         axios.get('/api/companies'),
       ]);
-      setTenants(Array.isArray(tR.data) ? tR.data : []);
-      setInvoices(Array.isArray(iR.data) ? iR.data : []);
-      setCompanies(Array.isArray(cR.data) ? cR.data : []);
+      const t = Array.isArray(tR.data) ? tR.data : [];
+      const i = Array.isArray(iR.data) ? iR.data : [];
+      const c = Array.isArray(cR.data) ? cR.data : [];
+      setTenants(t); setInvoices(i); setCompanies(c);
+      setCached('tenants', t); setCached('invoices', i); setCached('companies', c);
     } catch (e) {
       setError(e.response?.data?.error || e.message || 'Connection failed');
     } finally { setLoading(false); }

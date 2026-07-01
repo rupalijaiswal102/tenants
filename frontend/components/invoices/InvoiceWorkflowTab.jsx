@@ -59,6 +59,9 @@ export default function InvoiceWorkflowTab({ invoice, userRole = 'MDO', userName
   const [notes,       setNotes]      = useState('');
   const [metaFields,  setMetaFields] = useState({});
   const [submitting,  setSubmitting] = useState(false);
+  const [editMetaStep, setEditMetaStep] = useState(null); // step key whose meta is being edited
+  const [editMetaFields, setEditMetaFields] = useState({});
+  const [savingMeta, setSavingMeta] = useState(false);
 
   const invoiceId = String(invoice?.id || invoice?._id || '');
 
@@ -112,6 +115,29 @@ export default function InvoiceWorkflowTab({ invoice, userRole = 'MDO', userName
       toast.success('Step undone');
       fetchWorkflow(new AbortController().signal);
     } catch (err) { toast.error(err.response?.data?.error || 'Failed to undo'); }
+  };
+
+  const openEditMeta = (stepKey, logEntry) => {
+    const existing = logEntry?.meta || {};
+    const fallback = workflow?.meta || {};
+    const pre = {};
+    (STEP_META[stepKey] || []).forEach(f => {
+      pre[f.key] = existing[f.key] || fallback[f.key] || '';
+    });
+    setEditMetaFields(pre);
+    setEditMetaStep(stepKey);
+  };
+
+  const handleSaveMeta = async (stepKey) => {
+    try {
+      setSavingMeta(true);
+      await axios.patch(`/api/workflow/${invoiceId}/step-meta`, { step: stepKey, ...editMetaFields });
+      toast.success('Details saved');
+      setEditMetaStep(null);
+      fetchWorkflow(new AbortController().signal);
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to save details');
+    } finally { setSavingMeta(false); }
   };
 
   const statusStyle = STATUS_COLORS[workflow?.currentStatus] || STATUS_COLORS['Draft'];
@@ -204,19 +230,41 @@ export default function InvoiceWorkflowTab({ invoice, userRole = 'MDO', userName
                     </div>
 
                     {done && logEntry && (
-                      <div style={{ marginTop:6, display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
-                        <div style={{ display:'flex', alignItems:'center', gap:4 }}>
-                          <User size={11} color="#9ba8b5"/>
-                          <span style={{ fontSize:11, color:'#1a1a2e', fontWeight:600 }}>{logEntry.userName}</span>
-                          <span style={{ fontSize:10, color:'#9ba8b5' }}>({logEntry.userRole})</span>
+                      <div style={{ marginTop:6, display:'flex', flexDirection:'column', gap:6 }}>
+                        {/* Who + When + Notes */}
+                        <div style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
+                          <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+                            <User size={11} color="#9ba8b5"/>
+                            <span style={{ fontSize:11, color:'#1a1a2e', fontWeight:600 }}>{logEntry.userName}</span>
+                            <span style={{ fontSize:10, color:'#9ba8b5' }}>({logEntry.userRole})</span>
+                          </div>
+                          <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+                            <Clock size={11} color="#9ba8b5"/>
+                            <span style={{ fontSize:11, color:'#9ba8b5' }}>
+                              {new Date(logEntry.completedAt).toLocaleString('en-IN', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })}
+                            </span>
+                          </div>
+                          {logEntry.notes && (
+                            <span style={{ fontSize:10, color:'#64748b', fontStyle:'italic', background:'#f8fafc', padding:'2px 7px', borderRadius:5 }}>
+                              "{logEntry.notes}"
+                            </span>
+                          )}
                         </div>
-                        <div style={{ display:'flex', alignItems:'center', gap:4 }}>
-                          <Clock size={11} color="#9ba8b5"/>
-                          <span style={{ fontSize:11, color:'#9ba8b5' }}>
-                            {new Date(logEntry.completedAt).toLocaleString('en-IN', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })}
-                          </span>
-                        </div>
-                        {logEntry.notes && <span style={{ fontSize:10, color:'#9ba8b5', fontStyle:'italic' }}>"{logEntry.notes}"</span>}
+
+                        {/* Step-specific meta details */}
+                        {(STEP_META[step.key] || []).some(f => logEntry?.meta?.[f.key] || workflow?.meta?.[f.key]) && (
+                          <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+                            {(STEP_META[step.key] || []).map(f => {
+                              const val = logEntry?.meta?.[f.key] || workflow?.meta?.[f.key];
+                              return val ? (
+                                <span key={f.key} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'3px 10px', background:'#f0f9ff', border:'1px solid #bae6fd', borderRadius:20, fontSize:10, fontWeight:600, color:'#0369a1' }}>
+                                  <span style={{ color:'#64748b', fontWeight:700 }}>{f.label}:</span>
+                                  {val}
+                                </span>
+                              ) : null;
+                            })}
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -230,7 +278,13 @@ export default function InvoiceWorkflowTab({ invoice, userRole = 'MDO', userName
 
                   {/* Action buttons */}
                   <div style={{ display:'flex', gap:6, flexShrink:0 }}>
-                    {done && userRole === 'Admin' && (
+                    {done && ['Admin', 'Super Admin'].includes(userRole) && STEP_META[step.key] && (
+                      <button onClick={() => editMetaStep === step.key ? setEditMetaStep(null) : openEditMeta(step.key, logEntry)}
+                        style={{ padding:'4px 10px', background: editMetaStep === step.key ? '#eff6ff' : '#f0f9ff', border:`1px solid ${editMetaStep === step.key ? '#bfdbfe' : '#bae6fd'}`, borderRadius:8, cursor:'pointer', fontSize:10, fontWeight:700, color:'#0369a1', display:'flex', alignItems:'center', gap:4, fontFamily:'inherit' }}>
+                        ✏️ {editMetaStep === step.key ? 'Cancel' : 'Edit Details'}
+                      </button>
+                    )}
+                    {done && ['Admin', 'Super Admin'].includes(userRole) && (
                       <button onClick={() => handleUndo(step.key)}
                         style={{ padding:'4px 10px', background:'#fff1f2', border:'1px solid #fecdd3', borderRadius:8, cursor:'pointer', fontSize:10, fontWeight:700, color:'#e11d48', display:'flex', alignItems:'center', gap:4, fontFamily:'inherit' }}>
                         <RotateCcw size={11}/> Undo
@@ -270,6 +324,36 @@ export default function InvoiceWorkflowTab({ invoice, userRole = 'MDO', userName
                           style={{ padding:'8px 20px', background:'#f97316', color:'#fff', border:'none', borderRadius:8, fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', gap:6, opacity: submitting?0.7:1 }}>
                           {submitting ? <Loader2 size={13} style={{ animation:'spin 1s linear infinite' }}/> : <CheckCircle2 size={13}/>}
                           Confirm — {step.label}
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Edit Meta inline form */}
+                <AnimatePresence>
+                  {editMetaStep === step.key && (
+                    <motion.div initial={{ height:0, opacity:0 }} animate={{ height:'auto', opacity:1 }} exit={{ height:0, opacity:0 }}
+                      style={{ overflow:'hidden' }}>
+                      <div style={{ padding:'14px 24px 16px 80px', background:'#f0f9ff', borderBottom:'1px solid #bae6fd' }}>
+                        <p style={{ fontSize:10, fontWeight:800, color:'#0369a1', textTransform:'uppercase', letterSpacing:'0.06em', margin:'0 0 10px' }}>Edit Step Details</p>
+                        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:12 }}>
+                          {(STEP_META[step.key] || []).map(field => (
+                            <div key={field.key}>
+                              <label style={{ fontSize:10, fontWeight:700, color:'#0369a1', textTransform:'uppercase', display:'block', marginBottom:4 }}>{field.label}</label>
+                              <input
+                                value={editMetaFields[field.key] || ''}
+                                onChange={e => setEditMetaFields(p => ({ ...p, [field.key]: e.target.value }))}
+                                placeholder={field.placeholder}
+                                style={{ width:'100%', padding:'7px 11px', border:'1.5px solid #bae6fd', borderRadius:8, fontSize:12, fontFamily:'inherit', background:'#fff', outline:'none', boxSizing:'border-box' }}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                        <button onClick={() => handleSaveMeta(step.key)} disabled={savingMeta}
+                          style={{ padding:'7px 18px', background:'#0369a1', color:'#fff', border:'none', borderRadius:8, fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', gap:6, opacity: savingMeta?0.7:1 }}>
+                          {savingMeta ? <Loader2 size={12} style={{ animation:'spin 1s linear infinite' }}/> : null}
+                          Save Details
                         </button>
                       </div>
                     </motion.div>
@@ -322,7 +406,18 @@ export default function InvoiceWorkflowTab({ invoice, userRole = 'MDO', userName
                         {new Date(log.completedAt).toLocaleString('en-IN', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })}
                       </td>
                       <td style={{ padding:'11px 16px', fontSize:11, color:'#9ba8b5', fontStyle: log.notes?'normal':'italic' }}>
-                        {log.notes || '—'}
+                        <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                          <span>{log.notes || '—'}</span>
+                          {/* Show step-specific meta fields */}
+                          {(STEP_META[log.step] || []).map(f => {
+                            const val = log?.meta?.[f.key] || workflow?.meta?.[f.key];
+                            return val ? (
+                              <span key={f.key} style={{ fontSize:10, color:'#0369a1', fontStyle:'normal', background:'#f0f9ff', padding:'1px 7px', borderRadius:4, display:'inline-block', width:'fit-content' }}>
+                                {f.label}: <strong>{val}</strong>
+                              </span>
+                            ) : null;
+                          })}
+                        </div>
                       </td>
                     </tr>
                   );

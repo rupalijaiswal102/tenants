@@ -1,33 +1,21 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Plus, Search, ReceiptIndianRupee, Edit2, Trash2,
-  Eye, X, Download, AlertCircle, ChevronDown, Loader2,
-  TrendingUp, TrendingDown, Wallet, Filter,
-  IndianRupee, CheckCircle2, Clock, GitBranch
+  Plus, Search, Edit2, Trash2,
+  Eye, X, Download, AlertCircle, Loader2,
+  Filter, IndianRupee, CheckCircle2, Clock, GitBranch
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'react-hot-toast';
 import { exportToExcel } from '../src/lib/exportUtils.js';
 import { InvoiceFormModal, ViewInvoiceModal } from '../components/tenants/InvoiceModals.jsx';
 import { usePermission } from '../src/hooks/usePermission.js';
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-const fmt = (n) => `₹${Math.round(n || 0).toLocaleString('en-IN')}`;
-const fmtDate = (d) => {
-  try { return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }); }
-  catch { return d; }
-};
-
-const STATUS = {
-  Paid:    { color: '#059669', bg: '#d1fae5', dot: '#10b981' },
-  Partial: { color: '#d97706', bg: '#fef3c7', dot: '#f59e0b' },
-  Pending: { color: '#dc2626', bg: '#fee2e2', dot: '#ef4444' },
-};
-
-const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-
-const DEFAULT_PARTICULARS = ['Rental Charges','Common Area Maintenance','Electricity Charges','Water Charges','Parking Charges','Generator Charges','Housekeeping Charges'];
+import { fmtINR, fmtDate } from '../src/utils/formatCurrency.js';
+import { MONTHS, DEFAULT_PARTICULARS } from '../src/constants/index.js';
+import StatCard from '../src/components/ui/StatCard.jsx';
+import { ActionButtons } from '../src/components/ui/ActionButtons.jsx';
+import { PaymentStatusBadge } from '../src/components/ui/StatusBadge.jsx';
+import { getCached, setCached, invalidate } from '../src/lib/apiCache.js';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
@@ -56,22 +44,31 @@ export default function InvoiceList() {
   const [deletingInvoice,setDeletingInvoice]= useState(null);
 
   useEffect(() => {
+    // Show cached data instantly, then refetch silently in background
+    const ci = getCached('invoices'), ct = getCached('tenants'),
+          cc = getCached('companies'), co = getCached('other-parties');
+    if (ci) { setInvoices(ci); setTenants(ct || []); setCompanies(cc || []); setOtherParties(co || []); setLoading(false); }
+
     Promise.all([
       fetch(`${API_URL}/api/invoices`).then(r => r.json()).catch(() => []),
       fetch(`${API_URL}/api/tenants`).then(r => r.json()).catch(() => []),
       fetch(`${API_URL}/api/companies`).then(r => r.json()).catch(() => []),
       fetch(`${API_URL}/api/other-parties`).then(r => r.json()).catch(() => []),
     ]).then(([inv, ten, com, op]) => {
-      setInvoices(Array.isArray(inv) ? inv : []);
-      setTenants(Array.isArray(ten) ? ten : []);
-      setCompanies(Array.isArray(com) ? com : []);
-      setOtherParties(Array.isArray(op) ? op : []);
+      const i = Array.isArray(inv) ? inv : [], t = Array.isArray(ten) ? ten : [],
+            c = Array.isArray(com) ? com : [], o = Array.isArray(op)  ? op  : [];
+      setInvoices(i); setTenants(t); setCompanies(c); setOtherParties(o);
+      setCached('invoices', i); setCached('tenants', t);
+      setCached('companies', c); setCached('other-parties', o);
     }).finally(() => setLoading(false));
   }, []);
 
   const refetch = () => {
-    setLoading(true);
-    fetch(`${API_URL}/api/invoices`).then(r => r.json()).then(d => setInvoices(Array.isArray(d) ? d : [])).finally(() => setLoading(false));
+    invalidate('invoices');
+    fetch(`${API_URL}/api/invoices`).then(r => r.json()).then(d => {
+      const i = Array.isArray(d) ? d : [];
+      setInvoices(i); setCached('invoices', i);
+    });
   };
 
   // ── Derived data ──────────────────────────────────────────────────────────
@@ -155,28 +152,12 @@ export default function InvoiceList() {
       {/* ── Stat Cards ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 20 }}>
         {[
-          { label: 'Total Invoiced',  value: fmt(totalInvoiced),    sub: 'All bills combined',  Icon: IndianRupee,  icoColor: '#3b82f6' },
-          { label: 'Total Received',  value: fmt(totalReceived),    sub: 'Payments collected',  Icon: CheckCircle2, icoColor: '#10b981' },
-          { label: 'Outstanding',     value: fmt(totalOutstanding), sub: 'Pending dues',         Icon: AlertCircle,  icoColor: '#ef4444' },
-          { label: 'Paid',            value: `${paidCount}`,        sub: 'invoices',             Icon: CheckCircle2, icoColor: '#10b981' },
-          { label: 'Pending',         value: `${pendingCount}`,     sub: 'invoices',             Icon: Clock,        icoColor: '#ef4444' },
-        ].map((s, i) => (
-          <div key={s.label} style={{
-            background: '#fff', borderRadius: 14, padding: '20px 20px 16px', position: 'relative', minHeight: 108,
-            border: i === 0 ? '1.5px solid #3b82f6' : '1px solid #e8edf2',
-            boxShadow: i === 0 ? '0 0 0 4px rgba(59,130,246,0.06),0 2px 6px rgba(0,0,0,0.05)' : '0 1px 4px rgba(0,0,0,0.04)',
-            transition: 'all 0.2s',
-          }}
-            onMouseEnter={e => { e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.boxShadow='0 8px 24px rgba(0,0,0,0.09)'; }}
-            onMouseLeave={e => { e.currentTarget.style.transform='none'; e.currentTarget.style.boxShadow= i===0 ? '0 0 0 4px rgba(59,130,246,0.06),0 2px 6px rgba(0,0,0,0.05)' : '0 1px 4px rgba(0,0,0,0.04)'; }}>
-            <p style={{ fontSize: 11, fontWeight: 600, color: '#9ba8b5', margin: '0 0 10px', letterSpacing: '0.02em' }}>{s.label}</p>
-            <p style={{ fontSize: 26, fontWeight: 900, color: '#1a1a2e', margin: 0, letterSpacing: '-0.5px', lineHeight: 1.1 }}>{s.value}</p>
-            <p style={{ fontSize: 11, color: '#b0b8c4', margin: '6px 0 0' }}>{s.sub}</p>
-            <div style={{ position: 'absolute', bottom: 14, right: 16 }}>
-              <s.Icon size={26} color={s.icoColor} strokeWidth={1.5}/>
-            </div>
-          </div>
-        ))}
+          { label: 'Total Invoiced',  value: fmtINR(totalInvoiced),    sub: 'All bills combined', icon: IndianRupee,  iconColor: '#3b82f6', highlighted: true },
+          { label: 'Total Received',  value: fmtINR(totalReceived),    sub: 'Payments collected', icon: CheckCircle2, iconColor: '#10b981' },
+          { label: 'Outstanding',     value: fmtINR(totalOutstanding), sub: 'Pending dues',        icon: AlertCircle,  iconColor: '#ef4444' },
+          { label: 'Paid',            value: `${paidCount}`,           sub: 'invoices',            icon: CheckCircle2, iconColor: '#10b981' },
+          { label: 'Pending',         value: `${pendingCount}`,        sub: 'invoices',            icon: Clock,        iconColor: '#ef4444' },
+        ].map(s => <StatCard key={s.label} {...s}/>)}
       </div>
 
       {/* ── Filter Bar ── */}
@@ -292,7 +273,6 @@ export default function InvoiceList() {
                   <p style={{ fontSize: 11, color: '#e2e8f0', margin: '4px 0 0' }}>Try adjusting your filters</p>
                 </td></tr>
               ) : filtered.map((inv, idx) => {
-                const st = STATUS[inv.paymentStatus] || { color: '#64748b', bg: '#f8fafc', dot: '#94a3b8' };
                 const received = inv.receivedAmount || inv.received || 0;
                 const balance  = inv.balanceAmount  || inv.balance  || 0;
                 return (
@@ -317,25 +297,22 @@ export default function InvoiceList() {
 
                     {/* Amount */}
                     <td style={{ padding: '13px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: '#1e293b' }}>{fmt(inv.totalInvoice)}</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: '#1e293b' }}>{fmtINR(inv.totalInvoice)}</span>
                     </td>
 
                     {/* Received */}
                     <td style={{ padding: '13px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: received > 0 ? '#10b981' : '#cbd5e1' }}>{fmt(received)}</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: received > 0 ? '#10b981' : '#cbd5e1' }}>{fmtINR(received)}</span>
                     </td>
 
                     {/* Balance */}
                     <td style={{ padding: '13px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: balance > 0 ? '#ef4444' : '#10b981' }}>{fmt(balance)}</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: balance > 0 ? '#ef4444' : '#10b981' }}>{fmtINR(balance)}</span>
                     </td>
 
                     {/* Status */}
                     <td style={{ padding: '13px 16px', textAlign: 'center' }}>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, background: st.bg, color: st.color, fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap' }}>
-                        <span style={{ width: 5, height: 5, borderRadius: '50%', background: st.dot, flexShrink: 0 }}/>
-                        {inv.paymentStatus}
-                      </span>
+                      <PaymentStatusBadge status={inv.paymentStatus}/>
                     </td>
 
                     {/* Workflow */}
@@ -351,20 +328,11 @@ export default function InvoiceList() {
 
                     {/* Actions */}
                     <td style={{ padding: '13px 16px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
-                        {[
-                          { icon: Eye,    show: true,       title: 'View',   onClick: () => setSelectedInvoice(inv),  color: '#3b82f6', hbg: '#eff6ff' },
-                          { icon: Edit2,  show: canEdit,    title: 'Edit',   onClick: () => setEditingInvoice(inv),   color: '#f97316', hbg: '#fff7ed' },
-                          { icon: Trash2, show: canDelete,  title: 'Delete', onClick: () => setDeletingInvoice(inv), color: '#ef4444', hbg: '#fff1f2' },
-                        ].filter(b => b.show).map(({ icon: Ic, title, onClick, color, hbg }) => (
-                          <button key={title} onClick={onClick} title={title}
-                            style={{ width: 30, height: 30, borderRadius: 7, border: 'none', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#94a3b8', transition: 'all 0.15s' }}
-                            onMouseEnter={e => { e.currentTarget.style.background = hbg; e.currentTarget.style.color = color; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#94a3b8'; }}>
-                            <Ic size={15}/>
-                          </button>
-                        ))}
-                      </div>
+                      <ActionButtons buttons={[
+                        { icon: Eye,    title: 'View',   onClick: () => setSelectedInvoice(inv),  color: '#3b82f6', hbg: '#eff6ff' },
+                        { icon: Edit2,  show: canEdit,   title: 'Edit',   onClick: () => setEditingInvoice(inv),   color: '#f97316', hbg: '#fff7ed' },
+                        { icon: Trash2, show: canDelete, title: 'Delete', onClick: () => setDeletingInvoice(inv), color: '#ef4444', hbg: '#fff1f2' },
+                      ]}/>
                     </td>
                   </motion.tr>
                 );
@@ -378,9 +346,9 @@ export default function InvoiceList() {
           <div style={{ padding: '12px 14px', borderTop: '1px solid #f0f2f5', background: '#f8fafc', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
             <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>{filtered.length} records</span>
             <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#475569' }}>Total: <span style={{ color: '#0f172a' }}>{fmt(totalInvoiced)}</span></span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#475569' }}>Received: <span style={{ color: '#10b981' }}>{fmt(totalReceived)}</span></span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#475569' }}>Balance: <span style={{ color: '#ef4444' }}>{fmt(totalOutstanding)}</span></span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#475569' }}>Total: <span style={{ color: '#0f172a' }}>{fmtINR(totalInvoiced)}</span></span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#475569' }}>Received: <span style={{ color: '#10b981' }}>{fmtINR(totalReceived)}</span></span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#475569' }}>Balance: <span style={{ color: '#ef4444' }}>{fmtINR(totalOutstanding)}</span></span>
             </div>
           </div>
         )}
