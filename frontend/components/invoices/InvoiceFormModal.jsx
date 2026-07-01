@@ -229,8 +229,20 @@ export function InvoiceFormModal({ tenants = [], companies, otherParties = [], o
         if (method === 'POST') {
           const savedInvoice = res.data;
           const company = companies?.find(c => (c._id || c.id) === String(savedInvoice.companyId || data.companyId));
-          const tenant  = tenants?.find(t  => (t._id  || t.id)  === String(savedInvoice.tenantId  || data.tenantId));
-          sendInvoicePDFToSlack(savedInvoice, tenant, company).catch(() => {});
+
+          // Fetch full party profile so Bill To section has all details (address, mobile, gstNo, state…)
+          let fullParty = null;
+          try {
+            if ((savedInvoice.partyType || 'Tenant') === 'OtherParty') {
+              const pid = savedInvoice.otherPartyId || data.otherPartyId;
+              if (pid) { const r = await axios.get(`/api/other-parties/${pid}`); fullParty = r.data; }
+            } else {
+              const tid = savedInvoice.tenantId || data.tenantId;
+              if (tid) { const r = await axios.get(`/api/tenants/${tid}`); fullParty = r.data; }
+            }
+          } catch {}
+
+          sendInvoicePDFToSlack(savedInvoice, fullParty, company).catch(() => {});
         }
         onSuccess(res.data);
       } else toast.error('Failed to save invoice');

@@ -95,10 +95,10 @@ export async function generateInvoicePDF(invoice, tenant, company, { download = 
   addrLines.slice(0,3).forEach((l,i)=>{ pdf.text(l,MG,y+i*4.5); });
   y += Math.min(addrLines.length,3)*4.5+1;
 
-  if (company?.phoneNumber)   { pdf.text(`Phone no. : ${company.phoneNumber}`,  MG,y); y+=4.5; }
+  if (company?.phoneNumber)   { pdf.text(`Phone No : ${company.phoneNumber}`,  MG,y); y+=4.5; }
   if (company?.email)         { pdf.text(`Email : ${company.email}`,            MG,y); y+=4.5; }
   if (company?.gstNumber)     { pdf.text(`GSTIN : ${company.gstNumber}`,        MG,y); y+=4.5; }
-  if (company?.state)         { pdf.text(`State: ${company.state}`,             MG,y); y+=4.5; }
+  if (company?.state)         { pdf.text(`State : ${company.state}`,             MG,y); y+=4.5; }
 
   y+=3;
   hl(MG,y,MG+CW,...BDR);
@@ -313,7 +313,6 @@ export async function generateInvoicePDF(invoice, tenant, company, { download = 
   if(y>PH-50){ pdf.addPage(); y=MG; }
 
   const bankColW = 90;   // continuation line width for bank details
-  const sigX     = PW-MG; // right edge for signature section
 
   // ── Pay To — left side, label bold-large / value small ──────────
   let yP=y;
@@ -349,17 +348,17 @@ export async function generateInvoicePDF(invoice, tenant, company, { download = 
   // ── For: Company + Seal + Authorized Signatory — right side ─────
   let yS=y;
   const compFull = company?.companyName || invoice.company || '';
+  // Fixed center point — shifted left so it's not cramped at the right edge
+  const centX = PW - MG - 38;
   fnt(9,false,...BLK);
-  const forText = `For :${compFull}`;
-  pdf.text(forText, sigX, yS, { align:'right' });
-  const centX = sigX - pdf.getTextWidth(forText) / 2; // center x under "For :Company"
+  pdf.text(`For :${compFull}`, centX, yS, { align:'center' });
   yS += 2;
 
   if(invoice.approved){
-    if(sealB64){ try{ pdf.addImage(sealB64,imgFmt(sealB64),centX-22.5,yS,45,36,undefined,'FAST'); yS+=36; }catch{ yS+=2; } }
+    if(sealB64){ try{ pdf.addImage(sealB64,imgFmt(sealB64),centX-16.5,yS,35,27.5,undefined,'FAST'); yS+=26; }catch{ yS+=2; } }
     else { yS+=2; }
   } else {
-    yS+=9;
+    yS+=20;
   }
 
   fnt(10,true,...BLK);
